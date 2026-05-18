@@ -30,13 +30,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6.0.2
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4.1.0
-
       - name: Set up Node
         uses: actions/setup-node@v5.0.0
         with:
           node-version: 22
+          package-manager-cache: false
 
       - name: Install wrangler
         run: npm install -g wrangler@4
@@ -73,10 +71,7 @@ jobs:
           set -e
           BUCKET='${{ inputs.r2_bucket }}'
           echo "Ensuring R2 bucket: $BUCKET"
-          if wrangler r2 bucket list --json 2>/dev/null | node -e "
-            const list = JSON.parse(require('fs').readFileSync(0, 'utf8'));
-            process.exit(list.some(b => b.name === process.argv[1]) ? 0 : 1);
-          " "$BUCKET"; then
+          if wrangler r2 bucket info "$BUCKET" >/dev/null 2>&1; then
             echo "R2 bucket already exists, reusing."
           else
             wrangler r2 bucket create "$BUCKET"
