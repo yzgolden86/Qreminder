@@ -46,6 +46,7 @@ func TestEnsureSchemaCreatesContractFieldsAndIndexes(t *testing.T) {
 		"tags":                         core.FieldTypeJSON,
 		"extra":                        core.FieldTypeJSON,
 		"reminderDays":                 core.FieldTypeNumber,
+		"reminderOffsets":              core.FieldTypeJSON,
 		"created":                      core.FieldTypeAutodate,
 		"updated":                      core.FieldTypeAutodate,
 	})

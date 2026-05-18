@@ -65,7 +65,20 @@ func ensureSchema(app core.App) error {
 	if err := ensureNotificationJobsCollection(app, users); err != nil {
 		return err
 	}
-	return backfillAutodates(app, "subscriptions", "settings", "custom_configs", "assets", "notification_jobs")
+	if err := backfillAutodates(app, "subscriptions", "settings", "custom_configs", "assets", "notification_jobs"); err != nil {
+		return err
+	}
+	return backfillReminderOffsets(app)
+}
+
+// backfillReminderOffsets 把历史 reminderDays:int 复制到 reminderOffsets:[int]。
+// Caveat: 仅迁移空/缺失值，避免覆盖前端写入的新数组。
+func backfillReminderOffsets(app core.App) error {
+	_, err := app.DB().NewQuery(
+		"UPDATE `subscriptions` SET `reminderOffsets` = '[' || COALESCE(`reminderDays`, 0) || ']' " +
+			"WHERE `reminderOffsets` IS NULL OR TRIM(`reminderOffsets`) = '' OR `reminderOffsets` = 'null' OR `reminderOffsets` = '[]'",
+	).Execute()
+	return err
 }
 
 func configureAppSettings(app core.App) error {
@@ -233,6 +246,7 @@ func ensureSubscriptionsCollection(app core.App, users *core.Collection) error {
 			&core.JSONField{Name: "tags", MaxSize: 4096},
 			&core.JSONField{Name: "extra", MaxSize: 65536},
 			&core.NumberField{Name: "reminderDays", OnlyInt: true, Min: &minZero},
+			&core.JSONField{Name: "reminderOffsets", MaxSize: 1024},
 		}
 		for _, field := range fields {
 			if field.GetName() == "logo" {

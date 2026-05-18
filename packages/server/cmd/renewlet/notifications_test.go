@@ -14,9 +14,9 @@ func TestBuildDueNotificationForLocalDate(t *testing.T) {
 	settings.Timezone = "Asia/Shanghai"
 
 	message := buildDueNotificationForLocalDate("2026-05-14", time.Date(2026, 5, 14, 1, 2, 3, 0, time.UTC), settings, []notificationSubscription{
-		{ID: "renewal", Name: "Renewal", Price: 18, Currency: "CNY", Status: "active", NextBillingDate: "2026-05-17", ReminderDays: 3},
-		{ID: "trial", Name: "Trial", Price: 9.9, Currency: "USD", Status: "trial", NextBillingDate: "2026-06-01", TrialEndDate: "2026-05-15", ReminderDays: 1},
-		{ID: "expired", Name: "Expired", Price: 12, Currency: "EUR", Status: "active", NextBillingDate: "2026-05-01", ReminderDays: 7},
+		{ID: "renewal", Name: "Renewal", Price: 18, Currency: "CNY", Status: "active", NextBillingDate: "2026-05-17", ReminderOffsets: []int{3}},
+		{ID: "trial", Name: "Trial", Price: 9.9, Currency: "USD", Status: "trial", NextBillingDate: "2026-06-01", TrialEndDate: "2026-05-15", ReminderOffsets: []int{1}},
+		{ID: "expired", Name: "Expired", Price: 12, Currency: "EUR", Status: "active", NextBillingDate: "2026-05-01", ReminderOffsets: []int{7}},
 	}, true)
 
 	if !message.HasPayload {
@@ -36,7 +36,7 @@ func TestBuildDueNotificationUsesEnglishLocale(t *testing.T) {
 	settings.Timezone = "UTC"
 
 	message := buildDueNotificationForLocalDate("2026-05-14", time.Date(2026, 5, 14, 1, 2, 3, 0, time.UTC), settings, []notificationSubscription{
-		{ID: "renewal", Name: "Renewal", Price: 18, Currency: "USD", Status: "active", NextBillingDate: "2026-05-17", ReminderDays: 3},
+		{ID: "renewal", Name: "Renewal", Price: 18, Currency: "USD", Status: "active", NextBillingDate: "2026-05-17", ReminderOffsets: []int{3}},
 	}, true)
 
 	if message.Title != "Renewlet subscription reminder" {

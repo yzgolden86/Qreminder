@@ -25,6 +25,11 @@ func listNotificationSubscriptions(app core.App, userID string) ([]notificationS
 	}
 	subscriptions := make([]notificationSubscription, 0, len(rows))
 	for _, row := range rows {
+		offsets, err := normalizeReminderOffsetsValue(row.Get("reminderOffsets"), row.GetInt("reminderDays"))
+		if err != nil {
+			// 历史脏数据兜底：退化为单档位，避免单条记录把整批通知拉崩。
+			offsets = []int{row.GetInt("reminderDays")}
+		}
 		subscriptions = append(subscriptions, notificationSubscription{
 			ID:              row.Id,
 			Name:            row.GetString("name"),
@@ -34,7 +39,7 @@ func listNotificationSubscriptions(app core.App, userID string) ([]notificationS
 			Status:          row.GetString("status"),
 			NextBillingDate: row.GetString("nextBillingDate"),
 			TrialEndDate:    row.GetString("trialEndDate"),
-			ReminderDays:    row.GetInt("reminderDays"),
+			ReminderOffsets: offsets,
 		})
 	}
 	return subscriptions, nil
@@ -70,6 +75,11 @@ func buildDueNotificationForLocalDate(localDate string, now time.Time, settings 
 func collectNotificationItems(localDate string, settings appSettings, subscriptions []notificationSubscription, includeExpired bool) []notificationContentItem {
 	items := []notificationContentItem{}
 	for _, sub := range subscriptions {
+		// 过期条目展示用最大档位（仅用于排版/i18n，过期不再参与档位匹配）。
+		displayOffsetForExpired := 0
+		if len(sub.ReminderOffsets) > 0 {
+			displayOffsetForExpired = sub.ReminderOffsets[0] // 已降序排列
+		}
 		if isValidDateOnly(sub.NextBillingDate) {
 			daysUntilNext := daysBetweenDateOnly(localDate, sub.NextBillingDate)
 			if daysUntilNext < 0 {
@@ -83,11 +93,11 @@ func collectNotificationItems(localDate string, settings appSettings, subscripti
 						Currency:       sub.Currency,
 						Status:         normalizeSubscriptionStatus(sub.Status),
 						TargetDate:     sub.NextBillingDate,
-						ReminderDays:   sub.ReminderDays,
+						ReminderDays:   displayOffsetForExpired,
 						DaysUntil:      daysUntilNext,
 					})
 				}
-			} else if daysUntilNext == sub.ReminderDays {
+			} else if reminderOffsetsContains(sub.ReminderOffsets, daysUntilNext) {
 				items = append(items, notificationContentItem{
 					Type:           "renewal",
 					SubscriptionID: sub.ID,
@@ -97,7 +107,7 @@ func collectNotificationItems(localDate string, settings appSettings, subscripti
 					Currency:       sub.Currency,
 					Status:         normalizeSubscriptionStatus(sub.Status),
 					TargetDate:     sub.NextBillingDate,
-					ReminderDays:   sub.ReminderDays,
+					ReminderDays:   daysUntilNext,
 					DaysUntil:      daysUntilNext,
 				})
 			}
@@ -105,7 +115,7 @@ func collectNotificationItems(localDate string, settings appSettings, subscripti
 
 		if sub.Status == "trial" && isValidDateOnly(sub.TrialEndDate) {
 			daysUntilTrialEnd := daysBetweenDateOnly(localDate, sub.TrialEndDate)
-			if daysUntilTrialEnd == sub.ReminderDays {
+			if daysUntilTrialEnd >= 0 && reminderOffsetsContains(sub.ReminderOffsets, daysUntilTrialEnd) {
 				items = append(items, notificationContentItem{
 					Type:           "trial",
 					SubscriptionID: sub.ID,
@@ -115,13 +125,23 @@ func collectNotificationItems(localDate string, settings appSettings, subscripti
 					Currency:       sub.Currency,
 					Status:         "trial",
 					TargetDate:     sub.TrialEndDate,
-					ReminderDays:   sub.ReminderDays,
+					ReminderDays:   daysUntilTrialEnd,
 					DaysUntil:      daysUntilTrialEnd,
 				})
 			}
 		}
 	}
 	return items
+}
+
+// reminderOffsetsContains 判断订阅配置的提醒档位是否包含某个 daysUntil。
+func reminderOffsetsContains(offsets []int, value int) bool {
+	for _, offset := range offsets {
+		if offset == value {
+			return true
+		}
+	}
+	return false
 }
 
 // buildNotificationContent 将提醒项分组为可读消息。

@@ -260,6 +260,10 @@ func runNotificationCron(app core.App, options notificationCronOptions) (notific
 		if userID == "" {
 			continue
 		}
+		offsets, err := normalizeReminderOffsetsValue(row.Get("reminderOffsets"), row.GetInt("reminderDays"))
+		if err != nil {
+			offsets = []int{row.GetInt("reminderDays")}
+		}
 		subsByUser[userID] = append(subsByUser[userID], notificationSubscription{
 			ID:              row.Id,
 			Name:            row.GetString("name"),
@@ -269,7 +273,7 @@ func runNotificationCron(app core.App, options notificationCronOptions) (notific
 			Status:          row.GetString("status"),
 			NextBillingDate: row.GetString("nextBillingDate"),
 			TrialEndDate:    row.GetString("trialEndDate"),
-			ReminderDays:    row.GetInt("reminderDays"),
+			ReminderOffsets: offsets,
 		})
 	}
 

@@ -153,10 +153,17 @@ func normalizeSubscriptionRecord(record *core.Record) error {
 		record.Set("extra", emptyJSONPayload{})
 	}
 
-	reminderDays := record.GetInt("reminderDays")
-	if reminderDays < 0 || reminderDays > 3650 {
-		return errors.New("REMINDER_DAYS_OUT_OF_RANGE")
+	offsets, err := normalizeReminderOffsetsValue(record.Get("reminderOffsets"), record.GetInt("reminderDays"))
+	if err != nil {
+		return err
 	}
+	record.Set("reminderOffsets", offsets)
+	// reminderDays 字段保留作为镜像，方便仍读旧字段的工具/集成；取最大值代表"最早的提醒档位"。
+	mirror := 0
+	if len(offsets) > 0 {
+		mirror = offsets[0] // normalize 后是降序排列，索引 0 即最大值
+	}
+	record.Set("reminderDays", mirror)
 
 	return nil
 }
@@ -328,6 +335,148 @@ func normalizeTags(value interface{}) ([]string, error) {
 		tags = append(tags, tag)
 	}
 	return tags, nil
+}
+
+const (
+	maxReminderOffsetsPerSubscription = 16
+	maxReminderOffsetValue            = 3650
+)
+
+// normalizeReminderOffsetsValue 规范化提醒档位数组。
+//
+// 兼容性：v1 数据只有 reminderDays:int；当 reminderOffsets 为空/缺失时，回退到 [reminderDays]。
+// 规则：每项整数，范围 [0, 3650]，最多 16 项，去重 + 降序排序。
+func normalizeReminderOffsetsValue(value interface{}, legacyReminderDays int) ([]int, error) {
+	raw, err := intSliceFromJSONValue(value)
+	if err != nil {
+		return nil, errors.New("REMINDER_OFFSETS_INVALID")
+	}
+	if len(raw) == 0 {
+		// v1 行向 v2 迁移：单值 reminderDays 即视为单档位。
+		if legacyReminderDays < 0 || legacyReminderDays > maxReminderOffsetValue {
+			return nil, errors.New("REMINDER_DAYS_OUT_OF_RANGE")
+		}
+		return []int{legacyReminderDays}, nil
+	}
+	if len(raw) > maxReminderOffsetsPerSubscription {
+		return nil, errors.New("REMINDER_OFFSETS_TOO_MANY")
+	}
+	seen := map[int]struct{}{}
+	out := make([]int, 0, len(raw))
+	for _, item := range raw {
+		if item < 0 || item > maxReminderOffsetValue {
+			return nil, errors.New("REMINDER_OFFSET_OUT_OF_RANGE")
+		}
+		if _, exists := seen[item]; exists {
+			continue
+		}
+		seen[item] = struct{}{}
+		out = append(out, item)
+	}
+	// 降序排序：UI/通知摘要更适合从最大档位（如 180 天）往最小档位（0 天）展示。
+	for i := 0; i < len(out); i++ {
+		for j := i + 1; j < len(out); j++ {
+			if out[j] > out[i] {
+				out[i], out[j] = out[j], out[i]
+			}
+		}
+	}
+	return out, nil
+}
+
+// intSliceFromJSONValue 兼容 PocketBase JSON 字段在不同入口下的运行时形态（int 数组语义）。
+func intSliceFromJSONValue(value interface{}) ([]int, error) {
+	if value == nil {
+		return []int{}, nil
+	}
+	switch v := value.(type) {
+	case []int:
+		return v, nil
+	case []float64:
+		out := make([]int, 0, len(v))
+		for _, item := range v {
+			if item != float64(int(item)) {
+				return nil, errors.New("expected integer array")
+			}
+			out = append(out, int(item))
+		}
+		return out, nil
+	case []interface{}:
+		return intsFromInterfaceSlice(v)
+	case types.JSONArray[int]:
+		return []int(v), nil
+	case types.JSONArray[interface{}]:
+		return intsFromInterfaceSlice([]interface{}(v))
+	case types.JSONRaw:
+		return decodeJSONIntArray([]byte(v))
+	case json.RawMessage:
+		return decodeJSONIntArray([]byte(v))
+	case []byte:
+		return decodeJSONIntArray(v)
+	case string:
+		if strings.TrimSpace(v) == "" {
+			return []int{}, nil
+		}
+		return decodeJSONIntArray([]byte(v))
+	default:
+		data, err := json.Marshal(v)
+		if err != nil {
+			return nil, err
+		}
+		return decodeJSONIntArray(data)
+	}
+}
+
+// intsFromInterfaceSlice 将通用切片收窄为 int 切片。
+func intsFromInterfaceSlice(rows []interface{}) ([]int, error) {
+	out := make([]int, 0, len(rows))
+	for _, row := range rows {
+		switch v := row.(type) {
+		case int:
+			out = append(out, v)
+		case int64:
+			out = append(out, int(v))
+		case float64:
+			if v != float64(int(v)) {
+				return nil, errors.New("expected integer array")
+			}
+			out = append(out, int(v))
+		case json.Number:
+			parsed, err := v.Int64()
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, int(parsed))
+		default:
+			return nil, errors.New("expected integer array")
+		}
+	}
+	return out, nil
+}
+
+// decodeJSONIntArray 从 JSON 文本读取 int 数组。
+func decodeJSONIntArray(data []byte) ([]int, error) {
+	if len(strings.TrimSpace(string(data))) == 0 {
+		return []int{}, nil
+	}
+	var raw []json.Number
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	if err := decoder.Decode(&raw); err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return []int{}, nil
+	}
+	out := make([]int, 0, len(raw))
+	for _, n := range raw {
+		parsed, err := n.Int64()
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, int(parsed))
+	}
+	return out, nil
 }
 
 // stringSliceFromJSONValue 兼容 PocketBase JSON 字段在不同入口下的运行时形态。

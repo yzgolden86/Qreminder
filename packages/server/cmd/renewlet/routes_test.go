@@ -264,7 +264,7 @@ func TestSubscriptionsCollectionCreateAcceptsPrivateAssetLogoPath(t *testing.T) 
 			"website":null,
 			"notes":null,
 			"tags":[],
-			"reminderDays":3
+			"reminderOffsets":[3]
 		}`, user.Id, logoPath),
 		token,
 	)

@@ -95,7 +95,9 @@ type notificationSubscription struct {
 	Status          string  `json:"status"`
 	NextBillingDate string  `json:"nextBillingDate"`
 	TrialEndDate    string  `json:"trialEndDate,omitempty"`
-	ReminderDays    int     `json:"reminderDays"`
+	// ReminderOffsets 为提醒档位数组（去重 + 降序），由 reminderOffsets 字段解析；
+	// 仅在 v1 旧数据空数组时由调用方回退到 [reminderDays]。
+	ReminderOffsets []int `json:"reminderOffsets"`
 }
 
 // notificationContentItem 是一条实际会进入通知内容和历史 result 的提醒项。
