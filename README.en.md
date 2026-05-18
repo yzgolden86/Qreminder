@@ -2,230 +2,129 @@
 
 [简体中文](README.md) | [English](README.en.md)
 
-Renewlet is a self-hosted subscription manager. It keeps prices, renewal dates, budgets, and reminders for SaaS, AI tools, cloud services, and developer tools in one place, for individuals, small teams, and homelabs.
+Renewlet is a self-hosted subscription manager. It puts the prices, renewal dates, budgets, and reminders for SaaS, AI tools, cloud services, and developer tools in one place. It works for individuals, indie teams, and home labs.
 
 <p align="center">
   <img alt="Self-hosted" src="https://img.shields.io/badge/self--hosted-0f172a?style=flat-square">
   <img alt="React" src="https://img.shields.io/badge/React-19-149eca?style=flat-square">
-  <img alt="Go and PocketBase" src="https://img.shields.io/badge/Go%20%2B%20PocketBase-00a884?style=flat-square">
-  <img alt="Docker" src="https://img.shields.io/badge/Docker-ready-2496ed?style=flat-square">
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-Hono%20%2B%20Drizzle-3178c6?style=flat-square">
+  <img alt="Cloudflare Workers" src="https://img.shields.io/badge/Cloudflare-Workers-f38020?style=flat-square">
   <img alt="MIT License" src="https://img.shields.io/badge/license-MIT-111827?style=flat-square">
 </p>
 
 <p align="center">
-  <img src="./docs/screenshots/renewlet-dashboard-en.png" alt="Renewlet dashboard showing 20 developer subscriptions, monthly spend, upcoming renewals, and spending distribution" width="100%">
+  <img src="./docs/screenshots/renewlet-dashboard-en.png" alt="Renewlet English dashboard, showing 20 developer subscriptions with monthly spend, upcoming renewals, and category breakdown" width="100%">
 </p>
 
 <p align="center">
-  <sub>Screenshots use 20 real developer-service public-pricing demo subscriptions (price snapshot: 2026-05-17). Actual prices may change by official pricing page, region, tax, and billing term.</sub>
+  <sub>Screenshots use 20 developer-focused services with public pricing as demo data (price snapshot: 2026-05-17). Real prices may change with vendor pages, region, taxes, and billing cycles.</sub>
 </p>
 
-<p align="center"><strong>Subscription grid</strong></p>
+<p align="center"><strong>Subscription Grid</strong></p>
 
 <p align="center">
-  <img src="./docs/screenshots/renewlet-subscriptions-en.png" alt="Renewlet subscriptions grid with filters, tags, renewal status, and service logos" width="100%">
+  <img src="./docs/screenshots/renewlet-subscriptions-en.png" alt="Renewlet English subscription grid with filters, tags, renewal status, and service logos" width="100%">
 </p>
 
 <p align="center"><strong>Statistics</strong></p>
 
 <p align="center">
-  <img src="./docs/screenshots/renewlet-statistics-en.png" alt="Renewlet statistics view with budget usage, category breakdown, and payment method charts" width="100%">
+  <img src="./docs/screenshots/renewlet-statistics-en.png" alt="Renewlet English statistics view with category spend, payment methods, and budget charts" width="100%">
 </p>
 
-<p align="center"><strong>Renewal calendar</strong></p>
+<p align="center"><strong>Renewal Calendar</strong></p>
 
 <p align="center">
-  <img src="./docs/screenshots/renewlet-calendar-en.png" alt="Renewlet renewal calendar showing monthly renewal events and estimated spend for developer subscriptions" width="100%">
+  <img src="./docs/screenshots/renewlet-calendar-en.png" alt="Renewlet English renewal calendar showing monthly renewal events and projected spend for developer subscriptions" width="100%">
 </p>
 
-<p align="center"><strong>Notification methods</strong></p>
+<p align="center"><strong>Notifications</strong></p>
 
 <p align="center">
-  <img src="./docs/screenshots/renewlet-notifications-en.png" alt="Renewlet notification settings showing channel list and email notification configuration" width="100%">
+  <img src="./docs/screenshots/renewlet-notifications-en.png" alt="Renewlet English notification settings with notification methods list and email notification configuration panel" width="100%">
 </p>
 
 ## Overview
 
-If you subscribe to many tools, Renewlet helps you keep track of them: when each one renews, roughly how much you spend each month, what is coming up soon, and where reminders should go. You can save prices, currencies, billing cycles, renewal dates, payment methods, tags, websites, and notes, then use the dashboard, calendar, and statistics pages to understand the overall spend.
+If you subscribe to lots of tools, Renewlet keeps the receipts: who charges you when, how much you spend per month, what's about to renew, and where reminders should go. You record price, currency, billing cycle, renewal date, payment method, tags, website, and notes — and then look at the dashboard, calendar, and statistics pages to see the whole picture.
 
-The project packages the React frontend and Go/PocketBase backend into one Docker image. After deployment, a single container serves the app, business APIs, PocketBase APIs, and the PocketBase Admin UI.
+Tech stack:
 
-Current architecture:
+- `packages/client`: Vite + React 19 SPA, Tailwind 4 + shadcn/Radix, dashboard and subscription list merged into one page (Mock A), bilingual (zh-CN / en).
+- `packages/server-ts`: TypeScript + Hono + Drizzle + Better Auth backend. The same code runs in two runtimes:
+  - [runtimes/worker](./runtimes/worker/): Cloudflare Workers + D1 + R2 + Cron Triggers + Workers Assets — no VPS required.
+  - [runtimes/node](./runtimes/node/): Node + better-sqlite3 + nodemailer + node-cron (experimental, runs on your own VPS).
+- `packages/shared`: zod schemas and domain helpers shared between client and server.
+- `tools/pb-importer`: CLI that imports legacy Go + PocketBase data into the new schema.
+- `packages/server`: previous-generation Go + PocketBase backend, now in maintenance mode (see "Legacy Docker deployment (v1)" at the bottom).
 
-- `packages/server`: Go + PocketBase backend (v1 path) for SQLite, authentication, files, admin UI, data models, and business APIs.
-- `packages/server-ts`: TypeScript + Hono + Drizzle + Better Auth backend (v2 path), runs on both Node and Cloudflare Workers via [runtimes/node](./runtimes/node/) and [runtimes/worker](./runtimes/worker/).
-- `packages/client`: Vite + React SPA for the app UI, routing, themes, and Chinese/English copy. Dashboard and subscriptions list have been merged into a single page (Mock A).
-- Docker image: runs the v1 Go binary that serves the PocketBase API, app API, PocketBase Admin, static assets, and SPA fallback.
-- Cloudflare Workers: runs the v2 TypeScript runtime with D1 + R2 + Cron Triggers + Workers Assets, no VPS required.
-
-> See [docs/WORKER_DEPLOY.md](./docs/WORKER_DEPLOY.md) for the v2 (Cloudflare) deployment, and [docs/v2-proposal.md](./docs/v2-proposal.md) for the overall migration plan and status.
+The recommended deployment target is Cloudflare Workers. There are two paths: fork the repo and run everything from the GitHub web UI (recommended), or install wrangler CLI locally and run the commands yourself.
 
 ## Features
 
-- Track subscriptions: save names, logos, prices, currencies, billing cycles, statuses, categories, payment methods, websites, tags, and notes.
-- Get renewal reminders: generate notifications from each user's time zone and reminder window, keep delivery history, and retry failed sends.
-- Send notifications: use Telegram, Notifyx, Webhook, WeCom Bot, SMTP email, or Bark.
-- Review spending: normalize costs by month and show budget usage, category breakdowns, payment-method breakdowns, and inactive-subscription savings.
-- Handle currencies: choose Frankfurter or FloatRates for exchange rates; if remote sources fail, Renewlet uses fallback rates.
-- Self-host it: run one container and persist SQLite data through a local directory or Docker volume.
-- Switch languages: Simplified Chinese and English are supported in the app.
+- Track subscriptions: name, logo, price, currency, billing cycle, status, category, payment method, website, tags, and notes.
+- Multi-tier reminders: each subscription has its own `reminderOffsets` array like `[7, 3, 1]` (up to 365 days, monotonically decreasing). Subscriptions hit on the same day are merged into a single email so users don't get spammed.
+- Multi-channel notifications: Workers mode uses Resend HTTP API; Node mode supports SMTP / Telegram / Notifyx / Webhook / WeCom Bot / Bark.
+- Spending insights: normalize different billing cycles to monthly cost, show budget usage, category breakdown, payment-method breakdown, and savings from inactive subscriptions.
+- Multiple currencies: Frankfurter or FloatRates as exchange-rate source, with fallback rates if remote sources fail.
+- Multi-user: Better Auth with email/password sign-in. Admins can temporarily open signup and configure an email allowlist (supports `*@example.com` wildcards) under Settings → Signup.
+- Bilingual UI: Simplified Chinese and English, switchable in app.
 
-## One-Command Docker Deployment
+## Cloudflare Workers Deployment (recommended)
 
-The easiest path is the prebuilt Docker Hub image. The script below downloads the Compose template, generates random secrets, and creates the local data directory. For most installs, you do not need to edit `.env` or `docker-compose.yml` by hand.
+You only need a Cloudflare account and a Resend account. The whole app runs on Cloudflare's free tier (D1 + R2 + Workers + Cron Triggers + Workers Assets).
 
-On a server with Docker and Docker Compose v2 installed, run:
+### Path A: fork + GitHub Actions (no local wrangler required)
 
-```bash
-mkdir -p renewlet && cd renewlet
-curl -fsSL https://raw.githubusercontent.com/zhiyingzzhou/renewlet/main/deploy/docker-deploy.sh | bash
-docker compose up -d
-```
-
-After the first startup, open:
-
-```text
-http://localhost:3000/setup
-```
-
-Create the first admin user. If PocketBase does not have a superuser yet, this account also becomes the initial PocketBase Admin UI account. Existing superusers are not overwritten.
-
-The script creates:
-
-| Path | Description |
-| --- | --- |
-| `docker-compose.yml` | Production deployment template. It uses `zhiyingzzhou/renewlet:latest` by default. |
-| `.env` | Port, image, time zone, secrets, and notification scheduler settings. `PB_ENCRYPTION_KEY` and `CRON_SECRET` are generated automatically. |
-| `data/` | Data directory mounted to `/pb_data` inside the container. |
-
-If Docker Hub is unavailable, switch `.env` to the GHCR image:
-
-```env
-RENEWLET_IMAGE="ghcr.io/zhiyingzzhou/renewlet:latest"
-```
-
-Then pull and restart:
-
-```bash
-docker compose pull
-docker compose up -d
-```
-
-## One-Click Deploy to Cloudflare via GitHub Actions
-
-If you don't want a VPS and don't want to install wrangler locally, fork this repo and run the entire deployment from the GitHub web UI. The result runs on Cloudflare Workers + D1 + R2 (the free tier is enough).
+For users who don't want a VPS and don't want to install CLI tools. Fork the repo and run the entire deployment from the GitHub web UI.
 
 Two steps:
 
-1. In your fork, go to Settings → Environments and create a `cloudflare` environment, then add the 6 required secrets per [docs/CF_GH_ACTIONS_DEPLOY.md §1](./docs/CF_GH_ACTIONS_DEPLOY.md#1-配置-github-secrets--variables) (Cloudflare API token / account id / better-auth secret / app url / Resend api key + sender)
-2. Actions → manually Run **Cloudflare Bootstrap** (creates D1 + R2, auto-commits the `database_id`). Once it finishes, **Wrangler Deploy** runs automatically and ships the worker.
+1. In your fork, go to Settings → Environments and create an environment named `cloudflare`. Add the 6 required secrets per [docs/CF_GH_ACTIONS_DEPLOY.md §1](./docs/CF_GH_ACTIONS_DEPLOY.md#1-配置-github-secrets--variables) (Cloudflare API token / account id / Better Auth secret / app url / Resend api key + sender).
+2. Actions → manually Run **Cloudflare Bootstrap** (creates D1 + R2, auto-commits the `database_id` back to `wrangler.toml`). When it finishes, **Wrangler Deploy** runs automatically and ships the worker.
 
 See [docs/CF_GH_ACTIONS_DEPLOY.md](./docs/CF_GH_ACTIONS_DEPLOY.md) for the full walkthrough, first-admin signup, custom domain, and troubleshooting.
 
-## Operations
+### Path B: local wrangler CLI
 
-Check status and logs:
-
-```bash
-docker compose ps
-docker compose logs -f
-```
-
-Before upgrading, back up data and configuration:
+If you already have wrangler installed, prefer the command line, or want to test the workflow locally first:
 
 ```bash
-tar -czf renewlet-backup-$(date +%F).tgz .env docker-compose.yml data
+pnpm install -g wrangler@latest
+wrangler login
 ```
 
-Upgrade to the latest image:
+Then follow [docs/WORKER_DEPLOY.md](./docs/WORKER_DEPLOY.md) step by step: create D1 + R2 → set secrets → apply D1 migrations → build the client → `wrangler deploy` → register the first admin. About 15 minutes total (excluding Resend domain verification propagation time).
+
+## Node Self-Hosted Deployment (experimental)
+
+If you have your own VPS and want to run the v2 TypeScript backend on Node + SQLite instead of Cloudflare:
 
 ```bash
-docker compose pull
-docker compose up -d
-docker compose logs -f
+git clone https://github.com/yzgolden86/Qreminder.git
+cd Qreminder
+pnpm install --frozen-lockfile
+pnpm --filter @renewlet/client build
+pnpm --filter @renewlet/runtime-node start
 ```
 
-Restart the service:
-
-```bash
-docker compose restart
-```
-
-To migrate to another machine, extract the backup and start the service:
-
-```bash
-mkdir -p renewlet && cd renewlet
-tar -xzf /path/to/renewlet-backup.tgz
-docker compose up -d
-```
-
-Stop the service while keeping data:
-
-```bash
-docker compose down
-```
-
-Full removal deletes local data, so back up first:
-
-```bash
-docker compose down
-rm -rf data .env docker-compose.yml
-```
-
-## Configuration
-
-For the one-command deployment, all settings live in `.env`. Defaults are fine for a normal install. If you use a reverse proxy and domain, set `APP_URL` to your public HTTPS URL, for example `https://renewlet.example.com`.
+Environment variables, see [runtimes/node/src/index.ts](./runtimes/node/src/index.ts). Key ones:
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `PORT` | `3000` | Public service port. |
-| `RENEWLET_IMAGE` | `zhiyingzzhou/renewlet:latest` | Docker image. `latest` follows the newest release; in production you can pin `zhiyingzzhou/renewlet:vX.Y.Z` or switch to `ghcr.io/zhiyingzzhou/renewlet:latest`. |
-| `APP_URL` | `http://localhost:3000` | Public app URL used to build links in emails and notifications. |
-| `TZ` | `Asia/Shanghai` | Container time zone, mainly for logs. Reminder time follows each user's in-app setting. |
-| `PB_ENCRYPTION_KEY` | generated | Must be exactly 32 characters. It encrypts sensitive PocketBase settings. Do not rotate it casually after deployment. |
-| `GOMEMLIMIT` / `MEM_LIMIT` | `128MiB` / `256m` | Go runtime soft memory limit and container memory limit. |
-| `SMTP_HOST` / `SMTP_FROM` | empty | Enables PocketBase password-reset email when configured. |
-| `BACKUPS_CRON` | empty | Optional PocketBase backup cron expression. |
-| `NOTIFICATION_SCHEDULER_ENABLED` | `true` | Enables the built-in notification scheduler. |
-| `CRON_SECRET` | generated | Bearer secret for external platform Cron calls to `/api/cron/notifications`. |
-| `NOTIFICATION_SCHEDULER_CRON` | `* * * * *` | Cron expression for the notification scheduler. |
-| `NOTIFICATION_MAX_RETRIES` | `3` | Maximum retry count for failed notification jobs. |
+| `PORT` | `3000` | Listen port. |
+| `DATABASE_PATH` | `./data/renewlet.db` | SQLite file path. |
+| `ASSETS_DIR` | `./data/assets` | Logo and asset storage directory. |
+| `BETTER_AUTH_SECRET` | (required) | 32+ char random string. Generate with `openssl rand -hex 32`. |
+| `APP_URL` | `http://localhost:3000` | Public URL for email links and cookie domain. |
+| `TRUSTED_ORIGINS` | empty | Better Auth cookie origin allowlist. Comma-separated. |
+| `SIGNUP_ENABLED` | `false` | Set to `true` only when registering the first admin, then back to `false`. |
+| `SIGNUP_ALLOWLIST` | empty | Email signup allowlist (effective only when `SIGNUP_ENABLED=true`). |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` | empty | Configure to enable password reset and renewal reminder email. |
+| `NOTIFICATION_SCHEDULER_ENABLED` | `true` | Whether to enable the built-in node-cron scheduler. |
+| `NOTIFICATION_SCHEDULER_CRON` | `* * * * *` | Cron expression for the scheduler. |
 
-## Scheduled Notifications
-
-For Docker/VPS self-hosting, keep `NOTIFICATION_SCHEDULER_ENABLED=true`. The app checks all user settings on `NOTIFICATION_SCHEDULER_CRON` and sends reminders only when a user's IANA time zone and local notification time match the delivery window.
-
-If your platform provides Cron, or you want to use GitHub Actions, host crontab, or another external scheduler, disable the built-in scheduler and configure an external entrypoint secret:
-
-```env
-NOTIFICATION_SCHEDULER_ENABLED="false"
-CRON_SECRET="CHANGE_ME_TO_A_RANDOM_SECRET"
-```
-
-The external entrypoint is `GET /api/cron/notifications`. It only accepts `Authorization: Bearer <CRON_SECRET>` and does not support URL query secrets. Vercel Cron sends the Bearer header automatically when `CRON_SECRET` is configured; GitHub Actions or crontab can call it like this:
-
-```bash
-curl -H "Authorization: Bearer $CRON_SECRET" "https://YOUR_DOMAIN/api/cron/notifications"
-```
-
-For debugging, add `dryRun=1` to run the logic without sending notifications, or add `force=1` to force the schedule window:
-
-```bash
-curl -H "Authorization: Bearer $CRON_SECRET" "https://YOUR_DOMAIN/api/cron/notifications?dryRun=1&force=1"
-```
-
-## Source Build Deployment
-
-If you want to build the image from source instead of using the Docker Hub image:
-
-```bash
-git clone https://github.com/zhiyingzzhou/renewlet.git
-cd renewlet
-cp .env.example .env
-docker compose up -d --build
-```
-
-The root `docker-compose.yml` is for source builds and persists `/pb_data` with the Docker named volume `renewlet-pb-data`. The one-command deployment uses `deploy/docker-compose.yml` and stores data in the local `data/` directory by default.
+> The Node runtime doesn't have a dedicated Docker image or compose template yet. PRs welcome — see [runtimes/node/Dockerfile](./runtimes/node/Dockerfile).
 
 ## Local Development
 
@@ -235,81 +134,69 @@ Install dependencies:
 pnpm install
 ```
 
-Start the backend:
+Start the v2 TS backend (Node runtime):
 
 ```bash
-pnpm --dir packages/server start
+pnpm --filter @renewlet/runtime-node dev
 ```
 
-Start the frontend:
+Start the client (defaults to `http://localhost:5173`, proxies `/api` to `http://127.0.0.1:3000`):
 
 ```bash
 pnpm --filter @renewlet/client dev
 ```
-
-Vite runs at `http://localhost:5173` by default and proxies `/api` and `/_` to the Go server: `http://127.0.0.1:3000`.
-
-## Build
-
-```bash
-pnpm build
-```
-
-The build first generates `packages/client/dist`, syncs the static assets into the server directory, and then compiles `packages/server/dist/renewlet`.
-
-## Image Publishing
-
-When maintainers publish a version, GitHub Actions builds multi-platform images and pushes them to:
-
-- `docker.io/zhiyingzzhou/renewlet`
-- `ghcr.io/zhiyingzzhou/renewlet`
-
-The workflow runs on pushes to `main`, `v*.*.*` tags, and manual `Docker Image` workflow runs.
-
-Before the first Docker Hub publish:
-
-1. Create the public Docker Hub repository `zhiyingzzhou/renewlet`.
-2. Create a Docker Hub Access Token.
-3. Add `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` in GitHub `Settings -> Secrets and variables -> Actions`.
-
-Publish a release:
-
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-CI pushes tags such as `latest`, `v0.1.0`, `0.1.0`, `0.1`, and `sha-*`.
-
-References: [sub2api deployment README](https://github.com/Wei-Shaw/sub2api/blob/main/deploy/README.md), [Docker GitHub Actions guide](https://docs.docker.com/guides/gha/), [Docker multi-platform builds](https://docs.docker.com/build/ci/github-actions/multi-platform/), and [GitHub publish Docker images](https://docs.github.com/actions/tutorials/publish-packages/publish-docker-images).
 
 ## Verification
 
 Common checks:
 
 ```bash
-pnpm --filter @renewlet/client typecheck
+pnpm -r typecheck
+pnpm --filter @renewlet/client test
 pnpm --filter @renewlet/client build
-pnpm --dir packages/server test
-pnpm build
+pnpm --filter @renewlet/server-ts test
 ```
 
-Full check:
+## Data Migration (v1 → v2)
+
+If you're already on v1 (Go + PocketBase), use [tools/pb-importer](./tools/pb-importer/) to import the old data into v2:
 
 ```bash
-pnpm test:all
+pnpm --filter @renewlet/pb-importer build
+node tools/pb-importer/dist/cli.js \
+  --pb /path/to/pb_data \
+  --target sqlite:///data/renewlet.db \
+  --fs /data/assets
 ```
+
+The tool doesn't delete the source — failed runs are safe to retry. Full field mapping and rollback notes in [docs/v2-proposal.md §8](./docs/v2-proposal.md#8-数据迁移工具pb-importer).
 
 ## Contributing
 
-Issues, documentation improvements, tests, and pull requests are welcome. Before submitting changes, please run the relevant checks and keep documentation, tests, and implementation aligned.
+Issues, doc improvements, tests, and pull requests are welcome. Before submitting changes, please run the relevant checks and keep docs, tests, and implementation in sync.
 
-For larger features, please open an issue first with the goal, use case, and rough approach so the direction can be discussed before implementation.
+For larger features, please open an issue first to align on goals, use cases, and approach before implementing.
 
 ## Friendly Links
 
-- [LINUX DO](https://linux.do/): Renewlet recognizes and appreciates the LINUX DO community's support for open source project discussions.
+- [LINUX DO](https://linux.do/): Renewlet appreciates the LINUX DO community for fostering open-source discussion.
 
 ## License
 
-Renewlet is open source under the [MIT License](LICENSE).
+Renewlet is open-sourced under the [MIT License](LICENSE).
+
+---
+
+## Legacy Docker Deployment (v1, maintenance mode)
+
+> ⚠️ **Maintenance mode**: the v1 Go + PocketBase path still runs, but **the frontend has been entirely migrated to v2 Better Auth + the new API**. New features (multi-tier reminders `reminderOffsets`, the Mock A merged dashboard, etc.) are available only on the v2 backend. **For new deployments, use the Cloudflare Workers path above**; this section exists for backward compatibility with users already running v1.
+
+Full documentation in [docs/DOCKER_DEPLOY.md](./docs/DOCKER_DEPLOY.md). Quick start:
+
+```bash
+mkdir -p renewlet && cd renewlet
+curl -fsSL https://raw.githubusercontent.com/yzgolden86/Qreminder/main/deploy/docker-deploy.sh | bash
+docker compose up -d
+```
+
+After first startup, open `http://localhost:3000/setup` to create the PocketBase superuser. Existing v1 users keep these env vars (see `deploy/env.example`): `PB_ENCRYPTION_KEY` / `SMTP_HOST` / `BACKUPS_CRON` / `NOTIFICATION_SCHEDULER_ENABLED` / `CRON_SECRET` and so on.

@@ -7,8 +7,8 @@ Renewlet 是一个自托管的订阅管理工具。它把 SaaS、AI 工具、云
 <p align="center">
   <img alt="Self-hosted" src="https://img.shields.io/badge/self--hosted-0f172a?style=flat-square">
   <img alt="React" src="https://img.shields.io/badge/React-19-149eca?style=flat-square">
-  <img alt="Go and PocketBase" src="https://img.shields.io/badge/Go%20%2B%20PocketBase-00a884?style=flat-square">
-  <img alt="Docker" src="https://img.shields.io/badge/Docker-ready-2496ed?style=flat-square">
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-Hono%20%2B%20Drizzle-3178c6?style=flat-square">
+  <img alt="Cloudflare Workers" src="https://img.shields.io/badge/Cloudflare-Workers-f38020?style=flat-square">
   <img alt="MIT License" src="https://img.shields.io/badge/license-MIT-111827?style=flat-square">
 </p>
 
@@ -48,184 +48,83 @@ Renewlet 是一个自托管的订阅管理工具。它把 SaaS、AI 工具、云
 
 如果你同时订了很多工具，Renewlet 可以帮你把它们记清楚：谁什么时候扣费、每月大概花多少、哪些快到期、通知要发到哪里。你可以记录价格、币种、扣费周期、续费日期、付款方式、标签、网站和备注，再用仪表盘、日历和统计页看整体支出。
 
-项目把 React 前端和 Go/PocketBase 后端打包成一个 Docker 镜像。部署后，一个容器同时提供应用页面、业务 API、PocketBase API 和 PocketBase Admin。
+技术形态：
 
-当前架构：
+- `packages/client`：Vite + React 19 单页应用，使用 Tailwind 4 + shadcn/Radix，仪表盘与订阅列表已合并为单页（Mock A），中英文双语。
+- `packages/server-ts`：TypeScript + Hono + Drizzle + Better Auth 后端，同一份代码经由两个运行时部署：
+  - [runtimes/worker](./runtimes/worker/)：Cloudflare Workers + D1 + R2 + Cron Triggers + Workers Assets，无需 VPS。
+  - [runtimes/node](./runtimes/node/)：Node + better-sqlite3 + nodemailer + node-cron（实验中，可在自有 VPS 跑）。
+- `packages/shared`：前后端共享的 zod schema 与领域工具。
+- `tools/pb-importer`：把旧的 Go + PocketBase 数据导入新 schema 的迁移 CLI。
+- `packages/server`：上一代 Go + PocketBase 后端，已进入维护模式（详见末尾的"传统 Docker 部署（v1）"一节）。
 
-- `packages/server`：Go + PocketBase 后端（v1 路径），负责 SQLite、认证、文件、后台管理、数据模型和业务 API。
-- `packages/server-ts`：TypeScript + Hono + Drizzle + Better Auth 后端（v2 路径），同时支持 Node 与 Cloudflare Workers，由 [runtimes/node](./runtimes/node/) 和 [runtimes/worker](./runtimes/worker/) 装配运行时依赖。
-- `packages/client`：Vite + React SPA，负责应用界面、路由、主题和中英文文案。仪表盘与订阅列表已合并为单页（Mock A）。
-- Docker 镜像：运行 v1 Go binary，提供 PocketBase API、应用 API、PocketBase Admin、静态资源和 SPA fallback。
-- Cloudflare Workers：运行 v2 TypeScript runtime，使用 D1 + R2 + Cron Triggers + Workers Assets，无需 VPS。
-
-> v2 形态的部署细节见 [docs/WORKER_DEPLOY.md](./docs/WORKER_DEPLOY.md)；整体改造方案与状态见 [docs/v2-proposal.md](./docs/v2-proposal.md)。
+部署主推 Cloudflare Workers，并提供两条路径：fork 仓库后用 GitHub Actions 全程网页操作（推荐），或本地装 wrangler CLI 自己跑命令。
 
 ## 功能特性
 
 - 记录订阅：保存名称、Logo、价格、币种、扣费周期、状态、分类、付款方式、网站、标签和备注。
-- 提醒续费：按用户设置的时区和提醒天数生成通知，保留发送历史，失败后可重试。
-- 发送通知：支持 Telegram、Notifyx、Webhook、企业微信机器人、SMTP 邮件和 Bark。
-- 查看支出：把不同周期折算成月度成本，展示预算使用、分类占比、付款方式占比和停用订阅节省。
-- 处理多币种：可选择 Frankfurter 或 FloatRates 汇率来源；远端不可用时，会使用备用汇率。
-- 自托管运行：单容器部署，SQLite 数据可放在本地目录或 Docker volume 里。
-- 切换语言：应用内支持简体中文和 English。
+- 多档提醒：每条订阅独立配置 `reminderOffsets`，支持 `[7, 3, 1]` 这类多档（最大 365 天，单调递减）；同日命中的订阅合并为一封邮件，避免轰炸。
+- 多渠道通知：Workers 上走 Resend HTTP API；Node 自托管模式走 SMTP / Telegram / Notifyx / Webhook / 企业微信机器人 / Bark 等渠道。
+- 看支出：把不同周期折算成月度成本，展示预算使用、分类占比、付款方式占比、停用订阅节省。
+- 多币种：可选 Frankfurter 或 FloatRates 汇率源；远端不可用时使用备用汇率。
+- 多用户：基于 Better Auth 的邮箱密码登录；管理员可在「设置 → 注册」临时打开注册并配置邮箱白名单（支持 `*@example.com` 通配）。
+- 双语界面：应用内简体中文 / English 任意切换。
 
-## Docker 一键部署
+## Cloudflare Workers 部署（推荐）
 
-推荐直接使用 Docker Hub 上的预构建镜像。下面的脚本会下载 Compose 模板、生成随机密钥、创建本地数据目录；一般不需要手动改 `.env` 或 `docker-compose.yml`。
+只需要一个 Cloudflare 账号 + 一个 Resend 账号，整个应用跑在 Cloudflare 免费档（D1 + R2 + Workers + Cron Triggers + Workers Assets）。
 
-准备一台已安装 Docker 和 Docker Compose v2 的服务器，执行：
+### 路径 A：fork + GitHub Actions（不需要本地装 wrangler）
 
-```bash
-mkdir -p renewlet && cd renewlet
-curl -fsSL https://raw.githubusercontent.com/zhiyingzzhou/renewlet/main/deploy/docker-deploy.sh | bash
-docker compose up -d
-```
-
-首次启动后访问：
-
-```text
-http://localhost:3000/setup
-```
-
-创建第一个管理员用户。如果 PocketBase 还没有 superuser，这个账号也会成为 PocketBase Admin UI 的初始账号；已有 superuser 时不会覆盖。
-
-脚本会生成这些文件：
-
-| 路径 | 说明 |
-| --- | --- |
-| `docker-compose.yml` | 生产部署模板，默认使用 `zhiyingzzhou/renewlet:latest`。 |
-| `.env` | 端口、镜像、时区、密钥和通知调度配置。`PB_ENCRYPTION_KEY` 与 `CRON_SECRET` 会自动生成。 |
-| `data/` | 数据目录，会挂载到容器内的 `/pb_data`。 |
-
-如果 Docker Hub 拉取不可用，可以把 `.env` 中的镜像改为 GHCR：
-
-```env
-RENEWLET_IMAGE="ghcr.io/zhiyingzzhou/renewlet:latest"
-```
-
-然后重新拉取并启动：
-
-```bash
-docker compose pull
-docker compose up -d
-```
-
-## GitHub Actions 一键部署到 Cloudflare
-
-如果你不想买 VPS，也不想本地装 wrangler，可以 fork 这个仓库后全程在 GitHub 网页里点鼠标完成部署，最终跑在 Cloudflare Workers + D1 + R2 上（免费档够用）。
+适合不想买 VPS、也不想本地装命令行的用户。fork 这个仓库后，全程在 GitHub 网页里点鼠标完成部署。
 
 整体两步：
 
-1. 仓库 Settings → Environments 建一个 `cloudflare` environment，按 [docs/CF_GH_ACTIONS_DEPLOY.md §1](./docs/CF_GH_ACTIONS_DEPLOY.md#1-配置-github-secrets--variables) 配 6 个必填 secret（Cloudflare API token / account id / better-auth secret / app url / Resend api key + 发件人）
-2. Actions → 手动 Run **Cloudflare Bootstrap**（创建 D1 + R2，自动 commit `database_id`），等它完成后 **Wrangler Deploy** 会自动跑起来部署 worker
+1. 仓库 Settings → Environments 建一个 `cloudflare` environment，按 [docs/CF_GH_ACTIONS_DEPLOY.md §1](./docs/CF_GH_ACTIONS_DEPLOY.md#1-配置-github-secrets--variables) 配 6 个必填 secret（Cloudflare API token / account id / Better Auth secret / app url / Resend api key + 发件人）。
+2. Actions → 手动 Run **Cloudflare Bootstrap**（创建 D1 + R2，自动 commit `database_id` 回 `wrangler.toml`），等它完成后 **Wrangler Deploy** 会自动跑起来部署 worker。
 
-详细步骤、第一个 admin 注册、绑域名和故障排查见 [docs/CF_GH_ACTIONS_DEPLOY.md](./docs/CF_GH_ACTIONS_DEPLOY.md)。
+完整步骤、第一个 admin 注册、绑域名和故障排查见 [docs/CF_GH_ACTIONS_DEPLOY.md](./docs/CF_GH_ACTIONS_DEPLOY.md)。
 
-## 常用运维
+### 路径 B：本地 wrangler CLI
 
-查看状态和日志：
-
-```bash
-docker compose ps
-docker compose logs -f
-```
-
-升级前建议先备份数据和配置：
+如果你已经装了 wrangler、习惯命令行，或者要在本地调试 workflow 之前先跑一遍：
 
 ```bash
-tar -czf renewlet-backup-$(date +%F).tgz .env docker-compose.yml data
+pnpm install -g wrangler@latest
+wrangler login
 ```
 
-升级到最新镜像：
+然后照 [docs/WORKER_DEPLOY.md](./docs/WORKER_DEPLOY.md) 的清单依次：创建 D1 + R2 → 填 secrets → 应用 D1 migrations → 构建前端 → `wrangler deploy` → 注册第一个 admin。整体大约 15 分钟（不含 Resend 域名验证传播时间）。
+
+## Node 自托管部署（实验中）
+
+如果你有自己的 VPS，希望把 v2 TypeScript 后端跑在 Node + SQLite 上而不是 Cloudflare：
 
 ```bash
-docker compose pull
-docker compose up -d
-docker compose logs -f
+git clone https://github.com/yzgolden86/Qreminder.git
+cd Qreminder
+pnpm install --frozen-lockfile
+pnpm --filter @renewlet/client build
+pnpm --filter @renewlet/runtime-node start
 ```
 
-重启服务：
+环境变量参考 [runtimes/node/src/index.ts](./runtimes/node/src/index.ts)，关键项：
 
-```bash
-docker compose restart
-```
-
-迁移到新机器时，在新机器解压备份后启动：
-
-```bash
-mkdir -p renewlet && cd renewlet
-tar -xzf /path/to/renewlet-backup.tgz
-docker compose up -d
-```
-
-停止服务但保留数据：
-
-```bash
-docker compose down
-```
-
-彻底卸载会删除本地数据，请确认已经备份：
-
-```bash
-docker compose down
-rm -rf data .env docker-compose.yml
-```
-
-## 配置
-
-一键部署后的配置都在 `.env`。普通部署可以先用默认值；如果你使用反向代理和域名，建议把 `APP_URL` 改成公网 HTTPS 地址，例如 `https://renewlet.example.com`。
-
-| 变量 | 默认值 | 说明 |
+| 变量 | 默认 | 说明 |
 | --- | --- | --- |
-| `PORT` | `3000` | 对外服务端口。 |
-| `RENEWLET_IMAGE` | `zhiyingzzhou/renewlet:latest` | Docker 镜像。`latest` 会跟随最新版本；生产环境可以固定为 `zhiyingzzhou/renewlet:vX.Y.Z`，也可以改成 `ghcr.io/zhiyingzzhou/renewlet:latest`。 |
-| `APP_URL` | `http://localhost:3000` | 对外访问地址，用来生成邮件和通知里的链接。 |
-| `TZ` | `Asia/Shanghai` | 容器时区，主要影响日志；提醒时间以用户自己的设置为准。 |
-| `PB_ENCRYPTION_KEY` | 自动生成 | 必须正好 32 字符，用来加密 PocketBase settings 中的敏感字段。部署后不要随意更换。 |
-| `GOMEMLIMIT` / `MEM_LIMIT` | `128MiB` / `256m` | Go 运行时软内存上限和容器内存限制。 |
-| `SMTP_HOST` / `SMTP_FROM` | 空 | 配置后可启用 PocketBase 密码找回邮件。 |
-| `BACKUPS_CRON` | 空 | 可选的 PocketBase 自动备份 cron 表达式。 |
-| `NOTIFICATION_SCHEDULER_ENABLED` | `true` | 是否启用内置通知调度器。 |
-| `CRON_SECRET` | 自动生成 | 外部平台 Cron 调用 `/api/cron/notifications` 的 Bearer 鉴权密钥。 |
-| `NOTIFICATION_SCHEDULER_CRON` | `* * * * *` | 通知调度器 cron 表达式。 |
-| `NOTIFICATION_MAX_RETRIES` | `3` | 失败通知任务的最大重试次数。 |
+| `PORT` | `3000` | 监听端口。 |
+| `DATABASE_PATH` | `./data/renewlet.db` | SQLite 文件路径。 |
+| `ASSETS_DIR` | `./data/assets` | Logo 等资源存储目录。 |
+| `BETTER_AUTH_SECRET` | （必填） | 32+ 位随机串，可用 `openssl rand -hex 32` 生成。 |
+| `APP_URL` | `http://localhost:3000` | 对外访问地址，用于邮件链接和 cookie 域。 |
+| `TRUSTED_ORIGINS` | 空 | Better Auth cookie 域允许列表，多个用逗号分隔。 |
+| `SIGNUP_ENABLED` | `false` | 第一次需要打开注册第一个 admin 时设为 `true`，注册完改回 `false`。 |
+| `SIGNUP_ALLOWLIST` | 空 | 注册邮箱白名单（仅 `SIGNUP_ENABLED=true` 时生效）。 |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` | 空 | 配置后启用密码找回与续费提醒邮件。 |
+| `NOTIFICATION_SCHEDULER_ENABLED` | `true` | 是否启用内置 node-cron 调度器。 |
+| `NOTIFICATION_SCHEDULER_CRON` | `* * * * *` | 调度 cron 表达式。 |
 
-## 定时通知
-
-Docker/VPS 自托管时，建议保持 `NOTIFICATION_SCHEDULER_ENABLED=true`。应用会按 `NOTIFICATION_SCHEDULER_CRON` 检查所有用户设置，并根据用户自己的 IANA 时区和本地通知时间决定是否发送。
-
-如果部署平台已经提供 Cron，或你想使用 GitHub Actions、宿主机 crontab 等外部调度器，可以关闭内置调度器并配置外部入口：
-
-```env
-NOTIFICATION_SCHEDULER_ENABLED="false"
-CRON_SECRET="CHANGE_ME_TO_A_RANDOM_SECRET"
-```
-
-外部入口是 `GET /api/cron/notifications`。它只接受 `Authorization: Bearer <CRON_SECRET>`，不支持 URL query secret。Vercel Cron 会在配置 `CRON_SECRET` 后自动发送 Bearer header；GitHub Actions 或 crontab 可以这样调用：
-
-```bash
-curl -H "Authorization: Bearer $CRON_SECRET" "https://YOUR_DOMAIN/api/cron/notifications"
-```
-
-排查问题时，可以追加 `dryRun=1` 只跑逻辑、不实际发送；也可以追加 `force=1` 强制命中调度窗口：
-
-```bash
-curl -H "Authorization: Bearer $CRON_SECRET" "https://YOUR_DOMAIN/api/cron/notifications?dryRun=1&force=1"
-```
-
-## 源码构建部署
-
-如果你想从源码构建镜像，而不是使用 Docker Hub 预构建镜像：
-
-```bash
-git clone https://github.com/zhiyingzzhou/renewlet.git
-cd renewlet
-cp .env.example .env
-docker compose up -d --build
-```
-
-根目录的 `docker-compose.yml` 用于源码构建，默认用 Docker named volume `renewlet-pb-data` 持久化 `/pb_data`。一键部署脚本使用 `deploy/docker-compose.yml`，默认把数据放在当前目录的 `data/`。
+> Node 模式还没有专门的 Docker 镜像和 compose 模板，欢迎 PR 一份 [runtimes/node/Dockerfile](./runtimes/node/Dockerfile) 配套的部署脚本。
 
 ## 本地开发
 
@@ -235,70 +134,42 @@ docker compose up -d --build
 pnpm install
 ```
 
-启动后端：
+启动 v2 TS 后端（Node 运行时）：
 
 ```bash
-pnpm --dir packages/server start
+pnpm --filter @renewlet/runtime-node dev
 ```
 
-启动前端：
+启动前端（默认 `http://localhost:5173`，把 `/api` 代理到 `http://127.0.0.1:3000`）：
 
 ```bash
 pnpm --filter @renewlet/client dev
 ```
-
-本地 Vite 默认运行在 `http://localhost:5173`，并把 `/api` 和 `/_` 代理到 Go server：`http://127.0.0.1:3000`。
-
-## 构建
-
-```bash
-pnpm build
-```
-
-构建流程会先生成 `packages/client/dist`，再把静态资源同步到服务端目录，最后编译 `packages/server/dist/renewlet`。
-
-## 发布镜像
-
-维护者发布版本时，GitHub Actions 会构建多架构镜像，并推送到：
-
-- `docker.io/zhiyingzzhou/renewlet`
-- `ghcr.io/zhiyingzzhou/renewlet`
-
-触发方式包括推送到 `main`、创建 `v*.*.*` tag，或在 GitHub Actions 页面手动运行 `Docker Image` workflow。
-
-第一次发布到 Docker Hub 前，需要准备：
-
-1. 在 Docker Hub 创建公开仓库 `zhiyingzzhou/renewlet`。
-2. 在 Docker Hub 创建 Access Token。
-3. 在 GitHub 仓库 `Settings -> Secrets and variables -> Actions` 添加 `DOCKERHUB_USERNAME` 和 `DOCKERHUB_TOKEN`。
-
-发布版本：
-
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-CI 会推送 `latest`、`v0.1.0`、`0.1.0`、`0.1` 和 `sha-*` 等标签。
-
-相关参考：[sub2api 部署文档](https://github.com/Wei-Shaw/sub2api/blob/main/deploy/README.md)、[Docker GitHub Actions guide](https://docs.docker.com/guides/gha/)、[Docker multi-platform builds](https://docs.docker.com/build/ci/github-actions/multi-platform/)、[GitHub publish Docker images](https://docs.github.com/actions/tutorials/publish-packages/publish-docker-images)。
 
 ## 验证
 
 常用检查命令：
 
 ```bash
-pnpm --filter @renewlet/client typecheck
+pnpm -r typecheck
+pnpm --filter @renewlet/client test
 pnpm --filter @renewlet/client build
-pnpm --dir packages/server test
-pnpm build
+pnpm --filter @renewlet/server-ts test
 ```
 
-完整检查命令：
+## 数据迁移（v1 → v2）
+
+如果你已经在跑 v1 Go + PocketBase 版本，可以用 [tools/pb-importer](./tools/pb-importer/) 把旧数据导入 v2：
 
 ```bash
-pnpm test:all
+pnpm --filter @renewlet/pb-importer build
+node tools/pb-importer/dist/cli.js \
+  --pb /path/to/pb_data \
+  --target sqlite:///data/renewlet.db \
+  --fs /data/assets
 ```
+
+工具不会删除源数据，迁移失败可重跑。完整字段映射与回滚说明见 [docs/v2-proposal.md §8](./docs/v2-proposal.md#8-数据迁移工具pb-importer)。
 
 ## 参与贡献
 
@@ -313,3 +184,19 @@ pnpm test:all
 ## 许可证
 
 Renewlet 基于 [MIT License](LICENSE) 开源。
+
+---
+
+## 传统 Docker 部署（v1，已进入维护模式）
+
+> ⚠️ **维护模式说明**：v1 的 Go + PocketBase 路径仍然能跑，但**前端已整体切到 v2 Better Auth + 新 API**，新功能（多档提醒 `reminderOffsets`、Mock A 单页布局等）只在 v2 后端可用。**新部署请走上面 Cloudflare Workers 路径**；这一节只为已经在跑 v1 的存量用户做向后兼容。
+
+完整文档见 [docs/DOCKER_DEPLOY.md](./docs/DOCKER_DEPLOY.md)。简要：
+
+```bash
+mkdir -p renewlet && cd renewlet
+curl -fsSL https://raw.githubusercontent.com/yzgolden86/Qreminder/main/deploy/docker-deploy.sh | bash
+docker compose up -d
+```
+
+首次启动后访问 `http://localhost:3000/setup` 创建 PocketBase superuser。已经在跑 v1 的用户保留下面这些环境变量（详见 `deploy/env.example`）：`PB_ENCRYPTION_KEY` / `SMTP_HOST` / `BACKUPS_CRON` / `NOTIFICATION_SCHEDULER_ENABLED` / `CRON_SECRET` 等。

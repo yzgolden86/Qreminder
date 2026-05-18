@@ -1,7 +1,7 @@
 # GitHub Actions 一键部署到 Cloudflare
 
 > 状态：v2 第一次上线用，全程在浏览器里点鼠标，不用本地装 wrangler。
-> 适用对象：fork 这个仓库自己用的人。需要更细的本地 CLI 流程见 [WORKER_DEPLOY.md](WORKER_DEPLOY.md) / [CF_DEPLOY_CHECKLIST.md](CF_DEPLOY_CHECKLIST.md)。
+> 适用对象：fork 这个仓库自己用的人。需要更细的本地 CLI 流程见 [WORKER_DEPLOY.md](WORKER_DEPLOY.md)。
 
 整体两个 workflow 配合：
 

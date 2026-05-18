@@ -1,8 +1,12 @@
 # Renewlet v2 改造方案（renewlet-next）
 
-> 状态：草案 v1.0
-> 作用：把当前 Go + PocketBase 的 renewlet 重写为 TypeScript 单仓双部署（Docker / Cloudflare Workers），并完成提醒模型升级与首页布局重构。
-> 兼容性：v2 是破坏性变更；v1（当前 Go 版本）冻结于现仓库 `main`，v2 落在新仓库 `renewlet-next`。
+> **状态：archived（历史决策记录）**
+>
+> 这份文档是 v2 改造**开工前**的方案草案，用于记录技术选型、字段映射、阶段计划等决策。**实际实施已完成大部分内容并落地到当前仓库**（`packages/server-ts/` + `runtimes/` + `tools/pb-importer/`），所以下文的部分表述（如 "v1 冻结" / "fork 到新仓库" / "wrangler.toml database_id 仍是占位值"）已经不再准确。具体实施进度看第 12 节。
+>
+> 部署看：[CF_GH_ACTIONS_DEPLOY.md](CF_GH_ACTIONS_DEPLOY.md)（GH Actions 主推）/ [WORKER_DEPLOY.md](WORKER_DEPLOY.md)（本地 wrangler CLI）/ [DOCKER_DEPLOY.md](DOCKER_DEPLOY.md)（v1 维护模式）。
+>
+> 兼容性：v2 是破坏性变更；v1 已进入维护模式，新功能仅在 v2 后端可用。
 
 ## 1. 改造目标
 
@@ -242,7 +246,7 @@ npx renewlet-import --pb ./pb_data --target sqlite:///data/renewlet.db --fs /dat
 
 ## 12. 实施进度更新（2026-05-18）
 
-> v2 实际选择不 fork 新仓库，而是直接在当前仓库内增量迁移（`packages/server-ts/`、`runtimes/`、`tools/pb-importer/` 与 `packages/server/` Go 后端共存）。v1 Go + PocketBase 仍可跑，前端整体已切到新 TS 后端。
+> v2 实际选择不 fork 新仓库，而是直接在当前仓库内增量迁移（`packages/server-ts/`、`runtimes/`、`tools/pb-importer/` 与 `packages/server/` Go 后端共存）。前端已**完全**切到 v2 TS 后端；v1 Go + PocketBase 仍可独立部署但已进入维护模式（详见 [DOCKER_DEPLOY.md](./DOCKER_DEPLOY.md)）。
 
 已完成：
 
@@ -260,15 +264,15 @@ npx renewlet-import --pb ./pb_data --target sqlite:///data/renewlet.db --fs /dat
 | H3 | dashboard + subscriptions 合并为 Mock A 单页 | [packages/client/src/pages/dashboard.tsx](../packages/client/src/pages/dashboard.tsx) |
 | 邮件 | Better Auth `sendResetPassword` 接 mailer adapter（Node nodemailer / Workers Resend） | [auth.ts](../packages/server-ts/src/auth.ts) |
 | Admin 写 | POST/DELETE/newPassword 用户管理路由 | [admin-users.ts](../packages/server-ts/src/routes/admin-users.ts) |
-| CI | `wrangler-deploy.yml` 双部署补齐 | [.github/workflows/wrangler-deploy.yml](../.github/workflows/wrangler-deploy.yml) |
-| Docs | Worker 部署指南 | [docs/WORKER_DEPLOY.md](./WORKER_DEPLOY.md) |
+| CI | `wrangler-deploy.yml` 双部署补齐 + `cf-bootstrap.yml` 一次性资源创建 | [.github/workflows/](../.github/workflows/) |
+| Docs | 三套部署文档分轨：[CF_GH_ACTIONS_DEPLOY.md](./CF_GH_ACTIONS_DEPLOY.md)（GH Actions 主推）、[WORKER_DEPLOY.md](./WORKER_DEPLOY.md)（本地 wrangler CLI）、[DOCKER_DEPLOY.md](./DOCKER_DEPLOY.md)（v1 维护模式） | docs/ |
 
 未完成 / 已知缺口：
 
-- 端到端浏览器烟测：被 admin/user 的种子数据问题阻塞，需要先按 [WORKER_DEPLOY.md §6](./WORKER_DEPLOY.md#6-创建第一个超级管理员) 流程灌一份初始数据后再跑。
-- 前端 admin/users 创建对话框仍调 `/api/app/admin/users` 写路由的 schema（已对齐 server-ts 返回 `{ user, ok }` 形态），但还没有专门的 e2e。
-- v1 Go 后端的 `/api/app/admin/users` 与 v2 server-ts 同路径，部署任意一边都能跑；同时挂双后端时由前端环境变量决定走哪个。
-- Workers `wrangler.toml` 里的 `database_id` 仍是占位值 `REPLACE_ME_AFTER_wrangler_d1_create`，部署前需要按 [WORKER_DEPLOY.md §1](./WORKER_DEPLOY.md#1-一次性资源创建) 替换。
+- 端到端浏览器烟测：仍未跑过完整一次（需要先有迁移过来的真实数据 + 已注册 admin），见 [E2E_SMOKE_STATUS.md](./E2E_SMOKE_STATUS.md)。
+- v1 Go 后端的 `/api/app/admin/users` 与 v2 server-ts 同路径但实际只在各自部署里激活；前端代码默认走 v2，不再依赖任何 v1 路径。
+- Node 自托管 runtime 没有专门的 Docker 镜像和 compose 模板（v1 那条 `Dockerfile` + `docker-compose.yml` 仍指向 Go binary）。
+- Workers 的 `wrangler.toml` `database_id` 字段在 GH Actions 路径下由 [.github/workflows/cf-bootstrap.yml](../.github/workflows/cf-bootstrap.yml) 自动写入；本地 wrangler CLI 路径仍需要手动按 [WORKER_DEPLOY.md §1](./WORKER_DEPLOY.md#1-创建-d1--r2-资源) 替换。
 
 校验状态：
 
