@@ -1,4 +1,4 @@
-import type { MailerAdapter, MailMessage } from "@renewlet/server";
+import type { MailerAdapter, MailMessage } from "@qreminder/server";
 
 export interface ResendConfig {
   apiKey: string;

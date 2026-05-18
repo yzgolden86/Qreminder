@@ -132,14 +132,14 @@ describe("useFaviconSearch", () => {
     );
 
     act(() => {
-      result.current.setQuery("renewlet");
+      result.current.setQuery("qreminder");
     });
     act(() => {
       result.current.search();
     });
 
     const init = mocks.apiFetch.mock.calls[0]?.[2];
-    expect(result.current.results).toEqual(["https://renewlet.example/favicon.ico"]);
+    expect(result.current.results).toEqual(["https://qreminder.example/favicon.ico"]);
     expect(init?.signal?.aborted).toBe(false);
 
     unmount();

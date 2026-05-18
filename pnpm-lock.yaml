@@ -253,7 +253,7 @@ importers:
 
   packages/server-ts:
     dependencies:
-      '@renewlet/shared':
+      '@qreminder/shared':
         specifier: workspace:*
         version: link:../shared
       better-auth:
@@ -291,10 +291,10 @@ importers:
       '@hono/node-server':
         specifier: ^1.13.0
         version: 1.19.14(hono@4.12.18)
-      '@renewlet/server':
+      '@qreminder/server':
         specifier: workspace:*
         version: link:../../packages/server-ts
-      '@renewlet/shared':
+      '@qreminder/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       better-sqlite3:
@@ -331,10 +331,10 @@ importers:
 
   runtimes/worker:
     dependencies:
-      '@renewlet/server':
+      '@qreminder/server':
         specifier: workspace:*
         version: link:../../packages/server-ts
-      '@renewlet/shared':
+      '@qreminder/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       drizzle-orm:
@@ -356,10 +356,10 @@ importers:
 
   tools/pb-importer:
     dependencies:
-      '@renewlet/server':
+      '@qreminder/server':
         specifier: workspace:*
         version: link:../../packages/server-ts
-      '@renewlet/shared':
+      '@qreminder/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       better-sqlite3:

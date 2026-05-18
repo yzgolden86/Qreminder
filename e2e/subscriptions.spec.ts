@@ -19,7 +19,7 @@ test("setup, login, create subscriptions with empty and tagged tags", async ({ p
   });
 
   await page.goto("/setup");
-  await expect(page.getByRole("heading", { name: "初始化 Renewlet" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "初始化 Qreminder" })).toBeVisible();
   await expectLabelControlGap(page.getByLabel("名称", { exact: true }), "setup name");
   await expectLabelControlGap(page.getByLabel("邮箱", { exact: true }), "setup email");
   await expectLabelControlGap(page.getByLabel("密码", { exact: true }), "setup password");
@@ -128,16 +128,16 @@ test("setup, login, create subscriptions with empty and tagged tags", async ({ p
   await expect(saveChangesButton).toBeHidden();
 
   await page.evaluate(() => {
-    const target = window as Window & { __renewletNavigationMarker?: string };
-    target.__renewletNavigationMarker = "settings-manage-users-client-navigation";
+    const target = window as Window & { __qreminderNavigationMarker?: string };
+    target.__qreminderNavigationMarker = "settings-manage-users-client-navigation";
   });
   await page.getByRole("link", { name: "管理用户" }).click();
   await expect(page).toHaveURL(/\/admin\/users$/);
   await expect(page.getByRole("heading", { name: "用户管理" })).toBeVisible();
   await expect.poll(async () => {
     return page.evaluate(() => {
-      const target = window as Window & { __renewletNavigationMarker?: string };
-      return target.__renewletNavigationMarker;
+      const target = window as Window & { __qreminderNavigationMarker?: string };
+      return target.__qreminderNavigationMarker;
     });
   }).toBe("settings-manage-users-client-navigation");
 

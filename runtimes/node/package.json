@@ -1,5 +1,5 @@
 {
-  "name": "@renewlet/runtime-node",
+  "name": "@qreminder/runtime-node",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -11,8 +11,8 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.13.0",
-    "@renewlet/server": "workspace:*",
-    "@renewlet/shared": "workspace:*",
+    "@qreminder/server": "workspace:*",
+    "@qreminder/shared": "workspace:*",
     "better-sqlite3": "^12.0.0",
     "drizzle-orm": "^0.36.0",
     "node-cron": "^3.0.3",

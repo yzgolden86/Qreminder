@@ -17,7 +17,7 @@ import type { SubscriptionDraft } from '@/types/subscription';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/lib/theme-provider';
 import { useToast } from '@/hooks/use-toast';
-import { RenewletLogo } from '@/components/icons/renewlet-logo';
+import { QreminderLogo } from '@/components/icons/qreminder-logo';
 import { writeAppearancePendingToStorage } from '@/lib/theme-storage';
 import { authClient } from '@/lib/auth-client';
 import { useEffect } from 'react';
@@ -135,10 +135,10 @@ export function Header({ onAddSubscription }: HeaderProps) {
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#111720] text-[#f8fafc] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_14px_30px_-20px_rgba(0,0,0,0.8)] ring-1 ring-white/10">
-              <RenewletLogo className="h-5 w-5" />
+              <QreminderLogo className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-xl font-extrabold tracking-tight text-foreground">Renewlet</h1>
+              <h1 className="text-xl font-extrabold tracking-tight text-foreground">Qreminder</h1>
               <p className="text-xs text-muted-foreground">{t("app.tagline")}</p>
             </div>
           </Link>

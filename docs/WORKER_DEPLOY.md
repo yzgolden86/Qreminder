@@ -30,10 +30,10 @@ pnpm -v
 
 ```bash
 # 创建 D1，记下输出里的 database_id
-wrangler d1 create renewlet
+wrangler d1 create qreminder
 
 # 创建 R2 存储桶
-wrangler r2 bucket create renewlet-assets
+wrangler r2 bucket create qreminder-assets
 ```
 
 把上一步的 `database_id` 填进 [runtimes/worker/wrangler.toml](../runtimes/worker/wrangler.toml) 的 `d1_databases[].database_id`，覆盖占位的 `REPLACE_ME_AFTER_wrangler_d1_create`。
@@ -49,7 +49,7 @@ cd runtimes/worker
 wrangler secret put BETTER_AUTH_SECRET
 
 # 部署后 worker 对外的完整 URL（带 https，不带尾斜杠）
-# 例：https://renewlet.your-domain.com  或  https://renewlet.your-subdomain.workers.dev
+# 例：https://qreminder.your-domain.com  或  https://qreminder.your-subdomain.workers.dev
 wrangler secret put APP_URL
 
 # Resend 控制台拿到的 API Key
@@ -69,7 +69,7 @@ wrangler secret put RESEND_FROM
 [vars]
 SIGNUP_ENABLED = "true"          # 部署完成 + 注册完成后改回 "false"
 SIGNUP_ALLOWLIST = "you@example.com"
-TRUSTED_ORIGINS = "https://renewlet.your-domain.com"
+TRUSTED_ORIGINS = "https://qreminder.your-domain.com"
 ```
 
 > `SIGNUP_ALLOWLIST` 留空时任何邮箱都能注册（仅在 `SIGNUP_ENABLED=true` 时生效），填了就只放白名单内的邮箱。
@@ -83,16 +83,16 @@ TRUSTED_ORIGINS = "https://renewlet.your-domain.com"
 # 仍在 runtimes/worker 目录
 
 # 远程 D1（生产）
-wrangler d1 migrations apply RENEWLET_DB --remote
+wrangler d1 migrations apply QREMINDER_DB --remote
 
 # 本地 D1（dev/preview）
-wrangler d1 migrations apply RENEWLET_DB --local
+wrangler d1 migrations apply QREMINDER_DB --local
 ```
 
 如果 `packages/server-ts/src/db/schema.ts` 有改动，先在 `packages/server-ts` 里跑一次：
 
 ```bash
-pnpm --filter @renewlet/server db:generate
+pnpm --filter @qreminder/server db:generate
 ```
 
 会在 `packages/server-ts/drizzle/` 下生成新的 `NNNN_*.sql` 与 `meta/NNNN_snapshot.json`，commit 后 wrangler 即可识别为新增 migration。
@@ -102,7 +102,7 @@ pnpm --filter @renewlet/server db:generate
 ```bash
 cd ../..
 pnpm install --frozen-lockfile
-pnpm --filter @renewlet/client build
+pnpm --filter @qreminder/client build
 
 cd runtimes/worker
 wrangler deploy
@@ -116,7 +116,7 @@ wrangler deploy
 
 ```bash
 # 用 SIGNUP_ALLOWLIST 里的邮箱
-curl -X POST https://renewlet.your-domain.com/api/auth/sign-up/email \
+curl -X POST https://qreminder.your-domain.com/api/auth/sign-up/email \
   -H 'content-type: application/json' \
   -d '{"email":"you@example.com","password":"password1234","name":"You"}'
 ```
@@ -124,7 +124,7 @@ curl -X POST https://renewlet.your-domain.com/api/auth/sign-up/email \
 把它升级成 admin：
 
 ```bash
-wrangler d1 execute RENEWLET_DB --remote --command \
+wrangler d1 execute QREMINDER_DB --remote --command \
   "UPDATE users SET role='admin' WHERE email='you@example.com';"
 ```
 
@@ -182,7 +182,7 @@ wrangler deploy
 | 注册返回 `signup_disabled` | `SIGNUP_ENABLED` 不是 `"true"`，需要 `wrangler deploy` 才生效 |
 | 注册返回 `signup_not_allowed` | 邮箱不在 `SIGNUP_ALLOWLIST`（注意大小写已自动归一化为小写） |
 | 重置密码邮件没收到 | `RESEND_FROM` 未验证；或 Resend 余额耗尽；`wrangler tail` 看 mailer 抛错 |
-| 静态资源 404 | `pnpm --filter @renewlet/client build` 没跑过；或 `packages/client/dist` 不存在 |
+| 静态资源 404 | `pnpm --filter @qreminder/client build` 没跑过；或 `packages/client/dist` 不存在 |
 | `wrangler deploy` 卡在 build | 检查 `runtimes/worker` 内的 typecheck 是否通过 |
-| 新表没建出来 | `wrangler d1 migrations list RENEWLET_DB --remote` 看 journal 状态 |
+| 新表没建出来 | `wrangler d1 migrations list QREMINDER_DB --remote` 看 journal 状态 |
 | 通知 cron 没跑 | `wrangler tail` 看 `[notification-cron]` 是否每分钟出现；并检查用户的 `notificationTimeLocal` 设置 |

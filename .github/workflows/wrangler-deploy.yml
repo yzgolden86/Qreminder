@@ -38,10 +38,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build client
-        run: pnpm --filter @renewlet/client build
+        run: pnpm --filter @qreminder/client build
 
       - name: Typecheck server + worker runtime
-        run: pnpm --filter @renewlet/server --filter @renewlet/runtime-worker typecheck
+        run: pnpm --filter @qreminder/server --filter @qreminder/runtime-worker typecheck
 
       - name: Validate required secrets
         run: |
@@ -70,7 +70,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: runtimes/worker
-          command: d1 migrations apply RENEWLET_DB --remote
+          command: d1 migrations apply QREMINDER_DB --remote
 
       - name: Deploy worker
         uses: cloudflare/wrangler-action@v3.14.0

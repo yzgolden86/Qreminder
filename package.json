@@ -1,5 +1,5 @@
 {
-  "name": "renewlet",
+  "name": "qreminder",
   "private": true,
   "license": "MIT",
   "version": "0.0.0",
@@ -8,20 +8,20 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "dev": "pnpm --filter @renewlet/client dev",
+    "dev": "pnpm --filter @qreminder/client dev",
     "build": "pnpm run build:client && pnpm run sync:static && pnpm run build:server",
-    "build:client": "pnpm --filter @renewlet/client build",
+    "build:client": "pnpm --filter @qreminder/client build",
     "build:server": "pnpm --dir packages/server build",
     "sync:static": "mkdir -p packages/server/internal/static/public && find packages/server/internal/static/public -mindepth 1 ! -name .gitkeep -delete && cp -R packages/client/dist/. packages/server/internal/static/public/",
     "start": "pnpm --dir packages/server start",
     "check:deploy": "node scripts/check-deploy-config.mjs",
     "check:file-lines": "node scripts/check-file-lines.mjs",
-    "lint": "pnpm --filter @renewlet/client lint",
-    "test": "pnpm --filter @renewlet/client test && pnpm --dir packages/server test",
-    "test:run": "pnpm --filter @renewlet/client test:run && pnpm --dir packages/server test",
+    "lint": "pnpm --filter @qreminder/client lint",
+    "test": "pnpm --filter @qreminder/client test && pnpm --dir packages/server test",
+    "test:run": "pnpm --filter @qreminder/client test:run && pnpm --dir packages/server test",
     "test:e2e": "playwright test",
-    "test:all": "pnpm check:file-lines && pnpm check:deploy && pnpm --filter @renewlet/client test:run && pnpm --filter @renewlet/client typecheck && pnpm --filter @renewlet/client typecheck:all && pnpm --dir packages/server test && pnpm test:e2e",
-    "typecheck": "pnpm --filter @renewlet/client typecheck",
+    "test:all": "pnpm check:file-lines && pnpm check:deploy && pnpm --filter @qreminder/client test:run && pnpm --filter @qreminder/client typecheck && pnpm --filter @qreminder/client typecheck:all && pnpm --dir packages/server test && pnpm test:e2e",
+    "typecheck": "pnpm --filter @qreminder/client typecheck",
     "update:thesvg-index": "node scripts/update-thesvg-index.mjs"
   },
   "pnpm": {

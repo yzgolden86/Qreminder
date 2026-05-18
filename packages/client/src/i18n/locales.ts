@@ -4,7 +4,7 @@ export type Locale = (typeof SUPPORTED_LOCALES)[number];
 
 export type LocalizedLabels = Record<Locale, string>;
 
-const STORAGE_KEY = "renewlet_locale";
+const STORAGE_KEY = "qreminder_locale";
 
 export const DEFAULT_LOCALE: Locale = "zh-CN";
 

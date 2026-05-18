@@ -13,6 +13,6 @@ export function setApiLocale(locale: Locale) {
 export function getLocaleHeaders(): Record<string, string> {
   return {
     "Accept-Language": currentLocale,
-    "X-Renewlet-Locale": currentLocale,
+    "X-Qreminder-Locale": currentLocale,
   };
 }

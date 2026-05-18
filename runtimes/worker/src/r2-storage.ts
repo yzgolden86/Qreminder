@@ -1,4 +1,4 @@
-import type { StorageAdapter, StoredAsset } from "@renewlet/server";
+import type { StorageAdapter, StoredAsset } from "@qreminder/server";
 
 export function createR2Storage(bucket: R2Bucket): StorageAdapter {
   return {

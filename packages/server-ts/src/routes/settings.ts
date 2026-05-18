@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { eq } from "drizzle-orm";
 import { settings } from "../db/schema.js";
-import { settingsSchema } from "@renewlet/shared";
+import { settingsSchema } from "@qreminder/shared";
 import { requireSession } from "../middleware/require-session.js";
 import type { AppEnv } from "../app.js";
 

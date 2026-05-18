@@ -1,5 +1,5 @@
 {
-  "name": "@renewlet/runtime-worker",
+  "name": "@qreminder/runtime-worker",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,8 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@renewlet/server": "workspace:*",
-    "@renewlet/shared": "workspace:*",
+    "@qreminder/server": "workspace:*",
+    "@qreminder/shared": "workspace:*",
     "drizzle-orm": "^0.36.0",
     "hono": "^4.6.0"
   },

@@ -7,7 +7,7 @@ type ThemeContextValue = {
   setTheme: (theme: ThemeMode) => void;
 };
 
-const STORAGE_KEY = "renewlet_theme_mode";
+const STORAGE_KEY = "qreminder_theme_mode";
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function readInitialTheme(defaultTheme: ThemeMode): ThemeMode {

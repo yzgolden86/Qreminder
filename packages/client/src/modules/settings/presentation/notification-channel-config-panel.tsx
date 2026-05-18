@@ -372,7 +372,7 @@ export function NotificationChannelConfigPanel({
                 <Label htmlFor="smtpFrom">{t("settings.smtpFrom")}</Label>
                 <Input
                   id="smtpFrom"
-                  placeholder="Renewlet <noreply@example.com>"
+                  placeholder="Qreminder <noreply@example.com>"
                   value={settings.smtpFrom}
                   onChange={(e) => updateSetting('smtpFrom', e.target.value)}
                   className="border-border bg-secondary"

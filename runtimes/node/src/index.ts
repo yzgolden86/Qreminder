@@ -5,27 +5,27 @@ import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import cron from "node-cron";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
-import { createApp, runNotificationCron } from "@renewlet/server";
-import * as schema from "@renewlet/server";
+import { createApp, runNotificationCron } from "@qreminder/server";
+import * as schema from "@qreminder/server";
 import type {
   AppDeps,
   MailerAdapter,
   StorageAdapter,
   SchedulerAdapter,
-  Database as RenewletDb,
-} from "@renewlet/server";
+  Database as QreminderDb,
+} from "@qreminder/server";
 import { createFsStorage } from "./fs-storage.js";
 import { createNodemailerAdapter } from "./nodemailer-adapter.js";
 
 const port = Number(process.env.PORT ?? 3000);
-const dbPath = process.env.DATABASE_PATH ?? "./data/renewlet.db";
+const dbPath = process.env.DATABASE_PATH ?? "./data/qreminder.db";
 const assetsDir = process.env.ASSETS_DIR ?? "./data/assets";
 
 const sqlite = new Database(dbPath);
 sqlite.pragma("journal_mode = WAL");
 sqlite.pragma("foreign_keys = ON");
 
-const db = drizzle(sqlite, { schema }) as unknown as RenewletDb;
+const db = drizzle(sqlite, { schema }) as unknown as QreminderDb;
 
 const migrationsFolder = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -42,7 +42,7 @@ const mailer: MailerAdapter = process.env.SMTP_HOST
       secure: process.env.SMTP_SECURE === "true",
       user: process.env.SMTP_USER ?? "",
       pass: process.env.SMTP_PASS ?? "",
-      from: process.env.SMTP_FROM ?? "renewlet@example.com",
+      from: process.env.SMTP_FROM ?? "qreminder@example.com",
     })
   : {
       async send() {
@@ -75,7 +75,7 @@ const deps: AppDeps = {
 const app = createApp(deps);
 
 serve({ fetch: app.fetch, port }, ({ port: listenPort }) => {
-  console.log(`renewlet-node listening on http://0.0.0.0:${listenPort}`);
+  console.log(`qreminder-node listening on http://0.0.0.0:${listenPort}`);
 });
 
 const cronExpr = process.env.NOTIFICATION_SCHEDULER_CRON ?? "* * * * *";

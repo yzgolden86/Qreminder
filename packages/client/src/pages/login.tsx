@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { FieldError } from "@/components/ui/field-error";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RenewletLogo } from '@/components/icons/renewlet-logo';
+import { QreminderLogo } from '@/components/icons/qreminder-logo';
 import { toast } from '@/components/ui/sonner';
 import { authClient } from '@/lib/auth-client';
 import { getAuthDisplayMessage } from '@/lib/display-error';
@@ -125,10 +125,10 @@ const Login = () => {
         <div className="max-w-md grid gap-8">
           <div className="flex items-center gap-3">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#111720] text-[#f8fafc] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_18px_36px_-22px_rgba(0,0,0,0.82)] ring-1 ring-white/10">
-              <RenewletLogo className="h-7 w-7" />
+              <QreminderLogo className="h-7 w-7" />
             </div>
             <div>
-              <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Renewlet</h1>
+              <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Qreminder</h1>
               <p className="text-sm text-muted-foreground">{t("app.tagline")}</p>
             </div>
           </div>
@@ -161,10 +161,10 @@ const Login = () => {
           {/* Mobile logo */}
           <div className="flex items-center justify-center gap-3 lg:hidden">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#111720] text-[#f8fafc] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_16px_32px_-22px_rgba(0,0,0,0.8)] ring-1 ring-white/10">
-              <RenewletLogo className="h-6 w-6" />
+              <QreminderLogo className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Renewlet</h1>
+              <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Qreminder</h1>
               <p className="text-xs text-muted-foreground">{t("app.tagline")}</p>
             </div>
           </div>

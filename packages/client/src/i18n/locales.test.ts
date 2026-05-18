@@ -20,12 +20,12 @@ describe("locales", () => {
 });
 
 describe("locale headers", () => {
-  it("returns Accept-Language and X-Renewlet-Locale matching the active locale", () => {
+  it("returns Accept-Language and X-Qreminder-Locale matching the active locale", () => {
     setApiLocale("en-US");
 
     expect(getLocaleHeaders()).toEqual({
       "Accept-Language": "en-US",
-      "X-Renewlet-Locale": "en-US",
+      "X-Qreminder-Locale": "en-US",
     });
 
     setApiLocale("zh-CN");

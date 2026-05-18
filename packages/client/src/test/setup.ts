@@ -45,7 +45,7 @@ function ensureStorage(name: "localStorage" | "sessionStorage") {
 vi.stubGlobal("ResizeObserver", ResizeObserverMock);
 ensureStorage("localStorage");
 ensureStorage("sessionStorage");
-localStorage.setItem("renewlet_locale", "zh-CN");
+localStorage.setItem("qreminder_locale", "zh-CN");
 Element.prototype.scrollIntoView = vi.fn();
 
 afterEach(() => {
@@ -55,6 +55,6 @@ afterEach(() => {
   ensureStorage("localStorage");
   ensureStorage("sessionStorage");
   localStorage.clear();
-  localStorage.setItem("renewlet_locale", "zh-CN");
+  localStorage.setItem("qreminder_locale", "zh-CN");
   sessionStorage.clear();
 });

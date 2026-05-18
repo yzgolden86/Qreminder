@@ -1,19 +1,19 @@
 import { drizzle } from "drizzle-orm/d1";
-import { createApp, runNotificationCron } from "@renewlet/server";
-import * as schema from "@renewlet/server";
+import { createApp, runNotificationCron } from "@qreminder/server";
+import * as schema from "@qreminder/server";
 import type {
   AppDeps,
   MailerAdapter,
   StorageAdapter,
   SchedulerAdapter,
-  Database as RenewletDb,
-} from "@renewlet/server";
+  Database as QreminderDb,
+} from "@qreminder/server";
 import { createR2Storage } from "./r2-storage.js";
 import { createResendAdapter } from "./resend-adapter.js";
 
 export interface WorkerEnv {
-  RENEWLET_DB: D1Database;
-  RENEWLET_ASSETS: R2Bucket;
+  QREMINDER_DB: D1Database;
+  QREMINDER_ASSETS: R2Bucket;
   ASSETS: Fetcher;
   RESEND_API_KEY: string;
   RESEND_FROM: string;
@@ -35,8 +35,8 @@ function parseList(value: string | undefined): string[] {
 }
 
 function buildEnv(env: WorkerEnv) {
-  const db = drizzle(env.RENEWLET_DB, { schema }) as unknown as RenewletDb;
-  const storage: StorageAdapter = createR2Storage(env.RENEWLET_ASSETS);
+  const db = drizzle(env.QREMINDER_DB, { schema }) as unknown as QreminderDb;
+  const storage: StorageAdapter = createR2Storage(env.QREMINDER_ASSETS);
   const mailer: MailerAdapter = createResendAdapter({
     apiKey: env.RESEND_API_KEY,
     from: env.RESEND_FROM,

@@ -1,8 +1,8 @@
-# Renewlet
+# Qreminder
 
 [简体中文](README.md) | [English](README.en.md)
 
-Renewlet is a self-hosted subscription manager. It puts the prices, renewal dates, budgets, and reminders for SaaS, AI tools, cloud services, and developer tools in one place. It works for individuals, indie teams, and home labs.
+Qreminder is a self-hosted subscription manager. It puts the prices, renewal dates, budgets, and reminders for SaaS, AI tools, cloud services, and developer tools in one place. It works for individuals, indie teams, and home labs.
 
 <p align="center">
   <img alt="Self-hosted" src="https://img.shields.io/badge/self--hosted-0f172a?style=flat-square">
@@ -13,7 +13,7 @@ Renewlet is a self-hosted subscription manager. It puts the prices, renewal date
 </p>
 
 <p align="center">
-  <img src="./docs/screenshots/renewlet-dashboard-en.png" alt="Renewlet English dashboard, showing 20 developer subscriptions with monthly spend, upcoming renewals, and category breakdown" width="100%">
+  <img src="./docs/screenshots/renewlet-dashboard-en.png" alt="Qreminder English dashboard, showing 20 developer subscriptions with monthly spend, upcoming renewals, and category breakdown" width="100%">
 </p>
 
 <p align="center">
@@ -23,30 +23,30 @@ Renewlet is a self-hosted subscription manager. It puts the prices, renewal date
 <p align="center"><strong>Subscription Grid</strong></p>
 
 <p align="center">
-  <img src="./docs/screenshots/renewlet-subscriptions-en.png" alt="Renewlet English subscription grid with filters, tags, renewal status, and service logos" width="100%">
+  <img src="./docs/screenshots/renewlet-subscriptions-en.png" alt="Qreminder English subscription grid with filters, tags, renewal status, and service logos" width="100%">
 </p>
 
 <p align="center"><strong>Statistics</strong></p>
 
 <p align="center">
-  <img src="./docs/screenshots/renewlet-statistics-en.png" alt="Renewlet English statistics view with category spend, payment methods, and budget charts" width="100%">
+  <img src="./docs/screenshots/renewlet-statistics-en.png" alt="Qreminder English statistics view with category spend, payment methods, and budget charts" width="100%">
 </p>
 
 <p align="center"><strong>Renewal Calendar</strong></p>
 
 <p align="center">
-  <img src="./docs/screenshots/renewlet-calendar-en.png" alt="Renewlet English renewal calendar showing monthly renewal events and projected spend for developer subscriptions" width="100%">
+  <img src="./docs/screenshots/renewlet-calendar-en.png" alt="Qreminder English renewal calendar showing monthly renewal events and projected spend for developer subscriptions" width="100%">
 </p>
 
 <p align="center"><strong>Notifications</strong></p>
 
 <p align="center">
-  <img src="./docs/screenshots/renewlet-notifications-en.png" alt="Renewlet English notification settings with notification methods list and email notification configuration panel" width="100%">
+  <img src="./docs/screenshots/renewlet-notifications-en.png" alt="Qreminder English notification settings with notification methods list and email notification configuration panel" width="100%">
 </p>
 
 ## Overview
 
-If you subscribe to lots of tools, Renewlet keeps the receipts: who charges you when, how much you spend per month, what's about to renew, and where reminders should go. You record price, currency, billing cycle, renewal date, payment method, tags, website, and notes — and then look at the dashboard, calendar, and statistics pages to see the whole picture.
+If you subscribe to lots of tools, Qreminder keeps the receipts: who charges you when, how much you spend per month, what's about to renew, and where reminders should go. You record price, currency, billing cycle, renewal date, payment method, tags, website, and notes — and then look at the dashboard, calendar, and statistics pages to see the whole picture.
 
 Tech stack:
 
@@ -104,8 +104,8 @@ If you have your own VPS and want to run the v2 TypeScript backend on Node + SQL
 git clone https://github.com/yzgolden86/Qreminder.git
 cd Qreminder
 pnpm install --frozen-lockfile
-pnpm --filter @renewlet/client build
-pnpm --filter @renewlet/runtime-node start
+pnpm --filter @qreminder/client build
+pnpm --filter @qreminder/runtime-node start
 ```
 
 Environment variables, see [runtimes/node/src/index.ts](./runtimes/node/src/index.ts). Key ones:
@@ -113,7 +113,7 @@ Environment variables, see [runtimes/node/src/index.ts](./runtimes/node/src/inde
 | Variable | Default | Description |
 | --- | --- | --- |
 | `PORT` | `3000` | Listen port. |
-| `DATABASE_PATH` | `./data/renewlet.db` | SQLite file path. |
+| `DATABASE_PATH` | `./data/qreminder.db` | SQLite file path. |
 | `ASSETS_DIR` | `./data/assets` | Logo and asset storage directory. |
 | `BETTER_AUTH_SECRET` | (required) | 32+ char random string. Generate with `openssl rand -hex 32`. |
 | `APP_URL` | `http://localhost:3000` | Public URL for email links and cookie domain. |
@@ -137,13 +137,13 @@ pnpm install
 Start the v2 TS backend (Node runtime):
 
 ```bash
-pnpm --filter @renewlet/runtime-node dev
+pnpm --filter @qreminder/runtime-node dev
 ```
 
 Start the client (defaults to `http://localhost:5173`, proxies `/api` to `http://127.0.0.1:3000`):
 
 ```bash
-pnpm --filter @renewlet/client dev
+pnpm --filter @qreminder/client dev
 ```
 
 ## Verification
@@ -152,9 +152,9 @@ Common checks:
 
 ```bash
 pnpm -r typecheck
-pnpm --filter @renewlet/client test
-pnpm --filter @renewlet/client build
-pnpm --filter @renewlet/server-ts test
+pnpm --filter @qreminder/client test
+pnpm --filter @qreminder/client build
+pnpm --filter @qreminder/server test
 ```
 
 ## Data Migration (v1 → v2)
@@ -162,10 +162,10 @@ pnpm --filter @renewlet/server-ts test
 If you're already on v1 (Go + PocketBase), use [tools/pb-importer](./tools/pb-importer/) to import the old data into v2:
 
 ```bash
-pnpm --filter @renewlet/pb-importer build
+pnpm --filter @qreminder/pb-importer build
 node tools/pb-importer/dist/cli.js \
   --pb /path/to/pb_data \
-  --target sqlite:///data/renewlet.db \
+  --target sqlite:///data/qreminder.db \
   --fs /data/assets
 ```
 
@@ -179,11 +179,11 @@ For larger features, please open an issue first to align on goals, use cases, an
 
 ## Friendly Links
 
-- [LINUX DO](https://linux.do/): Renewlet appreciates the LINUX DO community for fostering open-source discussion.
+- [LINUX DO](https://linux.do/): Qreminder appreciates the LINUX DO community for fostering open-source discussion.
 
 ## License
 
-Renewlet is open-sourced under the [MIT License](LICENSE).
+Qreminder is open-sourced under the [MIT License](LICENSE).
 
 ---
 

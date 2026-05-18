@@ -1,19 +1,19 @@
 {
-  "name": "@renewlet/pb-importer",
+  "name": "@qreminder/pb-importer",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "main": "./src/index.ts",
   "bin": {
-    "renewlet-import": "./src/cli.ts"
+    "qreminder-import": "./src/cli.ts"
   },
   "scripts": {
     "start": "tsx src/cli.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@renewlet/server": "workspace:*",
-    "@renewlet/shared": "workspace:*",
+    "@qreminder/server": "workspace:*",
+    "@qreminder/shared": "workspace:*",
     "better-sqlite3": "^12.0.0",
     "drizzle-orm": "^0.36.0",
     "zod": "^4.4.3"

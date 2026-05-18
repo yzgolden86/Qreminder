@@ -10,11 +10,11 @@ on:
       d1_name:
         description: "D1 database name"
         required: true
-        default: "renewlet"
+        default: "qreminder"
       r2_bucket:
         description: "R2 bucket name"
         required: true
-        default: "renewlet-assets"
+        default: "qreminder-assets"
 
 permissions:
   contents: write

@@ -3,18 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Renewlet</title>
+    <title>Qreminder</title>
     <meta name="description" content="订阅管理助手（Go + Vite + PocketBase）" />
-    <link id="renewlet-favicon" rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link id="qreminder-favicon" rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <script>
       (function () {
         try {
-          var mode = localStorage.getItem("renewlet_theme_mode") || "dark";
+          var mode = localStorage.getItem("qreminder_theme_mode") || "dark";
           var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
           var shouldDark = mode === "dark" || (mode === "system" && prefersDark);
           document.documentElement.classList.toggle("dark", shouldDark);
 
-          var variant = localStorage.getItem("renewlet_theme_variant");
+          var variant = localStorage.getItem("qreminder_theme_variant");
           if (!variant) return;
           if (["emerald", "ocean", "sunset", "lavender", "rose", "custom"].indexOf(variant) === -1) return;
 
@@ -23,7 +23,7 @@
 
           if (variant !== "custom") return;
 
-          var raw = localStorage.getItem("renewlet_custom_theme_color");
+          var raw = localStorage.getItem("qreminder_custom_theme_color");
           if (!raw) return;
           var color = JSON.parse(raw);
           if (!color || typeof color !== "object") return;

@@ -1,8 +1,8 @@
-# Renewlet
+# Qreminder
 
 [简体中文](README.md) | [English](README.en.md)
 
-Renewlet 是一个自托管的订阅管理工具。它把 SaaS、AI 工具、云服务和开发工具的价格、续费日、预算和提醒放到一起，适合个人、独立团队和家庭实验室使用。
+Qreminder 是一个自托管的订阅管理工具。它把 SaaS、AI 工具、云服务和开发工具的价格、续费日、预算和提醒放到一起，适合个人、独立团队和家庭实验室使用。
 
 <p align="center">
   <img alt="Self-hosted" src="https://img.shields.io/badge/self--hosted-0f172a?style=flat-square">
@@ -13,7 +13,7 @@ Renewlet 是一个自托管的订阅管理工具。它把 SaaS、AI 工具、云
 </p>
 
 <p align="center">
-  <img src="./docs/screenshots/renewlet-dashboard-zh.png" alt="Renewlet 中文仪表盘，展示 20 条开发者订阅、月度支出、近期续费和支出分布" width="100%">
+  <img src="./docs/screenshots/renewlet-dashboard-zh.png" alt="Qreminder 中文仪表盘，展示 20 条开发者订阅、月度支出、近期续费和支出分布" width="100%">
 </p>
 
 <p align="center">
@@ -23,30 +23,30 @@ Renewlet 是一个自托管的订阅管理工具。它把 SaaS、AI 工具、云
 <p align="center"><strong>订阅网格</strong></p>
 
 <p align="center">
-  <img src="./docs/screenshots/renewlet-subscriptions-zh.png" alt="Renewlet 中文订阅网格，包含筛选、标签、续费状态和服务 Logo" width="100%">
+  <img src="./docs/screenshots/renewlet-subscriptions-zh.png" alt="Qreminder 中文订阅网格，包含筛选、标签、续费状态和服务 Logo" width="100%">
 </p>
 
 <p align="center"><strong>统计分析</strong></p>
 
 <p align="center">
-  <img src="./docs/screenshots/renewlet-statistics-zh.png" alt="Renewlet 中文统计视图，展示分类支出、付款方式和预算图表" width="100%">
+  <img src="./docs/screenshots/renewlet-statistics-zh.png" alt="Qreminder 中文统计视图，展示分类支出、付款方式和预算图表" width="100%">
 </p>
 
 <p align="center"><strong>续费日历</strong></p>
 
 <p align="center">
-  <img src="./docs/screenshots/renewlet-calendar-zh.png" alt="Renewlet 中文续费日历，展示开发者订阅的月度续费事件和预计支出" width="100%">
+  <img src="./docs/screenshots/renewlet-calendar-zh.png" alt="Qreminder 中文续费日历，展示开发者订阅的月度续费事件和预计支出" width="100%">
 </p>
 
 <p align="center"><strong>通知方式</strong></p>
 
 <p align="center">
-  <img src="./docs/screenshots/renewlet-notifications-zh.png" alt="Renewlet 中文通知设置，展示通知方式列表和邮件通知配置面板" width="100%">
+  <img src="./docs/screenshots/renewlet-notifications-zh.png" alt="Qreminder 中文通知设置，展示通知方式列表和邮件通知配置面板" width="100%">
 </p>
 
 ## 项目简介
 
-如果你同时订了很多工具，Renewlet 可以帮你把它们记清楚：谁什么时候扣费、每月大概花多少、哪些快到期、通知要发到哪里。你可以记录价格、币种、扣费周期、续费日期、付款方式、标签、网站和备注，再用仪表盘、日历和统计页看整体支出。
+如果你同时订了很多工具，Qreminder 可以帮你把它们记清楚：谁什么时候扣费、每月大概花多少、哪些快到期、通知要发到哪里。你可以记录价格、币种、扣费周期、续费日期、付款方式、标签、网站和备注，再用仪表盘、日历和统计页看整体支出。
 
 技术形态：
 
@@ -104,8 +104,8 @@ wrangler login
 git clone https://github.com/yzgolden86/Qreminder.git
 cd Qreminder
 pnpm install --frozen-lockfile
-pnpm --filter @renewlet/client build
-pnpm --filter @renewlet/runtime-node start
+pnpm --filter @qreminder/client build
+pnpm --filter @qreminder/runtime-node start
 ```
 
 环境变量参考 [runtimes/node/src/index.ts](./runtimes/node/src/index.ts)，关键项：
@@ -113,7 +113,7 @@ pnpm --filter @renewlet/runtime-node start
 | 变量 | 默认 | 说明 |
 | --- | --- | --- |
 | `PORT` | `3000` | 监听端口。 |
-| `DATABASE_PATH` | `./data/renewlet.db` | SQLite 文件路径。 |
+| `DATABASE_PATH` | `./data/qreminder.db` | SQLite 文件路径。 |
 | `ASSETS_DIR` | `./data/assets` | Logo 等资源存储目录。 |
 | `BETTER_AUTH_SECRET` | （必填） | 32+ 位随机串，可用 `openssl rand -hex 32` 生成。 |
 | `APP_URL` | `http://localhost:3000` | 对外访问地址，用于邮件链接和 cookie 域。 |
@@ -137,13 +137,13 @@ pnpm install
 启动 v2 TS 后端（Node 运行时）：
 
 ```bash
-pnpm --filter @renewlet/runtime-node dev
+pnpm --filter @qreminder/runtime-node dev
 ```
 
 启动前端（默认 `http://localhost:5173`，把 `/api` 代理到 `http://127.0.0.1:3000`）：
 
 ```bash
-pnpm --filter @renewlet/client dev
+pnpm --filter @qreminder/client dev
 ```
 
 ## 验证
@@ -152,9 +152,9 @@ pnpm --filter @renewlet/client dev
 
 ```bash
 pnpm -r typecheck
-pnpm --filter @renewlet/client test
-pnpm --filter @renewlet/client build
-pnpm --filter @renewlet/server-ts test
+pnpm --filter @qreminder/client test
+pnpm --filter @qreminder/client build
+pnpm --filter @qreminder/server test
 ```
 
 ## 数据迁移（v1 → v2）
@@ -162,10 +162,10 @@ pnpm --filter @renewlet/server-ts test
 如果你已经在跑 v1 Go + PocketBase 版本，可以用 [tools/pb-importer](./tools/pb-importer/) 把旧数据导入 v2：
 
 ```bash
-pnpm --filter @renewlet/pb-importer build
+pnpm --filter @qreminder/pb-importer build
 node tools/pb-importer/dist/cli.js \
   --pb /path/to/pb_data \
-  --target sqlite:///data/renewlet.db \
+  --target sqlite:///data/qreminder.db \
   --fs /data/assets
 ```
 
@@ -179,11 +179,11 @@ node tools/pb-importer/dist/cli.js \
 
 ## 友情链接
 
-- [LINUX DO](https://linux.do/)：Renewlet 认可并感谢 LINUX DO 社区对开源项目交流的支持。
+- [LINUX DO](https://linux.do/)：Qreminder 认可并感谢 LINUX DO 社区对开源项目交流的支持。
 
 ## 许可证
 
-Renewlet 基于 [MIT License](LICENSE) 开源。
+Qreminder 基于 [MIT License](LICENSE) 开源。
 
 ---
 

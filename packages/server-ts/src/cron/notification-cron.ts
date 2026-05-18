@@ -5,7 +5,7 @@ import {
   type Subscription,
   type Settings,
   type NotificationHit,
-} from "@renewlet/shared";
+} from "@qreminder/shared";
 import {
   notificationJobs,
   settings as settingsTable,
@@ -187,7 +187,7 @@ export async function runNotificationCron(
       try {
         await deps.mailer.send({
           to: [userRow.email],
-          subject: `Renewlet · ${hits.length} reminder${hits.length === 1 ? "" : "s"}`,
+          subject: `Qreminder · ${hits.length} reminder${hits.length === 1 ? "" : "s"}`,
           text: hits
             .map((h) => `${h.subscriptionName}: ${h.daysUntil} days (${h.kind})`)
             .join("\n"),

@@ -16,7 +16,7 @@ function parseArgs(argv: string[]): ImportOptions {
   const targetSpec = args.get("target");
   if (!pbDataDir || !targetSpec) {
     console.error(
-      "usage: renewlet-import --pb <pb_data> --target sqlite:///data/db.sqlite [--fs /data/assets] [--dry-run]",
+      "usage: qreminder-import --pb <pb_data> --target sqlite:///data/db.sqlite [--fs /data/assets] [--dry-run]",
     );
     process.exit(2);
   }

@@ -1,5 +1,5 @@
 import { createTransport, type Transporter } from "nodemailer";
-import type { MailerAdapter, MailMessage } from "@renewlet/server";
+import type { MailerAdapter, MailMessage } from "@qreminder/server";
 
 export interface SmtpConfig {
   host: string;

@@ -6,7 +6,7 @@ import { authClient } from "@/lib/auth-client";
 import { DEFAULT_CUSTOM_CONFIG, normalizePaymentMethods, type ConfigItem, type CustomConfig } from "@/types/config";
 import { normalizeCustomConfig } from "../domain/normalize-custom-config";
 
-const LOCAL_STORAGE_KEY = "renewlet_custom_config";
+const LOCAL_STORAGE_KEY = "qreminder_custom_config";
 
 const customConfigResponseSchema = z
   .object({

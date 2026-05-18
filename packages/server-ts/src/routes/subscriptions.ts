@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { eq, and } from "drizzle-orm";
 import { subscriptions } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
-import { subscriptionDraftSchema } from "@renewlet/shared";
+import { subscriptionDraftSchema } from "@qreminder/shared";
 import type { AppEnv } from "../app.js";
 
 export const subscriptionsRouter = new Hono<AppEnv>();

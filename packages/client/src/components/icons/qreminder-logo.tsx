@@ -1,7 +1,7 @@
 import type { SVGProps } from "react";
 
-/** 渲染 Ledger Sans 风格的 Renewlet 品牌符号。 */
-export function RenewletLogo(props: SVGProps<SVGSVGElement>) {
+/** 渲染 Ledger Sans 风格的 Qreminder 品牌符号。 */
+export function QreminderLogo(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
       viewBox="0 0 24 24"

@@ -12,7 +12,7 @@ RUN pnpm install --frozen-lockfile
 
 FROM client-deps AS client-builder
 COPY packages/client packages/client
-RUN pnpm --filter @renewlet/client build
+RUN pnpm --filter @qreminder/client build
 
 FROM --platform=$BUILDPLATFORM golang:1.26.2-alpine AS server-builder
 

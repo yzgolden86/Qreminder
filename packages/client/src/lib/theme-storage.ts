@@ -22,11 +22,11 @@ import {
 } from "@/types/theme";
 
 /** 主题风格缓存 key。 */
-export const THEME_VARIANT_STORAGE_KEY = "renewlet_theme_variant";
+export const THEME_VARIANT_STORAGE_KEY = "qreminder_theme_variant";
 /** 自定义主题色缓存 key。 */
-export const CUSTOM_COLOR_STORAGE_KEY = "renewlet_custom_theme_color";
+export const CUSTOM_COLOR_STORAGE_KEY = "qreminder_custom_theme_color";
 /** 外观存在未保存改动的标记 key。 */
-export const APPEARANCE_PENDING_STORAGE_KEY = "renewlet_appearance_pending";
+export const APPEARANCE_PENDING_STORAGE_KEY = "qreminder_appearance_pending";
 
 /** 判断未知值是否为受支持主题风格。 */
 export function isThemeVariant(value: unknown): value is ThemeVariant {

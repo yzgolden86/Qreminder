@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, extname } from "node:path";
 import { Readable } from "node:stream";
-import type { StorageAdapter, StoredAsset } from "@renewlet/server";
+import type { StorageAdapter, StoredAsset } from "@qreminder/server";
 
 export function createFsStorage(baseDir: string): StorageAdapter {
   return {

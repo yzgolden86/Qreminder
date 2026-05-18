@@ -1,5 +1,5 @@
 {
-  "name": "@renewlet/server",
+  "name": "@qreminder/server",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -15,7 +15,7 @@
     "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
-    "@renewlet/shared": "workspace:*",
+    "@qreminder/shared": "workspace:*",
     "better-auth": "^1.6.11",
     "drizzle-orm": "^0.36.0",
     "hono": "^4.6.0",

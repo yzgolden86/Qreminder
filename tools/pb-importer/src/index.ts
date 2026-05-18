@@ -10,8 +10,8 @@ import {
   customConfigs,
   notificationJobs,
   assets,
-  type Database as RenewletDb,
-} from "@renewlet/server";
+  type Database as QreminderDb,
+} from "@qreminder/server";
 
 export interface ImportOptions {
   pbDataDir: string;
@@ -161,7 +161,7 @@ async function importToSqlite(
   const targetDb = new BetterSqlite3(options.databasePath);
   targetDb.pragma("journal_mode = WAL");
   targetDb.pragma("foreign_keys = ON");
-  const drizzleDb = drizzle(targetDb) as unknown as RenewletDb;
+  const drizzleDb = drizzle(targetDb) as unknown as QreminderDb;
 
   await mkdir(options.assetsDir, { recursive: true });
 

@@ -9,18 +9,18 @@ function readCssHsl(name: string, fallback: string): string {
 
 function ensureFaviconLink(): HTMLLinkElement {
   const existing =
-    document.querySelector<HTMLLinkElement>("#renewlet-favicon") ??
+    document.querySelector<HTMLLinkElement>("#qreminder-favicon") ??
     document.querySelector<HTMLLinkElement>('link[rel="icon"]');
 
   if (existing) {
-    existing.id = "renewlet-favicon";
+    existing.id = "qreminder-favicon";
     existing.rel = "icon";
     existing.type = "image/svg+xml";
     return existing;
   }
 
   const link = document.createElement("link");
-  link.id = "renewlet-favicon";
+  link.id = "qreminder-favicon";
   link.rel = "icon";
   link.type = "image/svg+xml";
   document.head.appendChild(link);

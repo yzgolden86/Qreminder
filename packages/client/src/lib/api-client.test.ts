@@ -23,7 +23,7 @@ describe("api-client", () => {
     expect(init.headers).toBeInstanceOf(Headers);
     expect((init.headers as Headers).get("content-type")).toBe("application/json");
     expect((init.headers as Headers).get("Accept-Language")).toBeTruthy();
-    expect((init.headers as Headers).get("X-Renewlet-Locale")).toBeTruthy();
+    expect((init.headers as Headers).get("X-Qreminder-Locale")).toBeTruthy();
   });
 
   it("does not rewrite legacy API paths", async () => {

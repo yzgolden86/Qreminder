@@ -41,9 +41,9 @@ export function createAuth(options: AuthOptions) {
       sendResetPassword: async ({ user, url }) => {
         await options.mailer.send({
           to: [user.email],
-          subject: "Renewlet · Reset your password",
-          text: `Click the link below to reset your Renewlet password:\n\n${url}\n\nIf you did not request this, you can safely ignore this email.`,
-          html: `<p>Click the link below to reset your Renewlet password:</p><p><a href="${url}">${url}</a></p><p>If you did not request this, you can safely ignore this email.</p>`,
+          subject: "Qreminder · Reset your password",
+          text: `Click the link below to reset your Qreminder password:\n\n${url}\n\nIf you did not request this, you can safely ignore this email.`,
+          html: `<p>Click the link below to reset your Qreminder password:</p><p><a href="${url}">${url}</a></p><p>If you did not request this, you can safely ignore this email.</p>`,
         });
       },
     },
