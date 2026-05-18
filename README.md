@@ -52,9 +52,13 @@ Renewlet 是一个自托管的订阅管理工具。它把 SaaS、AI 工具、云
 
 当前架构：
 
-- `packages/server`：Go + PocketBase 后端，负责 SQLite、认证、文件、后台管理、数据模型和业务 API。
-- `packages/client`：Vite + React SPA，负责应用界面、路由、主题和中英文文案。
-- Docker 镜像：运行一个 Go binary，提供 PocketBase API、应用 API、PocketBase Admin、静态资源和 SPA fallback。
+- `packages/server`：Go + PocketBase 后端（v1 路径），负责 SQLite、认证、文件、后台管理、数据模型和业务 API。
+- `packages/server-ts`：TypeScript + Hono + Drizzle + Better Auth 后端（v2 路径），同时支持 Node 与 Cloudflare Workers，由 [runtimes/node](./runtimes/node/) 和 [runtimes/worker](./runtimes/worker/) 装配运行时依赖。
+- `packages/client`：Vite + React SPA，负责应用界面、路由、主题和中英文文案。仪表盘与订阅列表已合并为单页（Mock A）。
+- Docker 镜像：运行 v1 Go binary，提供 PocketBase API、应用 API、PocketBase Admin、静态资源和 SPA fallback。
+- Cloudflare Workers：运行 v2 TypeScript runtime，使用 D1 + R2 + Cron Triggers + Workers Assets，无需 VPS。
+
+> v2 形态的部署细节见 [docs/WORKER_DEPLOY.md](./docs/WORKER_DEPLOY.md)；整体改造方案与状态见 [docs/v2-proposal.md](./docs/v2-proposal.md)。
 
 ## 功能特性
 
@@ -106,6 +110,17 @@ RENEWLET_IMAGE="ghcr.io/zhiyingzzhou/renewlet:latest"
 docker compose pull
 docker compose up -d
 ```
+
+## GitHub Actions 一键部署到 Cloudflare
+
+如果你不想买 VPS，也不想本地装 wrangler，可以 fork 这个仓库后全程在 GitHub 网页里点鼠标完成部署，最终跑在 Cloudflare Workers + D1 + R2 上（免费档够用）。
+
+整体两步：
+
+1. 仓库 Settings → Environments 建一个 `cloudflare` environment，按 [docs/CF_GH_ACTIONS_DEPLOY.md §1](./docs/CF_GH_ACTIONS_DEPLOY.md#1-配置-github-secrets--variables) 配 6 个必填 secret（Cloudflare API token / account id / better-auth secret / app url / Resend api key + 发件人）
+2. Actions → 手动 Run **Cloudflare Bootstrap**（创建 D1 + R2，自动 commit `database_id`），等它完成后 **Wrangler Deploy** 会自动跑起来部署 worker
+
+详细步骤、第一个 admin 注册、绑域名和故障排查见 [docs/CF_GH_ACTIONS_DEPLOY.md](./docs/CF_GH_ACTIONS_DEPLOY.md)。
 
 ## 常用运维
 

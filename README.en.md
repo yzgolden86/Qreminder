@@ -52,9 +52,13 @@ The project packages the React frontend and Go/PocketBase backend into one Docke
 
 Current architecture:
 
-- `packages/server`: Go + PocketBase backend for SQLite, authentication, files, admin UI, data models, and business APIs.
-- `packages/client`: Vite + React SPA for the app UI, routing, themes, and Chinese/English copy.
-- Docker image: runs one Go binary that serves the PocketBase API, app API, PocketBase Admin, static assets, and SPA fallback.
+- `packages/server`: Go + PocketBase backend (v1 path) for SQLite, authentication, files, admin UI, data models, and business APIs.
+- `packages/server-ts`: TypeScript + Hono + Drizzle + Better Auth backend (v2 path), runs on both Node and Cloudflare Workers via [runtimes/node](./runtimes/node/) and [runtimes/worker](./runtimes/worker/).
+- `packages/client`: Vite + React SPA for the app UI, routing, themes, and Chinese/English copy. Dashboard and subscriptions list have been merged into a single page (Mock A).
+- Docker image: runs the v1 Go binary that serves the PocketBase API, app API, PocketBase Admin, static assets, and SPA fallback.
+- Cloudflare Workers: runs the v2 TypeScript runtime with D1 + R2 + Cron Triggers + Workers Assets, no VPS required.
+
+> See [docs/WORKER_DEPLOY.md](./docs/WORKER_DEPLOY.md) for the v2 (Cloudflare) deployment, and [docs/v2-proposal.md](./docs/v2-proposal.md) for the overall migration plan and status.
 
 ## Features
 
@@ -106,6 +110,17 @@ Then pull and restart:
 docker compose pull
 docker compose up -d
 ```
+
+## One-Click Deploy to Cloudflare via GitHub Actions
+
+If you don't want a VPS and don't want to install wrangler locally, fork this repo and run the entire deployment from the GitHub web UI. The result runs on Cloudflare Workers + D1 + R2 (the free tier is enough).
+
+Two steps:
+
+1. In your fork, go to Settings → Environments and create a `cloudflare` environment, then add the 6 required secrets per [docs/CF_GH_ACTIONS_DEPLOY.md §1](./docs/CF_GH_ACTIONS_DEPLOY.md#1-配置-github-secrets--variables) (Cloudflare API token / account id / better-auth secret / app url / Resend api key + sender)
+2. Actions → manually Run **Cloudflare Bootstrap** (creates D1 + R2, auto-commits the `database_id`). Once it finishes, **Wrangler Deploy** runs automatically and ships the worker.
+
+See [docs/CF_GH_ACTIONS_DEPLOY.md](./docs/CF_GH_ACTIONS_DEPLOY.md) for the full walkthrough, first-admin signup, custom domain, and troubleshooting.
 
 ## Operations
 

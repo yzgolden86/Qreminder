@@ -1,0 +1,98 @@
+name: Wrangler Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "packages/shared/**"
+      - "packages/server-ts/**"
+      - "packages/client/**"
+      - "runtimes/worker/**"
+      - ".github/workflows/wrangler-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: cloudflare
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4.1.0
+        with:
+          version: 11
+
+      - name: Set up Node
+        uses: actions/setup-node@v5.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build client
+        run: pnpm --filter @renewlet/client build
+
+      - name: Typecheck server + worker runtime
+        run: pnpm --filter @renewlet/server --filter @renewlet/runtime-worker typecheck
+
+      - name: Validate required secrets
+        run: |
+          set -e
+          missing=0
+          check() {
+            if [ -z "$2" ]; then
+              echo "::error::missing required GitHub secret: $1"
+              missing=1
+            fi
+          }
+          check CLOUDFLARE_API_TOKEN "${{ secrets.CLOUDFLARE_API_TOKEN }}"
+          check CLOUDFLARE_ACCOUNT_ID "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
+          check BETTER_AUTH_SECRET "${{ secrets.BETTER_AUTH_SECRET }}"
+          check APP_URL "${{ secrets.APP_URL }}"
+          check RESEND_API_KEY "${{ secrets.RESEND_API_KEY }}"
+          check RESEND_FROM "${{ secrets.RESEND_FROM }}"
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::see docs/CF_GH_ACTIONS_DEPLOY.md for the full list"
+            exit 1
+          fi
+
+      - name: Apply D1 migrations
+        uses: cloudflare/wrangler-action@v3.14.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: runtimes/worker
+          command: d1 migrations apply RENEWLET_DB --remote
+
+      - name: Deploy worker
+        uses: cloudflare/wrangler-action@v3.14.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: runtimes/worker
+          command: deploy
+          secrets: |
+            BETTER_AUTH_SECRET
+            APP_URL
+            RESEND_API_KEY
+            RESEND_FROM
+          vars: |
+            SIGNUP_ENABLED
+            SIGNUP_ALLOWLIST
+            TRUSTED_ORIGINS
+        env:
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          APP_URL: ${{ secrets.APP_URL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_FROM: ${{ secrets.RESEND_FROM }}
+          SIGNUP_ENABLED: ${{ vars.SIGNUP_ENABLED || 'false' }}
+          SIGNUP_ALLOWLIST: ${{ vars.SIGNUP_ALLOWLIST }}
+          TRUSTED_ORIGINS: ${{ vars.TRUSTED_ORIGINS || secrets.APP_URL }}

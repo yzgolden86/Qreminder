@@ -1,0 +1,127 @@
+name: Cloudflare Bootstrap
+
+# 一次性创建 D1 + R2 资源，并把 database_id 回写到 runtimes/worker/wrangler.toml。
+# 触发：手动 workflow_dispatch。已存在的资源会被跳过（幂等），可重复运行。
+# 跑完之后 commit 会自动 push 回当前分支，再去 Actions 跑 "Wrangler Deploy" 即可。
+
+on:
+  workflow_dispatch:
+    inputs:
+      d1_name:
+        description: "D1 database name"
+        required: true
+        default: "renewlet"
+      r2_bucket:
+        description: "R2 bucket name"
+        required: true
+        default: "renewlet-assets"
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    environment: cloudflare
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Set up Node
+        uses: actions/setup-node@v5.0.0
+        with:
+          node-version: 22
+
+      - name: Install wrangler
+        run: npm install -g wrangler@4
+
+      - name: Ensure D1 database exists
+        id: d1
+        run: |
+          set -e
+          NAME='${{ inputs.d1_name }}'
+          echo "Looking up D1 database: $NAME"
+          LIST_JSON="$(wrangler d1 list --json 2>/dev/null || echo '[]')"
+          DB_ID="$(node -e "
+            const list = JSON.parse(process.argv[1]);
+            const hit = list.find(d => d.name === process.argv[2]);
+            process.stdout.write(hit ? hit.uuid : '');
+          " "$LIST_JSON" "$NAME")"
+          if [ -z "$DB_ID" ]; then
+            echo "D1 not found, creating..."
+            CREATE_JSON="$(wrangler d1 create "$NAME" --json)"
+            DB_ID="$(node -e "
+              const r = JSON.parse(process.argv[1]);
+              process.stdout.write(r.uuid || r.result?.uuid || '');
+            " "$CREATE_JSON")"
+          else
+            echo "D1 already exists, reusing."
+          fi
+          if [ -z "$DB_ID" ]; then
+            echo "::error::failed to resolve D1 database_id"
+            exit 1
+          fi
+          echo "database_id=$DB_ID" >> "$GITHUB_OUTPUT"
+          echo "Resolved database_id: $DB_ID"
+
+      - name: Ensure R2 bucket exists
+        run: |
+          set -e
+          BUCKET='${{ inputs.r2_bucket }}'
+          echo "Ensuring R2 bucket: $BUCKET"
+          if wrangler r2 bucket list --json 2>/dev/null | node -e "
+            const list = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+            process.exit(list.some(b => b.name === process.argv[1]) ? 0 : 1);
+          " "$BUCKET"; then
+            echo "R2 bucket already exists, reusing."
+          else
+            wrangler r2 bucket create "$BUCKET"
+          fi
+
+      - name: Patch wrangler.toml with database_id
+        id: patch
+        env:
+          DB_ID: ${{ steps.d1.outputs.database_id }}
+        run: |
+          set -e
+          node <<'EOF'
+          const fs = require('fs');
+          const path = 'runtimes/worker/wrangler.toml';
+          const dbId = process.env.DB_ID;
+          if (!dbId) { console.error('DB_ID empty'); process.exit(1); }
+          let src = fs.readFileSync(path, 'utf8');
+          const re = /(database_id\s*=\s*")([^"]+)(")/;
+          if (!re.test(src)) { console.error('database_id field not found'); process.exit(1); }
+          const next = src.replace(re, `$1${dbId}$3`);
+          if (next === src) {
+            console.log('wrangler.toml unchanged');
+            fs.writeFileSync(process.env.GITHUB_OUTPUT, 'changed=false\n', { flag: 'a' });
+          } else {
+            fs.writeFileSync(path, next);
+            console.log('wrangler.toml updated');
+            fs.writeFileSync(process.env.GITHUB_OUTPUT, 'changed=true\n', { flag: 'a' });
+          }
+          EOF
+
+      - name: Commit and push wrangler.toml
+        if: steps.patch.outputs.changed == 'true'
+        run: |
+          set -e
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add runtimes/worker/wrangler.toml
+          git commit -m "chore(worker): set D1 database_id from cf-bootstrap"
+          git push origin HEAD:${{ github.ref_name }}
+
+      - name: Summary
+        run: |
+          echo "### Cloudflare bootstrap done" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- D1: \`${{ inputs.d1_name }}\` (id: \`${{ steps.d1.outputs.database_id }}\`)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- R2: \`${{ inputs.r2_bucket }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- wrangler.toml patched: \`${{ steps.patch.outputs.changed }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Next: run the **Wrangler Deploy** workflow." >> "$GITHUB_STEP_SUMMARY"
