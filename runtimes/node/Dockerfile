@@ -12,8 +12,8 @@ RUN pnpm --filter @qreminder/client build
 FROM node:22-alpine AS runner
 RUN apk add --no-cache wget tini
 
-RUN addgroup -S -g 1000 qreminder \
-  && adduser -S -D -h /home/qreminder -u 1000 -G qreminder qreminder \
+RUN addgroup -S -g 1001 qreminder \
+  && adduser -S -D -h /home/qreminder -u 1001 -G qreminder qreminder \
   && mkdir -p /data /home/qreminder \
   && chown -R qreminder:qreminder /data /home/qreminder
 
