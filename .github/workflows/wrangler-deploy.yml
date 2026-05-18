@@ -92,5 +92,5 @@ jobs:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           RESEND_FROM: ${{ secrets.RESEND_FROM }}
           SIGNUP_ENABLED: ${{ vars.SIGNUP_ENABLED || 'false' }}
-          SIGNUP_ALLOWLIST: ${{ vars.SIGNUP_ALLOWLIST }}
+          SIGNUP_ALLOWLIST: ${{ vars.SIGNUP_ALLOWLIST || '' }}
           TRUSTED_ORIGINS: ${{ vars.TRUSTED_ORIGINS || secrets.APP_URL }}
