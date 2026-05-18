@@ -13,7 +13,7 @@ Qreminder is a self-hosted subscription manager. It puts the prices, renewal dat
 </p>
 
 <p align="center">
-  <img src="./docs/screenshots/renewlet-dashboard-en.png" alt="Qreminder English dashboard, showing 20 developer subscriptions with monthly spend, upcoming renewals, and category breakdown" width="100%">
+  <img src="./docs/screenshots/qreminder-dashboard-en.png" alt="Qreminder English dashboard, showing 20 developer subscriptions with monthly spend, upcoming renewals, and category breakdown" width="100%">
 </p>
 
 <p align="center">
@@ -23,25 +23,25 @@ Qreminder is a self-hosted subscription manager. It puts the prices, renewal dat
 <p align="center"><strong>Subscription Grid</strong></p>
 
 <p align="center">
-  <img src="./docs/screenshots/renewlet-subscriptions-en.png" alt="Qreminder English subscription grid with filters, tags, renewal status, and service logos" width="100%">
+  <img src="./docs/screenshots/qreminder-subscriptions-en.png" alt="Qreminder English subscription grid with filters, tags, renewal status, and service logos" width="100%">
 </p>
 
 <p align="center"><strong>Statistics</strong></p>
 
 <p align="center">
-  <img src="./docs/screenshots/renewlet-statistics-en.png" alt="Qreminder English statistics view with category spend, payment methods, and budget charts" width="100%">
+  <img src="./docs/screenshots/qreminder-statistics-en.png" alt="Qreminder English statistics view with category spend, payment methods, and budget charts" width="100%">
 </p>
 
 <p align="center"><strong>Renewal Calendar</strong></p>
 
 <p align="center">
-  <img src="./docs/screenshots/renewlet-calendar-en.png" alt="Qreminder English renewal calendar showing monthly renewal events and projected spend for developer subscriptions" width="100%">
+  <img src="./docs/screenshots/qreminder-calendar-en.png" alt="Qreminder English renewal calendar showing monthly renewal events and projected spend for developer subscriptions" width="100%">
 </p>
 
 <p align="center"><strong>Notifications</strong></p>
 
 <p align="center">
-  <img src="./docs/screenshots/renewlet-notifications-en.png" alt="Qreminder English notification settings with notification methods list and email notification configuration panel" width="100%">
+  <img src="./docs/screenshots/qreminder-notifications-en.png" alt="Qreminder English notification settings with notification methods list and email notification configuration panel" width="100%">
 </p>
 
 ## Overview
