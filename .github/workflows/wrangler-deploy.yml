@@ -82,15 +82,8 @@ jobs:
             APP_URL
             RESEND_API_KEY
             RESEND_FROM
-          vars: |
-            SIGNUP_ENABLED
-            SIGNUP_ALLOWLIST
-            TRUSTED_ORIGINS
         env:
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
           APP_URL: ${{ secrets.APP_URL }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           RESEND_FROM: ${{ secrets.RESEND_FROM }}
-          SIGNUP_ENABLED: ${{ vars.SIGNUP_ENABLED || 'false' }}
-          SIGNUP_ALLOWLIST: ${{ vars.SIGNUP_ALLOWLIST || '' }}
-          TRUSTED_ORIGINS: ${{ vars.TRUSTED_ORIGINS || secrets.APP_URL }}
