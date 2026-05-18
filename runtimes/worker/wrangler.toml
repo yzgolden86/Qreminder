@@ -18,11 +18,11 @@ binding = "ASSETS"
 crons = ["* * * * *"]
 
 [[d1_databases]]
-binding = "RENEWLET_DB"
-database_name = "renewlet"
+binding = "QREMINDER_DB"
+database_name = "qreminder"
 database_id = "REPLACE_ME_AFTER_wrangler_d1_create"
 migrations_dir = "../../packages/server-ts/drizzle"
 
 [[r2_buckets]]
-binding = "RENEWLET_ASSETS"
-bucket_name = "renewlet-assets"
+binding = "QREMINDER_ASSETS"
+bucket_name = "qreminder-assets"
