@@ -41,12 +41,15 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: `rm -rf ./pb_data_e2e && go run ./cmd/renewlet serve --http=127.0.0.1:${e2eServerPort} --dir=./pb_data_e2e`,
-      cwd: "./packages/server",
+      command: `node --experimental-strip-types runtimes/node/src/index.ts`,
       env: {
         ...proxyEnv,
-        SETUP_ENABLED: "true",
-        GOMEMLIMIT: "128MiB",
+        PORT: String(e2eServerPort),
+        DATABASE_PATH: "./e2e_data/qreminder.db",
+        ASSETS_DIR: "./e2e_data/assets",
+        BETTER_AUTH_SECRET: "e2e-test-secret-do-not-use-in-prod",
+        APP_URL: e2eServerURL,
+        SIGNUP_ENABLED: "true",
       },
       url: `${e2eServerURL}/api/app/health`,
       reuseExistingServer: false,

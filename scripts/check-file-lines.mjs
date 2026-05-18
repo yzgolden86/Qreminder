@@ -17,7 +17,6 @@ const limit = Number.parseInt(process.env.FILE_LINE_LIMIT ?? String(DEFAULT_LIMI
 
 const CHECKED_EXTENSIONS = new Set([
   ".css",
-  ".go",
   ".js",
   ".jsx",
   ".json",
@@ -31,12 +30,9 @@ const CHECKED_EXTENSIONS = new Set([
 
 const EXCLUDED_PATHS = [
   /^pnpm-lock\.yaml$/,
-  /(^|\/)go\.sum$/,
   /(^|\/)node_modules\//,
   /(^|\/)dist\//,
   /(^|\/)coverage\//,
-  /(^|\/)pb_data\//,
-  /^packages\/server\/internal\/static\//,
   /^packages\/client\/src\/lib\/thesvg-index\.json$/,
 ];
 

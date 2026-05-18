@@ -180,19 +180,3 @@ For larger features, please open an issue first to align on goals, use cases, an
 ## License
 
 Qreminder is open-sourced under the [MIT License](LICENSE).
-
----
-
-## Legacy Docker Deployment (v1, maintenance mode)
-
-> ⚠️ **Maintenance mode**: the v1 Go + PocketBase path still runs, but **the frontend has been entirely migrated to v2 Better Auth + the new API**. New features (multi-tier reminders `reminderOffsets`, the Mock A merged dashboard, etc.) are available only on the v2 backend. **For new deployments, use the Cloudflare Workers path above**; this section exists for backward compatibility with users already running v1.
-
-Full documentation in [docs/DOCKER_DEPLOY.md](./docs/DOCKER_DEPLOY.md). Quick start:
-
-```bash
-mkdir -p renewlet && cd renewlet
-curl -fsSL https://raw.githubusercontent.com/yzgolden86/Qreminder/main/deploy/docker-deploy.sh | bash
-docker compose up -d
-```
-
-After first startup, open `http://localhost:3000/setup` to create the PocketBase superuser. Existing v1 users keep these env vars (see `deploy/env.example`): `PB_ENCRYPTION_KEY` / `SMTP_HOST` / `BACKUPS_CRON` / `NOTIFICATION_SCHEDULER_ENABLED` / `CRON_SECRET` and so on.

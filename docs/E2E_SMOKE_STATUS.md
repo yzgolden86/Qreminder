@@ -47,9 +47,11 @@ pnpm dev
 
 ### 路径 B：从 v1 PocketBase 数据迁移
 
+如果你之前在跑 v1 Go + PocketBase 部署（已从仓库中移除，但你的旧实例数据可以继续迁移）：
+
 ```bash
 # 1. 从 v1 容器拷一份 pb_data
-docker cp <renewlet-v1-container>:/app/pb_data ./pb_data_dump
+docker cp <your-v1-container>:/app/pb_data ./pb_data_dump
 
 # 2. 跑 importer，输出到本地 sqlite
 cd tools/pb-importer

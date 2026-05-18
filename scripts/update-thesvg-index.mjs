@@ -11,7 +11,6 @@ const PREFERRED_VARIANTS = ["default", "color"];
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const outputPaths = [
   path.resolve(__dirname, "../packages/client/src/lib/thesvg-index.json"),
-  path.resolve(__dirname, "../packages/server/internal/static/data/thesvg-index.json"),
 ];
 
 function isRecord(value) {

@@ -3,8 +3,6 @@
 node_modules
 packages/**/node_modules
 packages/client/dist
-packages/server/dist
-packages/server/pb_data
 data
 
 *.log
@@ -17,6 +15,3 @@ pnpm-debug.log*
 !.env.example
 
 .DS_Store
-
-# 官方网站/文档站（单独部署，不进入应用镜像构建上下文）
-website

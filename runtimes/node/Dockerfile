@@ -32,7 +32,7 @@ EXPOSE 3000
 VOLUME ["/data"]
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD wget --spider --quiet "http://127.0.0.1:3000/api/setup-status" || exit 1
+  CMD wget --spider --quiet "http://127.0.0.1:3000/api/app/health" || exit 1
 
 ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["node", "--experimental-strip-types", "runtimes/node/src/index.ts"]

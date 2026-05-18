@@ -16,10 +16,8 @@ dist-ssr
 .env
 .env.*
 !.env.example
-/packages/server/pb_data/
-/packages/server/pb_data_e2e/
-/packages/server/internal/static/public/*
-!/packages/server/internal/static/public/.gitkeep
+/runtimes/node/data/
+/e2e_data/
 /playwright-report/
 /test-results/
 

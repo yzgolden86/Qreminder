@@ -180,19 +180,3 @@ node tools/pb-importer/dist/cli.js \
 ## 许可证
 
 Qreminder 基于 [MIT License](LICENSE) 开源。
-
----
-
-## 传统 Docker 部署（v1，已进入维护模式）
-
-> ⚠️ **维护模式说明**：v1 的 Go + PocketBase 路径仍然能跑，但**前端已整体切到 v2 Better Auth + 新 API**，新功能（多档提醒 `reminderOffsets`、Mock A 单页布局等）只在 v2 后端可用。**新部署请走上面 Cloudflare Workers 路径**；这一节只为已经在跑 v1 的存量用户做向后兼容。
-
-完整文档见 [docs/DOCKER_DEPLOY.md](./docs/DOCKER_DEPLOY.md)。简要：
-
-```bash
-mkdir -p renewlet && cd renewlet
-curl -fsSL https://raw.githubusercontent.com/yzgolden86/Qreminder/main/deploy/docker-deploy.sh | bash
-docker compose up -d
-```
-
-首次启动后访问 `http://localhost:3000/setup` 创建 PocketBase superuser。已经在跑 v1 的用户保留下面这些环境变量（详见 `deploy/env.example`）：`PB_ENCRYPTION_KEY` / `SMTP_HOST` / `BACKUPS_CRON` / `NOTIFICATION_SCHEDULER_ENABLED` / `CRON_SECRET` 等。

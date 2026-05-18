@@ -4,9 +4,9 @@
 >
 > 这份文档是 v2 改造**开工前**的方案草案，用于记录技术选型、字段映射、阶段计划等决策。**实际实施已完成大部分内容并落地到当前仓库**（`packages/server-ts/` + `runtimes/` + `tools/pb-importer/`），所以下文的部分表述（如 "v1 冻结" / "fork 到新仓库" / "wrangler.toml database_id 仍是占位值"）已经不再准确。具体实施进度看第 12 节。
 >
-> 部署看：[CF_GH_ACTIONS_DEPLOY.md](CF_GH_ACTIONS_DEPLOY.md)（GH Actions 主推）/ [WORKER_DEPLOY.md](WORKER_DEPLOY.md)（本地 wrangler CLI）/ [DOCKER_DEPLOY.md](DOCKER_DEPLOY.md)（v1 维护模式）。
+> 部署看：[CF_GH_ACTIONS_DEPLOY.md](CF_GH_ACTIONS_DEPLOY.md)（GH Actions 主推）/ [WORKER_DEPLOY.md](WORKER_DEPLOY.md)（本地 wrangler CLI）/ [NODE_DOCKER_DEPLOY.md](NODE_DOCKER_DEPLOY.md)（Node + Docker 自托管）。
 >
-> 兼容性：v2 是破坏性变更；v1 已进入维护模式，新功能仅在 v2 后端可用。
+> 兼容性：v2 是破坏性变更；v1 已从仓库中移除（Workflow C, 2026-05-18），新部署请直接用 v2 路径。
 
 ## 1. 改造目标
 
