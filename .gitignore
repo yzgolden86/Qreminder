@@ -33,3 +33,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Claude Code local state (settings.local.json contains personal permission grants)
+.claude/
