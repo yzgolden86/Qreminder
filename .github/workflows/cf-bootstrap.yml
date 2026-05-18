@@ -55,11 +55,9 @@ jobs:
           " "$LIST_JSON" "$NAME")"
           if [ -z "$DB_ID" ]; then
             echo "D1 not found, creating..."
-            CREATE_JSON="$(wrangler d1 create "$NAME" --json)"
-            DB_ID="$(node -e "
-              const r = JSON.parse(process.argv[1]);
-              process.stdout.write(r.uuid || r.result?.uuid || '');
-            " "$CREATE_JSON")"
+            CREATE_OUT="$(wrangler d1 create "$NAME")"
+            echo "$CREATE_OUT"
+            DB_ID="$(printf '%s\n' "$CREATE_OUT" | sed -n 's/.*database_id = "\([^"]*\)".*/\1/p' | head -n1)"
           else
             echo "D1 already exists, reusing."
           fi
