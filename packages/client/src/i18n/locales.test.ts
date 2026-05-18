@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { detectBrowserLocale, normalizeLocale } from "./locales";
-import { pb } from "@/lib/pocketbase";
-import { setApiLocale } from "./api-locale";
+import { getLocaleHeaders, setApiLocale } from "./api-locale";
 
 describe("locales", () => {
   it("normalizes supported language tags", () => {
@@ -20,21 +19,13 @@ describe("locales", () => {
   });
 });
 
-describe("PocketBase locale headers", () => {
-  it("keeps headers as a plain object so the SDK can serialize JSON bodies", async () => {
+describe("locale headers", () => {
+  it("returns Accept-Language and X-Renewlet-Locale matching the active locale", () => {
     setApiLocale("en-US");
 
-    const result = await pb.beforeSend?.("/api/example", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: { ok: true },
-    });
-
-    expect(result?.options?.["headers"]).not.toBeInstanceOf(Headers);
-    expect(result?.options?.["headers"]).toMatchObject({
-      "content-type": "application/json",
-      "accept-language": "en-US",
-      "x-renewlet-locale": "en-US",
+    expect(getLocaleHeaders()).toEqual({
+      "Accept-Language": "en-US",
+      "X-Renewlet-Locale": "en-US",
     });
 
     setApiLocale("zh-CN");

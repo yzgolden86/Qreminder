@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { pb, type RecordModel } from "@/lib/pocketbase";
+import { useMemo } from "react";
+import { createAuthClient } from "better-auth/react";
 
 export type SessionData = {
   session: { id: string };
@@ -12,52 +12,96 @@ export type SessionData = {
   };
 };
 
-function toSessionData(record: RecordModel | null | undefined): SessionData | null {
-  if (!pb.authStore.isValid || !record) return null;
+const baseURL =
+  typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+
+const innerClient = createAuthClient({ baseURL });
+
+type InnerUser = {
+  id: string;
+  email: string;
+  name?: string | null;
+  role?: string | null;
+  banned?: boolean | null;
+};
+
+type InnerSession = { id: string };
+
+function toSessionData(data: { user: InnerUser; session: InnerSession } | null | undefined): SessionData | null {
+  if (!data?.user || !data.session) return null;
   return {
-    session: { id: pb.authStore.token },
+    session: { id: data.session.id },
     user: {
-      id: record.id,
-      email: typeof record["email"] === "string" ? record["email"] : "",
-      name: typeof record["name"] === "string" ? record["name"] : "",
-      role: typeof record["role"] === "string" ? record["role"] : "user",
-      banned: Boolean(record["banned"]),
+      id: data.user.id,
+      email: data.user.email,
+      name: data.user.name ?? "",
+      role: data.user.role ?? "user",
+      banned: Boolean(data.user.banned),
     },
   };
 }
 
-function getCurrentSession(): SessionData | null {
-  return toSessionData(pb.authStore.record);
-}
-
 export const authClient = {
   useSession() {
-    const [data, setData] = useState<SessionData | null>(() => getCurrentSession());
-    const [isPending, setIsPending] = useState(false);
-
-    useEffect(() => {
-      const unsubscribe = pb.authStore.onChange(() => {
-        setData(getCurrentSession());
-        setIsPending(false);
-      }, true);
-      return unsubscribe;
-    }, []);
-
-    return { data, isPending };
+    const inner = innerClient.useSession();
+    const data = useMemo(
+      () => toSessionData(inner.data as unknown as { user: InnerUser; session: InnerSession } | null),
+      [inner.data],
+    );
+    return { data, isPending: inner.isPending };
   },
 
   signIn: {
     async email({ email, password }: { email: string; password: string }) {
-      try {
-        await pb.collection("users").authWithPassword(email, password);
-        return { data: getCurrentSession(), error: null };
-      } catch (error) {
-        return { data: null, error };
+      const result = await innerClient.signIn.email({ email, password });
+      if (result.error) {
+        return { data: null, error: result.error };
       }
+      return {
+        data: toSessionData(result.data as unknown as { user: InnerUser; session: InnerSession } | null),
+        error: null,
+      };
+    },
+  },
+
+  signUp: {
+    async email({
+      email,
+      password,
+      name,
+    }: {
+      email: string;
+      password: string;
+      name: string;
+    }) {
+      const result = await innerClient.signUp.email({ email, password, name });
+      if (result.error) {
+        return { data: null, error: result.error };
+      }
+      return {
+        data: toSessionData(result.data as unknown as { user: InnerUser; session: InnerSession } | null),
+        error: null,
+      };
     },
   },
 
   async signOut() {
-    pb.authStore.clear();
+    await innerClient.signOut();
+  },
+
+  async forgetPassword({ email }: { email: string }) {
+    const result = await innerClient.requestPasswordReset({ email, redirectTo: "/reset-password" });
+    if (result.error) {
+      return { error: result.error };
+    }
+    return { error: null };
+  },
+
+  async resetPassword({ token, newPassword }: { token: string; newPassword: string }) {
+    const result = await innerClient.resetPassword({ token, newPassword });
+    if (result.error) {
+      return { error: result.error };
+    }
+    return { error: null };
   },
 };

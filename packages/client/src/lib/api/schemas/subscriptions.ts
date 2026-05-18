@@ -103,7 +103,10 @@ export const subscriptionCreateBodySchema = z.object({
   website: optionalUrlSchema.describe("官网地址（可为空）。"),
   notes: z.string().max(5000).nullable().optional().describe("备注（可为空）。"),
   tags: tagsSchema,
-  reminderDays: z.number().int().nonnegative().max(3650).describe("提前多少天提醒（>=0）。"),
+  reminderOffsets: z
+    .array(z.number().int().nonnegative().max(3650))
+    .max(16)
+    .describe("提前多少天提醒的档位数组（每项 0..3650，最多 16 项）。"),
 }).strict();
 
 /** 更新订阅请求体（PocketBase subscriptions collection）。 */
@@ -131,7 +134,10 @@ export const apiSubscriptionSchema = z.object({
   website: z.string().optional().describe("官网地址（可选）。"),
   notes: z.string().optional().describe("备注（可选）。"),
   tags: z.array(z.string()).optional().describe("标签数组（可选）。"),
-  reminderDays: z.number().int().nonnegative().describe("提前多少天提醒。"),
+  reminderOffsets: z
+    .array(z.number().int().nonnegative())
+    .max(16)
+    .describe("提前多少天提醒的档位数组。"),
   createdAt: z.string().optional().describe("创建时间（ISO 字符串，可选）。"),
   updatedAt: z.string().optional().describe("更新时间（ISO 字符串，可选）。"),
 }).strict();

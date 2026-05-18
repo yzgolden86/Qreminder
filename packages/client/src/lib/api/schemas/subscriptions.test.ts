@@ -18,7 +18,7 @@ const validSubscriptionCreateBody = {
   website: null,
   notes: null,
   tags: [],
-  reminderDays: 3,
+  reminderOffsets: [3],
 };
 
 describe("subscription API schemas", () => {

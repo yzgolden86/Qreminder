@@ -34,7 +34,8 @@ export interface SubscriptionForNotification {
   status: SubscriptionStatus;
   nextBillingDate: string; // YYYY-MM-DD
   trialEndDate?: string | null; // YYYY-MM-DD | null
-  reminderDays: number;
+  /** 配置的提前提醒档位数组（每个值独立匹配 daysUntil）。 */
+  reminderOffsets: number[];
 }
 
 export type NotificationItemType = "renewal" | "trial" | "expired";
@@ -48,6 +49,7 @@ export interface NotificationContentItem {
   currency: string;
   status: SubscriptionStatus;
   targetDate: string;
+  /** 命中本条提醒的具体档位值（不是订阅配置的所有档位，仅触发本条的那一个）。 */
   reminderDays: number;
   daysUntil: number;
 }
@@ -184,6 +186,10 @@ export function collectNotificationItemsForLocalDate(
   for (const sub of subscriptions) {
     if (!isValidDateOnly(sub.nextBillingDate)) continue;
     const daysUntilNext = daysBetweenDateOnly(localDate, sub.nextBillingDate);
+    // 过期条目展示用最大档位（仅用于排版/i18n，已过期不再参与档位匹配）。
+    const displayOffsetForExpired = sub.reminderOffsets.length > 0
+      ? Math.max(...sub.reminderOffsets)
+      : 0;
 
     if (daysUntilNext < 0) {
       if (settings.showExpired && includeExpired) {
@@ -195,11 +201,11 @@ export function collectNotificationItemsForLocalDate(
           currency: sub.currency,
           status: sub.status,
           targetDate: sub.nextBillingDate,
-          reminderDays: sub.reminderDays,
+          reminderDays: displayOffsetForExpired,
           daysUntil: daysUntilNext,
         });
       }
-    } else if (daysUntilNext === sub.reminderDays) {
+    } else if (sub.reminderOffsets.includes(daysUntilNext)) {
       items.push({
         type: "renewal",
         subscriptionId: sub.id,
@@ -208,7 +214,7 @@ export function collectNotificationItemsForLocalDate(
         currency: sub.currency,
         status: sub.status,
         targetDate: sub.nextBillingDate,
-        reminderDays: sub.reminderDays,
+        reminderDays: daysUntilNext,
         daysUntil: daysUntilNext,
       });
     }
@@ -216,7 +222,7 @@ export function collectNotificationItemsForLocalDate(
     if (sub.status === "trial" && sub.trialEndDate) {
       if (!isValidDateOnly(sub.trialEndDate)) continue;
       const daysUntilTrialEnd = daysBetweenDateOnly(localDate, sub.trialEndDate);
-      if (daysUntilTrialEnd === sub.reminderDays) {
+      if (daysUntilTrialEnd >= 0 && sub.reminderOffsets.includes(daysUntilTrialEnd)) {
         items.push({
           type: "trial",
           subscriptionId: sub.id,
@@ -225,7 +231,7 @@ export function collectNotificationItemsForLocalDate(
           currency: sub.currency,
           status: sub.status,
           targetDate: sub.trialEndDate,
-          reminderDays: sub.reminderDays,
+          reminderDays: daysUntilTrialEnd,
           daysUntil: daysUntilTrialEnd,
         });
       }
@@ -236,12 +242,13 @@ export function collectNotificationItemsForLocalDate(
 }
 
 /**
- * 生成“到期/试用结束”通知内容；没有需要提醒的订阅时返回 hasPayload=false。
+ * 生成”到期/试用结束”通知内容；没有需要提醒的订阅时返回 hasPayload=false。
  *
- * 规则（尽量贴合现有数据结构）：
- * - 续费提醒：`daysUntil(nextBillingDate) === reminderDays`
- * - 试用结束提醒：`status=trial` 且 `daysUntil(trialEndDate) === reminderDays`
+ * 规则：
+ * - 续费提醒：`daysUntil(nextBillingDate) ∈ reminderOffsets`
+ * - 试用结束提醒：`status=trial` 且 `daysUntil(trialEndDate) ∈ reminderOffsets`
  * - 已过期订阅（可选）：`nextBillingDate < today` 且 settings.showExpired=true
+ * - 命中多个档位时按当日合并：一条消息列出全部命中的订阅 + 各自档位
  */
 export function buildDueNotification(
   now: Date,

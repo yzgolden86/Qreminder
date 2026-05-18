@@ -31,7 +31,7 @@ describe("subscription-export", () => {
       trialEndDate: undefined,
       website: undefined,
       notes: undefined,
-      reminderDays: 3,
+      reminderOffsets: [3],
       tags: ["SaaS", "Work"],
     };
 

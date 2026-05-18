@@ -4,7 +4,7 @@ import { setApiLocale } from "@/i18n/api-locale";
 import { getInitialLocale, isLocale, localizedLabel, writeStoredLocale, type Locale, type LocalizedLabels } from "@/i18n/locales";
 import { translate, type MessageKey } from "@/i18n/messages";
 import { useSettings, useUpdateSettings } from "@/hooks/use-settings";
-import { getCurrentUserId } from "@/lib/pocketbase";
+import { authClient } from "@/lib/auth-client";
 import { formatCurrency as formatCurrencyValue } from "@/lib/currency";
 import { toPlainDate, type DateOnly } from "@/lib/time/date-only";
 
@@ -61,6 +61,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const hasLocalPreviewRef = useRef(false);
   const { data: settings } = useSettings();
   const { mutate: updateSettings } = useUpdateSettings();
+  const { data: session } = authClient.useSession();
+  const userId = session?.user?.id ?? null;
 
   useEffect(() => {
     applyDocumentLocale(locale);
@@ -97,11 +99,11 @@ export function I18nProvider({ children }: { children: ReactNode }) {
         return { ...current, locale: nextLocale };
       });
 
-      if (getCurrentUserId()) {
+      if (userId) {
         updateSettings({ locale: nextLocale });
       }
     },
-    [queryClient, updateSettings],
+    [queryClient, updateSettings, userId],
   );
 
   const value = useMemo<I18nContextValue>(() => {

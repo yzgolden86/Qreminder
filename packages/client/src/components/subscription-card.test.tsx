@@ -68,7 +68,7 @@ const baseSubscription: Subscription = {
   website: undefined,
   notes: undefined,
   tags: [],
-  reminderDays: 7,
+  reminderOffsets: [7],
 };
 
 function createSubscription(overrides: SubscriptionOverrides = {}): Subscription {

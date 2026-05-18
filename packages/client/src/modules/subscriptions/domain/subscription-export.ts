@@ -62,7 +62,7 @@ export function buildSubscriptionsCsv(
     labelMaps.statusLabelByValue.get(subscription.status) ?? subscription.status,
     subscription.startDate,
     subscription.nextBillingDate,
-    subscription.reminderDays,
+    subscription.reminderOffsets.join(";"),
     subscription.tags?.join(";") || "",
   ]);
 

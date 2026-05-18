@@ -100,7 +100,7 @@ function subscription(overrides: SubscriptionOverrides): Subscription {
     website: undefined,
     notes: undefined,
     tags: [],
-    reminderDays: 3,
+    reminderOffsets: [3],
   };
 
   if (overrides.billingCycle === "custom") {

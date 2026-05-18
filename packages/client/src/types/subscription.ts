@@ -120,8 +120,8 @@ interface SubscriptionBase {
   notes: string | undefined;
   /** 标签。 */
   tags: string[];
-  /** 提前多少天提醒（整数，>=0）。 */
-  reminderDays: number;
+  /** 提前多少天提醒的档位（整数数组，>=0，每项独立触发）。 */
+  reminderOffsets: number[];
 }
 
 export interface CustomCycleSubscription extends SubscriptionBase {
@@ -335,12 +335,48 @@ export interface TimezoneOption {
   label: string;
 }
 
-/** 提醒天数下拉选项（用于新增/编辑订阅）。 */
-export interface ReminderDaysOption {
+/** 提醒档位下拉选项（用于新增/编辑订阅 chips 多选）。 */
+export interface ReminderOffsetOption {
   /** 提前多少天提醒（整数）。 */
   value: number;
   /** UI 展示文案。 */
   labels: LocalizedLabels;
+}
+
+/** 一组订阅默认提醒档位，按用户调研结果排序：长档位（域名续费）+ 短档位（一般订阅）。 */
+export const REMINDER_OFFSET_PRESETS = [
+  { value: 180, labels: labels('提前 180 天', '180 days before') },
+  { value: 90, labels: labels('提前 90 天', '90 days before') },
+  { value: 30, labels: labels('提前 30 天', '30 days before') },
+  { value: 15, labels: labels('提前 15 天', '15 days before') },
+  { value: 7, labels: labels('提前 7 天', '7 days before') },
+  { value: 3, labels: labels('提前 3 天', '3 days before') },
+  { value: 1, labels: labels('提前 1 天', '1 day before') },
+  { value: 0, labels: labels('当天', 'On the day') },
+] as const satisfies readonly ReminderOffsetOption[];
+
+/** 新订阅默认提醒档位。 */
+export const DEFAULT_REMINDER_OFFSETS: number[] = [7, 3, 1];
+
+/** 单个提醒档位允许的最大值（与后端 hooks 校验保持一致）。 */
+export const MAX_REMINDER_OFFSET = 3650;
+
+/** 一个订阅可配置的提醒档位上限（与后端 hooks 校验保持一致）。 */
+export const MAX_REMINDER_OFFSETS_PER_SUBSCRIPTION = 16;
+
+/**
+ * 规范化提醒档位数组：去重、过滤无效值、按降序排序。
+ *
+ * 说明：所有写入/读取边界都应通过本函数，保证内存数据与后端持久层口径一致。
+ */
+export function normalizeReminderOffsets(values: readonly number[]): number[] {
+  const dedup = new Set<number>();
+  for (const value of values) {
+    if (!Number.isInteger(value)) continue;
+    if (value < 0 || value > MAX_REMINDER_OFFSET) continue;
+    dedup.add(value);
+  }
+  return Array.from(dedup).sort((a, b) => b - a).slice(0, MAX_REMINDER_OFFSETS_PER_SUBSCRIPTION);
 }
 
 /** 汇率来源共同支持的 30 种货币（用于默认列表与下拉选项）。 */
@@ -400,13 +436,7 @@ export const TIMEZONE_OPTIONS = [
   { value: 'Pacific/Kiritimati', label: 'Pacific/Kiritimati' },
 ] as const satisfies readonly TimezoneOption[];
 
-export const REMINDER_DAYS_OPTIONS = [
-  { value: 1, labels: labels('提前 1 天', '1 day before') },
-  { value: 3, labels: labels('提前 3 天', '3 days before') },
-  { value: 7, labels: labels('提前 7 天', '7 days before') },
-  { value: 14, labels: labels('提前 14 天', '14 days before') },
-  { value: 30, labels: labels('提前 30 天', '30 days before') },
-] as const satisfies readonly ReminderDaysOption[];
+export const REMINDER_DAYS_OPTIONS = REMINDER_OFFSET_PRESETS;
 
 export const DEFAULT_SETTINGS: AppSettings = {
   adminUsername: 'admin',

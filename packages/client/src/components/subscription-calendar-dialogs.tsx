@@ -107,7 +107,11 @@ export function SubscriptionDetailDialog({
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t("calendar.reminder")}</span>
-                <span>{t("reminder.days", { days: subscription.reminderDays })}</span>
+                <span>
+                  {subscription.reminderOffsets.length > 0
+                    ? t("reminder.days", { days: subscription.reminderOffsets.join("/") })
+                    : t("subscription.card.reminderEmpty")}
+                </span>
               </div>
               {subscription.tags && subscription.tags.length > 0 && (
                 <div className="flex justify-between text-sm items-start">

@@ -26,7 +26,6 @@ import { calculateNextBillingDate } from "@/lib/subscription-billing";
 import {
   isOptionalHttpUrl,
   parseNonNegativeFiniteNumberInput,
-  parseNonNegativeIntegerInput,
   parsePositiveIntegerInput,
   toSubscriptionDraft,
 } from "@/lib/subscription-form";
@@ -34,7 +33,7 @@ import { useCustomConfig } from "@/contexts/CustomConfigContext";
 import { useDeferredDialogCleanup } from "@/hooks/use-deferred-dialog-cleanup";
 import { useSettings } from "@/hooks/use-settings";
 import type { Subscription, SubscriptionDraft } from "@/types/subscription";
-import { REMINDER_DAYS_OPTIONS } from "@/types/subscription";
+import { DEFAULT_REMINDER_OFFSETS, normalizeReminderOffsets } from "@/types/subscription";
 import { createSubscriptionFormState, type SubscriptionFormState } from "@/types/subscription-form";
 import { useI18n } from "@/i18n/I18nProvider";
 
@@ -168,7 +167,10 @@ export function SubscriptionDialog(props: SubscriptionDialogProps) {
     if (!editSubscription) return;
 
     const subscription = editSubscription;
-    const isPresetReminder = REMINDER_DAYS_OPTIONS.some((opt) => opt.value === subscription.reminderDays);
+    // 历史 v1 数据可能 reminderOffsets 为空数组；编辑回显时回落到默认档位，避免存盘后变成"无任何提醒"。
+    const offsets = normalizeReminderOffsets(
+      subscription.reminderOffsets.length > 0 ? subscription.reminderOffsets : DEFAULT_REMINDER_OFFSETS,
+    );
 
     setFormData({
       name: subscription.name,
@@ -183,9 +185,8 @@ export function SubscriptionDialog(props: SubscriptionDialogProps) {
       startDate: subscription.startDate,
       nextBillingDate: subscription.nextBillingDate,
       autoCalculate: subscription.autoCalculateNextBillingDate,
-      reminderType: isPresetReminder ? "preset" : "custom",
-      reminderDays: isPresetReminder ? subscription.reminderDays.toString() : "3",
-      customReminderDays: !isPresetReminder ? subscription.reminderDays.toString() : "",
+      reminderOffsets: offsets,
+      customReminderOffsetInput: "",
       website: subscription.website ?? "",
       notes: subscription.notes ?? "",
       tags: subscription.tags?.join("、") || "",
@@ -227,10 +228,8 @@ export function SubscriptionDialog(props: SubscriptionDialogProps) {
     if (formData.billingCycle === "custom" && parsePositiveIntegerInput(formData.customDays) === null) {
       errors.customDays = t("subscription.validation.customCycleInvalid");
     }
-    if (parseNonNegativeIntegerInput(
-      formData.reminderType === "custom" ? formData.customReminderDays : formData.reminderDays,
-    ) === null) {
-      errors.reminderDays = t("subscription.validation.reminderInvalid");
+    if (formData.reminderOffsets.length === 0) {
+      errors.reminderOffsets = t("subscription.validation.reminderRequired");
     }
     if (!isOptionalHttpUrl(formData.website)) {
       errors.website = t("subscription.validation.websiteInvalid");

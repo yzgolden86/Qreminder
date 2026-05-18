@@ -236,7 +236,9 @@ export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDe
               <div className="flex items-center gap-1.5 text-muted-foreground">
                 <Bell className="h-3.5 w-3.5" />
                 <span className="text-xs">
-                  {t("subscription.card.reminderDays", { days: subscription.reminderDays })}
+                  {subscription.reminderOffsets.length === 0
+                    ? t("subscription.card.reminderEmpty")
+                    : t("subscription.card.reminderOffsets", { offsets: subscription.reminderOffsets.join("/") })}
                 </span>
               </div>
             )}

@@ -42,7 +42,7 @@ describe("notification-content", () => {
           currency: "USD",
           status: "active",
           nextBillingDate: "2026-01-13",
-          reminderDays: 3,
+          reminderOffsets: [3],
         },
         {
           id: "sub-2",
@@ -52,7 +52,7 @@ describe("notification-content", () => {
           status: "trial",
           nextBillingDate: "2026-02-01",
           trialEndDate: "2026-01-13",
-          reminderDays: 3,
+          reminderOffsets: [3],
         },
       ],
     );
@@ -88,7 +88,7 @@ describe("notification-content", () => {
           currency: "USD",
           status: "active",
           nextBillingDate: "2026-01-13",
-          reminderDays: 3,
+          reminderOffsets: [3],
         },
       ],
     );
@@ -110,7 +110,7 @@ describe("notification-content", () => {
           currency: "USD",
           status: "active",
           nextBillingDate: "2026-02-31",
-          reminderDays: 3,
+          reminderOffsets: [3],
         },
       ],
     );
@@ -128,7 +128,7 @@ describe("notification-content", () => {
       currency: "USD",
       status: "active" as const,
       nextBillingDate: "2026-01-01",
-      reminderDays: 3,
+      reminderOffsets: [3],
     };
 
     expect(buildDueNotification(

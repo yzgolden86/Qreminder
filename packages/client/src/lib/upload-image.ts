@@ -3,14 +3,15 @@
  *
  * 架构位置：
  * - ImageCropDialog 输出 data URL，SVG 上传保留原始 File。
- * - 本模块把 data URL 或原始 File 写入 PocketBase `assets` collection。
+ * - 本模块把 data URL 或原始 File POST 到 /api/assets，由 server-ts 写入 storage adapter。
  *
- * Caveat: 客户端校验只是体验优化；PocketBase collection 规则仍是最终安全边界。
+ * Caveat: 客户端校验只是体验优化；后端路由仍是最终安全边界。
  */
+import { z } from "zod";
 import { MAX_IMAGE_BYTES, imageExtensionForMime, isAllowedImageMime, uploadMimeTypeForFile } from "@/lib/upload-constraints";
+import { ApiError } from "@/lib/api-client";
 import type { ApiUploadImageResponse, UploadKind } from "@/lib/api/schemas/media";
-import { getCurrentUserId, pb, type RecordModel } from "@/lib/pocketbase";
-import { getApiLocale } from "@/i18n/api-locale";
+import { getApiLocale, getLocaleHeaders } from "@/i18n/api-locale";
 import { translate } from "@/i18n/messages";
 
 /**
@@ -88,19 +89,50 @@ function getDefaultFilename(mimeType: string): string {
   return `image.${extension}`;
 }
 
+const assetCreateResponseSchema = z
+  .object({
+    id: z.string().min(1),
+  })
+  .passthrough();
+
 async function createAssetFromFile(file: Blob, kind: UploadKind, filename: string): Promise<ApiUploadImageResponse> {
   const form = new FormData();
-  const userId = getCurrentUserId();
-  if (!userId) throw new Error(translate(getApiLocale(), "auth.loginRequired"));
-
-  form.append("user", userId);
   form.append("kind", kind);
   form.append("file", file, filename);
 
-  const record = await pb.collection("assets").create<RecordModel>(form);
-  const storedFile = typeof record["file"] === "string" ? record["file"] : "";
-  if (!storedFile) throw new Error(translate(getApiLocale(), "media.uploadFailed"));
-  return { url: `/api/app/assets/${record.id}` };
+  const headers = new Headers();
+  for (const [key, value] of Object.entries(getLocaleHeaders())) {
+    headers.set(key, value);
+  }
+
+  const res = await fetch("/api/assets", {
+    method: "POST",
+    body: form,
+    credentials: "include",
+    headers,
+  });
+
+  const text = await res.text();
+  let payload: unknown = null;
+  if (text) {
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      payload = null;
+    }
+  }
+  if (!res.ok) {
+    const message =
+      (payload && typeof payload === "object" && "error" in payload && typeof (payload as { error: unknown }).error === "string"
+        ? (payload as { error: string }).error
+        : null) ?? translate(getApiLocale(), "media.uploadFailed");
+    throw new ApiError(message, res.status, payload);
+  }
+  const parsed = assetCreateResponseSchema.safeParse(payload);
+  if (!parsed.success) {
+    throw new ApiError(translate(getApiLocale(), "error.invalidResponse"), res.status, payload, "invalid_response");
+  }
+  return { url: `/api/assets/${parsed.data.id}` };
 }
 
 /**

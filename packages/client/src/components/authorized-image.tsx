@@ -14,7 +14,6 @@
  * Caveat: object URL 必须在 src 变化或卸载时释放，否则长时间管理图标会造成内存泄漏。
  */
 import { useEffect, useMemo, useState, type ImgHTMLAttributes } from "react";
-import { getAuthHeader } from "@/lib/pocketbase";
 
 type AuthorizedImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, "src" | "onError"> & {
   src: string;
@@ -51,7 +50,6 @@ function useAuthorizedImageSrc(src: string): { src: string | undefined; failed: 
       try {
         const response = await fetch(src, {
           credentials: "include",
-          headers: getAuthHeader(),
           signal: controller.signal,
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);

@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarIcon, CreditCard } from "lucide-react";
+import { Calendar as CalendarIcon, CreditCard, Plus, X } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { dateOnlyToLocalDate, dateToDateOnly } from "@/lib/time/date-only";
@@ -26,14 +26,13 @@ import { LogoPicker, type UploadStatus as LogoUploadStatus } from "@/components/
 import { AuthorizedImage } from "@/components/authorized-image";
 import type { CustomConfig } from "@/types/config";
 import type { BillingCycle, Category, PaymentMethod, SubscriptionStatus } from "@/types/subscription";
-import { CURRENCY_OPTIONS, CYCLE_LABELS, REMINDER_DAYS_OPTIONS } from "@/types/subscription";
-import type { SubscriptionFormReminderType, SubscriptionFormState } from "@/types/subscription-form";
+import { CURRENCY_OPTIONS, CYCLE_LABELS, REMINDER_OFFSET_PRESETS } from "@/types/subscription";
+import type { SubscriptionFormState } from "@/types/subscription-form";
+import { addCustomReminderOffset, removeReminderOffset, toggleReminderOffset } from "@/lib/subscription-form";
 import { createCurrencySelectOptions } from "@/lib/searchable-options";
 import { useI18n } from "@/i18n/I18nProvider";
 import { localizedLabel } from "@/i18n/locales";
 
-/** 透出提醒类型，方便外层弹窗复用表单状态契约。 */
-export type { SubscriptionFormReminderType };
 /** 透出订阅表单状态类型，字段值以 UI 输入态为准。 */
 export type { SubscriptionFormState };
 
@@ -50,7 +49,7 @@ export interface SubscriptionFormFieldsProps {
 }
 
 export type SubscriptionFormErrors = Partial<Record<
-  "name" | "price" | "dates" | "customDays" | "reminderDays" | "website",
+  "name" | "price" | "dates" | "customDays" | "reminderOffsets" | "website",
   string
 >>;
 
@@ -61,9 +60,8 @@ const errorFieldByFormKey: Partial<Record<keyof SubscriptionFormState, keyof Sub
   customDays: "customDays",
   startDate: "dates",
   nextBillingDate: "dates",
-  reminderType: "reminderDays",
-  reminderDays: "reminderDays",
-  customReminderDays: "reminderDays",
+  reminderOffsets: "reminderOffsets",
+  customReminderOffsetInput: "reminderOffsets",
   website: "website",
 } satisfies Partial<Record<keyof SubscriptionFormState, keyof SubscriptionFormErrors>>;
 
@@ -82,6 +80,7 @@ export const SubscriptionFormFields = memo(function SubscriptionFormFields({
   const { t, locale, label, formatDateOnly } = useI18n();
   const [startDatePickerOpen, setStartDatePickerOpen] = useState(false);
   const [nextBillingDatePickerOpen, setNextBillingDatePickerOpen] = useState(false);
+  const [customReminderError, setCustomReminderError] = useState<"invalid" | "duplicate" | "tooMany" | null>(null);
 
   const update = useCallback(<K extends keyof SubscriptionFormState>(key: K, value: SubscriptionFormState[K]) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -401,57 +400,105 @@ export const SubscriptionFormFields = memo(function SubscriptionFormFields({
 
       <div className="grid gap-3">
         <Label>{t("subscription.field.reminder")}</Label>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Select
-            value={formData.reminderType === "custom" ? "custom" : formData.reminderDays}
-            onValueChange={(value) => {
-              if (value === "custom") {
-                update("reminderType", "custom");
-              } else {
-                update("reminderType", "preset");
-                update("reminderDays", value);
-              }
-            }}
-          >
-            <SelectTrigger
-              className={cn(
-                "w-full border-border bg-secondary sm:flex-1",
-                errors.reminderDays && "border-destructive focus:ring-destructive/40",
-              )}
-              aria-invalid={Boolean(errors.reminderDays)}
-              aria-describedby={errors.reminderDays ? id("reminder-error") : undefined}
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {REMINDER_DAYS_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value.toString()}>
-                  {label(option.labels)}
-                </SelectItem>
-              ))}
-              <SelectItem value="custom">{t("subscription.reminderCustom")}</SelectItem>
-            </SelectContent>
-          </Select>
+        <p className="text-xs text-muted-foreground">{t("subscription.reminderHelp")}</p>
 
-          {formData.reminderType === "custom" && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-muted-foreground whitespace-nowrap">{t("subscription.reminderBefore")}</span>
-              <NumericInput
-                allowNegative={false}
-                decimalScale={0}
-                inputMode="numeric"
-                placeholder={t("subscription.daysPlaceholder")}
-                value={formData.customReminderDays}
-                onRawValueChange={(value: string) => update("customReminderDays", value)}
-                aria-invalid={Boolean(errors.reminderDays)}
-                aria-describedby={errors.reminderDays ? id("reminder-error") : undefined}
-                className="w-20 border-border bg-secondary"
-              />
-              <span className="text-sm text-muted-foreground">{t("subscription.daysUnit")}</span>
-            </div>
-          )}
+        <div
+          className="flex flex-wrap gap-2"
+          role="group"
+          aria-label={t("subscription.field.reminder")}
+        >
+          {REMINDER_OFFSET_PRESETS.map((preset) => {
+            const selected = formData.reminderOffsets.includes(preset.value);
+            return (
+              <button
+                key={preset.value}
+                type="button"
+                onClick={() => {
+                  const next = toggleReminderOffset(formData.reminderOffsets, preset.value);
+                  update("reminderOffsets", next);
+                }}
+                aria-pressed={selected}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                  selected
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-secondary text-foreground hover:bg-secondary/70",
+                )}
+              >
+                {label(preset.labels)}
+              </button>
+            );
+          })}
         </div>
-        <FieldError id={id("reminder-error")} message={errors.reminderDays} />
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm text-muted-foreground">{t("subscription.reminderBefore")}</span>
+          <NumericInput
+            allowNegative={false}
+            decimalScale={0}
+            inputMode="numeric"
+            placeholder={t("subscription.daysPlaceholder")}
+            value={formData.customReminderOffsetInput}
+            onRawValueChange={(value: string) => update("customReminderOffsetInput", value)}
+            className="w-20 border-border bg-secondary"
+            aria-label={t("subscription.reminderCustomInput")}
+          />
+          <span className="text-sm text-muted-foreground">{t("subscription.daysUnit")}</span>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              const result = addCustomReminderOffset(
+                formData.reminderOffsets,
+                formData.customReminderOffsetInput,
+              );
+              if (result.accepted) {
+                update("reminderOffsets", result.next);
+                update("customReminderOffsetInput", "");
+                setCustomReminderError(null);
+                return;
+              }
+              setCustomReminderError(result.reason ?? "invalid");
+            }}
+            className="gap-1"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            {t("subscription.reminderAdd")}
+          </Button>
+        </div>
+
+        {customReminderError && (
+          <p className="text-xs text-destructive">
+            {t(`subscription.reminder.error.${customReminderError}`)}
+          </p>
+        )}
+
+        {formData.reminderOffsets.length > 0 && (
+          <div className="flex flex-wrap gap-2" aria-label={t("subscription.reminderSelected")}>
+            {formData.reminderOffsets.map((offset) => (
+              <span
+                key={offset}
+                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs text-primary"
+              >
+                {t("subscription.reminderChip", { days: offset })}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = removeReminderOffset(formData.reminderOffsets, offset);
+                    update("reminderOffsets", next);
+                  }}
+                  aria-label={t("subscription.reminderRemove", { days: offset })}
+                  className="rounded-full p-0.5 hover:bg-primary/20"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        <FieldError id={id("reminder-error")} message={errors.reminderOffsets} />
       </div>
 
       {showWebsiteAndNotes && (

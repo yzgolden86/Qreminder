@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { RenewletLogo } from "@/components/icons/renewlet-logo";
 import { getDisplayErrorMessage } from "@/lib/display-error";
 import { toast } from "@/components/ui/sonner";
-import { pb } from "@/lib/pocketbase";
+import { authClient } from "@/lib/auth-client";
 import { useI18n } from "@/i18n/I18nProvider";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -44,7 +44,8 @@ export function ForgotPasswordClient({ enabled }: ForgotPasswordClientProps) {
     setIsSubmitting(true);
     setEmailError("");
     try {
-      await pb.collection("users").requestPasswordReset(email.trim());
+      const result = await authClient.forgetPassword({ email: email.trim() });
+      if (result.error) throw result.error;
       setSubmitted(true);
       toast.success(t("passwordReset.mailHandled"));
     } catch (err: unknown) {

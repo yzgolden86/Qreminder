@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { RenewletLogo } from "@/components/icons/renewlet-logo";
 import { getDisplayErrorMessage } from "@/lib/display-error";
 import { toast } from "@/components/ui/sonner";
-import { pb } from "@/lib/pocketbase";
+import { authClient } from "@/lib/auth-client";
 import { useI18n } from "@/i18n/I18nProvider";
 
 type ResetPasswordClientProps = {
@@ -67,7 +67,8 @@ export function ResetPasswordClient({ token }: ResetPasswordClientProps) {
     setIsSubmitting(true);
     setErrors({});
     try {
-      await pb.collection("users").confirmPasswordReset(token, password, password);
+      const result = await authClient.resetPassword({ token, newPassword: password });
+      if (result.error) throw result.error;
       setSucceeded(true);
       setPassword("");
       setConfirm("");

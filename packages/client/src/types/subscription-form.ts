@@ -1,18 +1,13 @@
 import type { BillingCycle, Category, PaymentMethod, SubscriptionStatus } from "@/types/subscription";
+import { DEFAULT_REMINDER_OFFSETS } from "@/types/subscription";
 import type { DateOnly } from "@/lib/time/date-only";
-
-/**
- * 订阅表单提醒类型：
- * - preset：使用预设提醒天数（下拉选项）
- * - custom：使用自定义提醒天数（输入框）
- */
-export type SubscriptionFormReminderType = "preset" | "custom";
 
 /**
  * 订阅表单的本地状态（UI 输入专用）。
  *
  * 说明：
- * - 这里的 `price/customDays/reminderDays/...` 使用 string，是为了直接绑定 `<input />` 的 value
+ * - `price/customDays/customReminderOffsetInput` 使用 string，是为了直接绑定 `<input />` 的 value
+ * - `reminderOffsets` 是规范化后的整数数组（来自 chips 多选），不绑定到原生 input
  * - 最终提交时（新增/编辑）会转换为业务模型所需的 `number | DateOnly | undefined`
  */
 export type SubscriptionFormState = {
@@ -40,12 +35,10 @@ export type SubscriptionFormState = {
   nextBillingDate: DateOnly | undefined;
   /** 是否自动根据开始日期 + 周期推算 nextBillingDate。 */
   autoCalculate: boolean;
-  /** 到期提醒类型：预设天数 or 自定义天数。 */
-  reminderType: SubscriptionFormReminderType;
-  /** 预设提醒天数（字符串，提交时 parseInt）。 */
-  reminderDays: string;
-  /** 自定义提醒天数（字符串，提交时 parseInt）。 */
-  customReminderDays: string;
+  /** 提醒档位数组（整数，0..MAX_REMINDER_OFFSET，去重，按降序排列）。 */
+  reminderOffsets: number[];
+  /** 自定义档位输入框字符串（提交时 parseInt 后并入 reminderOffsets）。 */
+  customReminderOffsetInput: string;
   /** 官网链接输入（可选）。 */
   website: string;
   /** 备注输入（可选）。 */
@@ -76,9 +69,8 @@ export function createSubscriptionFormState(
     startDate: undefined,
     nextBillingDate: undefined,
     autoCalculate: true,
-    reminderType: "preset",
-    reminderDays: "3",
-    customReminderDays: "",
+    reminderOffsets: [...DEFAULT_REMINDER_OFFSETS],
+    customReminderOffsetInput: "",
     website: "",
     notes: "",
     tags: "",

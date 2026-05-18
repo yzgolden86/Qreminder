@@ -8,6 +8,11 @@
  * Caveat: 上传中的 logo/icon 状态不在这里判断，调用方需要在提交按钮层面禁用保存。
  */
 import type { SubscriptionDraft } from "@/types/subscription";
+import {
+  MAX_REMINDER_OFFSET,
+  MAX_REMINDER_OFFSETS_PER_SUBSCRIPTION,
+  normalizeReminderOffsets,
+} from "@/types/subscription";
 import type { SubscriptionFormState } from "@/types/subscription-form";
 import { getApiLocale } from "@/i18n/api-locale";
 import { translate } from "@/i18n/messages";
@@ -68,18 +73,48 @@ export function parseTagsInput(tags: string): string[] {
 }
 
 /**
- * 从表单状态计算 reminderDays（整数）。
+ * 添加自定义提醒档位到已选数组。
  *
  * 规则：
- * - preset：严格解析 reminderDays
- * - custom：严格解析 customReminderDays，空值回退为 3
- * - 类似 `3days` / `3.5` 的宽松输入会被拒绝，避免浏览器和后端解析口径不同。
+ * - 解析失败返回 invalid
+ * - 已存在返回 duplicate
+ * - 超过 16 项上限返回 tooMany
+ * - 成功时返回去重 + 降序排列的新数组
  */
-export function toReminderDays(formData: Pick<SubscriptionFormState, "reminderType" | "reminderDays" | "customReminderDays">): number {
-  if (formData.reminderType === "custom") {
-    return parseNonNegativeIntegerInput(formData.customReminderDays) ?? 3;
+export type AddReminderOffsetReason = "invalid" | "duplicate" | "tooMany";
+
+export interface AddReminderOffsetResult {
+  next: number[];
+  accepted: boolean;
+  reason?: AddReminderOffsetReason;
+}
+
+export function addCustomReminderOffset(current: readonly number[], rawInput: string): AddReminderOffsetResult {
+  const parsed = parseNonNegativeIntegerInput(rawInput, MAX_REMINDER_OFFSET);
+  if (parsed === null) {
+    return { next: [...current], accepted: false, reason: "invalid" };
   }
-  return parseNonNegativeIntegerInput(formData.reminderDays) ?? 3;
+  if (current.includes(parsed)) {
+    return { next: [...current], accepted: false, reason: "duplicate" };
+  }
+  if (current.length >= MAX_REMINDER_OFFSETS_PER_SUBSCRIPTION) {
+    return { next: [...current], accepted: false, reason: "tooMany" };
+  }
+  const merged = normalizeReminderOffsets([...current, parsed]);
+  return { next: merged, accepted: true };
+}
+
+/** 从已选档位中移除指定值。 */
+export function removeReminderOffset(current: readonly number[], value: number): number[] {
+  return current.filter((existing) => existing !== value);
+}
+
+/** 切换某个预设档位（已有则移除，未有则加入）。 */
+export function toggleReminderOffset(current: readonly number[], value: number): number[] {
+  if (current.includes(value)) {
+    return removeReminderOffset(current, value);
+  }
+  return normalizeReminderOffsets([...current, value]);
 }
 
 /** 返回订阅草稿的首个阻塞性校验错误；用于提交前给用户明确反馈。 */
@@ -88,10 +123,8 @@ export function getSubscriptionDraftValidationError(formData: SubscriptionFormSt
   if (!formData.name.trim()) return translate(locale, "subscription.validation.nameRequired");
   if (!formData.startDate || !formData.nextBillingDate) return translate(locale, "subscription.validation.datesRequired");
   if (parseNonNegativeFiniteNumberInput(formData.price) === null) return translate(locale, "subscription.validation.amountInvalid");
-  if (parseNonNegativeIntegerInput(
-    formData.reminderType === "custom" ? formData.customReminderDays : formData.reminderDays,
-  ) === null) {
-    return translate(locale, "subscription.validation.reminderInvalid");
+  if (formData.reminderOffsets.length === 0) {
+    return translate(locale, "subscription.validation.reminderRequired");
   }
   if (formData.billingCycle === "custom" && parsePositiveIntegerInput(formData.customDays) === null) {
     return translate(locale, "subscription.validation.customCycleInvalid");
@@ -111,12 +144,12 @@ export function toSubscriptionDraft(formData: SubscriptionFormState): Subscripti
   if (getSubscriptionDraftValidationError(formData)) return null;
 
   const price = parseNonNegativeFiniteNumberInput(formData.price);
-  const reminderDays = toReminderDays(formData);
+  const reminderOffsets = normalizeReminderOffsets(formData.reminderOffsets);
   const customDays = formData.billingCycle === "custom" ? parsePositiveIntegerInput(formData.customDays) : undefined;
   const { startDate, nextBillingDate } = formData;
   if (
     price === null ||
-    reminderDays === null ||
+    reminderOffsets.length === 0 ||
     !startDate ||
     !nextBillingDate ||
     (formData.billingCycle === "custom" && customDays === null)
@@ -136,7 +169,7 @@ export function toSubscriptionDraft(formData: SubscriptionFormState): Subscripti
     nextBillingDate,
     autoCalculateNextBillingDate: formData.autoCalculate,
     trialEndDate: undefined,
-    reminderDays,
+    reminderOffsets,
     website: formData.website || undefined,
     notes: formData.notes || undefined,
     tags: parseTagsInput(formData.tags),

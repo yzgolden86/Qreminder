@@ -9,51 +9,6 @@ import { useCreateSubscription, useUpdateSubscription } from "./use-subscription
 
 type FixedSubscriptionDraft = Omit<FixedCycleSubscription, "id">;
 
-type SubscriptionWritePayload = {
-  name: string;
-  logo: string | null;
-  price: number;
-  currency: string;
-  billingCycle: FixedCycleSubscription["billingCycle"] | "custom";
-  customDays: number | null;
-  category: string;
-  status: Subscription["status"];
-  paymentMethod: string | null;
-  startDate: string;
-  nextBillingDate: string;
-  autoCalculateNextBillingDate: boolean;
-  trialEndDate: string | null;
-  website: string | null;
-  notes: string | null;
-  tags: string[];
-  reminderDays: number;
-};
-
-type CreateSubscriptionPayload = SubscriptionWritePayload & { user: string };
-type CreateSubscriptionMock = (payload: CreateSubscriptionPayload) => Promise<ApiSubscription>;
-type UpdateSubscriptionMock = (id: string, payload: SubscriptionWritePayload) => Promise<ApiSubscription>;
-type GetFullListMock = () => Promise<ApiSubscription[]>;
-type SubscriptionCollectionMock = {
-  create: CreateSubscriptionMock;
-  update: UpdateSubscriptionMock;
-  getFullList: GetFullListMock;
-};
-
-const mocks = vi.hoisted(() => ({
-  collection: vi.fn<(name: "subscriptions") => SubscriptionCollectionMock>(),
-  create: vi.fn<CreateSubscriptionMock>(),
-  update: vi.fn<UpdateSubscriptionMock>(),
-  getFullList: vi.fn<GetFullListMock>(),
-  getCurrentUserId: vi.fn<() => string | null>(),
-}));
-
-vi.mock("@/lib/pocketbase", () => ({
-  pb: {
-    collection: mocks.collection,
-  },
-  getCurrentUserId: mocks.getCurrentUserId,
-}));
-
 function createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -61,32 +16,8 @@ function createWrapper() {
       mutations: { retry: false },
     },
   });
-
   return function Wrapper({ children }: { children: ReactNode }) {
     return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
-  };
-}
-
-function apiSubscriptionFromPayload(id: string, payload: SubscriptionWritePayload): ApiSubscription {
-  return {
-    id,
-    name: payload.name,
-    ...(payload.logo !== null ? { logo: payload.logo } : {}),
-    price: payload.price,
-    currency: payload.currency,
-    billingCycle: payload.billingCycle,
-    ...(payload.billingCycle === "custom" && payload.customDays !== null ? { customDays: payload.customDays } : {}),
-    category: payload.category,
-    status: payload.status,
-    ...(payload.paymentMethod !== null ? { paymentMethod: payload.paymentMethod } : {}),
-    startDate: payload.startDate,
-    nextBillingDate: payload.nextBillingDate,
-    autoCalculateNextBillingDate: payload.autoCalculateNextBillingDate,
-    ...(payload.trialEndDate !== null ? { trialEndDate: payload.trialEndDate } : {}),
-    ...(payload.website !== null ? { website: payload.website } : {}),
-    ...(payload.notes !== null ? { notes: payload.notes } : {}),
-    tags: payload.tags,
-    reminderDays: payload.reminderDays,
   };
 }
 
@@ -108,29 +39,65 @@ function subscriptionDraft(overrides: Partial<FixedSubscriptionDraft> = {}): Fix
     website: undefined,
     notes: undefined,
     tags: [],
-    reminderDays: 3,
+    reminderOffsets: [3],
     ...overrides,
   };
 }
 
+function apiSubscriptionFromPayload(id: string, body: Record<string, unknown>): ApiSubscription {
+  const result: Record<string, unknown> = {
+    id,
+    name: body["name"],
+    price: body["price"],
+    currency: body["currency"],
+    billingCycle: body["billingCycle"],
+    category: body["category"],
+    status: body["status"],
+    startDate: body["startDate"],
+    nextBillingDate: body["nextBillingDate"],
+    autoCalculateNextBillingDate: body["autoCalculateNextBillingDate"],
+    tags: body["tags"],
+    reminderOffsets: body["reminderOffsets"],
+  };
+  if (body["logo"] !== null) result["logo"] = body["logo"];
+  if (body["customDays"] !== null) result["customDays"] = body["customDays"];
+  if (body["paymentMethod"] !== null) result["paymentMethod"] = body["paymentMethod"];
+  if (body["trialEndDate"] !== null) result["trialEndDate"] = body["trialEndDate"];
+  if (body["website"] !== null) result["website"] = body["website"];
+  if (body["notes"] !== null) result["notes"] = body["notes"];
+  return result as ApiSubscription;
+}
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
+}
+
 describe("use-subscriptions mutations", () => {
+  const fetchMock = vi.fn<typeof fetch>();
+  let lastBody: Record<string, unknown> | null = null;
+  let lastUrl: string | null = null;
+  let lastMethod: string | null = null;
+
   beforeEach(() => {
-    mocks.collection.mockReset();
-    mocks.create.mockReset();
-    mocks.update.mockReset();
-    mocks.getFullList.mockReset();
-    mocks.getCurrentUserId.mockReset();
-    mocks.getCurrentUserId.mockReturnValue("user-1");
-    mocks.collection.mockReturnValue({
-      create: mocks.create,
-      update: mocks.update,
-      getFullList: mocks.getFullList,
+    fetchMock.mockReset();
+    lastBody = null;
+    lastUrl = null;
+    lastMethod = null;
+    fetchMock.mockImplementation(async (input, init) => {
+      lastUrl = typeof input === "string" ? input : input.toString();
+      lastMethod = init?.method ?? "GET";
+      const raw = init?.body;
+      lastBody = typeof raw === "string" ? (JSON.parse(raw) as Record<string, unknown>) : null;
+      const subscription = apiSubscriptionFromPayload("sub-1", lastBody ?? {});
+      return jsonResponse({ subscription });
     });
-    mocks.create.mockImplementation(async (payload) => apiSubscriptionFromPayload("sub-1", payload));
-    mocks.update.mockImplementation(async (_id, payload) => apiSubscriptionFromPayload("sub-1", payload));
+    vi.stubGlobal("fetch", fetchMock);
   });
 
-  it("keeps tags as an empty array when creating a subscription through PocketBase SDK", async () => {
+  it("posts JSON body to /api/subscriptions when creating", async () => {
     const { result } = renderHook(() => useCreateSubscription(), { wrapper: createWrapper() });
     const draft = subscriptionDraft({ tags: [] });
 
@@ -138,15 +105,13 @@ describe("use-subscriptions mutations", () => {
       await result.current.mutateAsync(draft);
     });
 
-    expect(mocks.collection).toHaveBeenCalledWith("subscriptions");
-    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({
-      name: "Aws",
-      tags: [],
-      user: "user-1",
-    }));
+    expect(lastUrl).toBe("/api/subscriptions");
+    expect(lastMethod).toBe("POST");
+    expect(lastBody).toMatchObject({ name: "Aws", tags: [], reminderOffsets: [3] });
+    expect(lastBody).not.toHaveProperty("user");
   });
 
-  it("keeps tags as an empty array when updating a subscription through PocketBase SDK", async () => {
+  it("patches JSON body to /api/subscriptions/:id when updating", async () => {
     const { result } = renderHook(() => useUpdateSubscription(), { wrapper: createWrapper() });
     const subscription: Subscription = { id: "sub-1", ...subscriptionDraft({ tags: [] }) };
 
@@ -154,10 +119,8 @@ describe("use-subscriptions mutations", () => {
       await result.current.mutateAsync(subscription);
     });
 
-    expect(mocks.collection).toHaveBeenCalledWith("subscriptions");
-    expect(mocks.update).toHaveBeenCalledWith("sub-1", expect.objectContaining({
-      name: "Aws",
-      tags: [],
-    }));
+    expect(lastUrl).toBe("/api/subscriptions/sub-1");
+    expect(lastMethod).toBe("PATCH");
+    expect(lastBody).toMatchObject({ name: "Aws", tags: [] });
   });
 });

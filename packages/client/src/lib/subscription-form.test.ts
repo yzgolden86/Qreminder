@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  addCustomReminderOffset,
   getSubscriptionDraftValidationError,
   isOptionalHttpUrl,
   parseNonNegativeFiniteNumberInput,
   parseNonNegativeIntegerInput,
   parseTagsInput,
+  removeReminderOffset,
+  toggleReminderOffset,
   toSubscriptionDraft,
 } from "./subscription-form";
 import { createSubscriptionFormState } from "@/types/subscription-form";
@@ -69,14 +72,13 @@ describe("subscription-form", () => {
     expect(toSubscriptionDraft(form)).toBeNull();
   });
 
-  it("builds a draft only when custom cycle and reminder values are strict integers", () => {
+  it("builds a draft only when custom cycle is a strict integer and reminder offsets are non-empty", () => {
     const valid = createSubscriptionFormState({
       name: "Server",
       price: "19.99",
       billingCycle: "custom",
       customDays: "45",
-      reminderType: "custom",
-      customReminderDays: "0",
+      reminderOffsets: [0],
       startDate: assertDateOnly("2026-01-01"),
       nextBillingDate: assertDateOnly("2026-02-15"),
     });
@@ -84,12 +86,34 @@ describe("subscription-form", () => {
     expect(toSubscriptionDraft(valid)).toMatchObject({
       price: 19.99,
       customDays: 45,
-      reminderDays: 0,
+      reminderOffsets: [0],
       autoCalculateNextBillingDate: true,
     });
 
     expect(toSubscriptionDraft({ ...valid, customDays: "45.5" })).toBeNull();
-    expect(toSubscriptionDraft({ ...valid, customReminderDays: "1day" })).toBeNull();
+    expect(toSubscriptionDraft({ ...valid, reminderOffsets: [] })).toBeNull();
+  });
+
+  it("manages reminder offsets through chip toggles and custom input", () => {
+    expect(toggleReminderOffset([7, 3], 3)).toEqual([7]);
+    expect(toggleReminderOffset([7], 30)).toEqual([30, 7]);
+    expect(removeReminderOffset([30, 7, 3], 7)).toEqual([30, 3]);
+
+    const added = addCustomReminderOffset([7, 3], "180");
+    expect(added).toEqual({ next: [180, 7, 3], accepted: true });
+
+    const invalid = addCustomReminderOffset([7], "abc");
+    expect(invalid.accepted).toBe(false);
+    expect(invalid.reason).toBe("invalid");
+
+    const dup = addCustomReminderOffset([7, 3], "3");
+    expect(dup.accepted).toBe(false);
+    expect(dup.reason).toBe("duplicate");
+
+    const sixteen = Array.from({ length: 16 }, (_, i) => i * 5);
+    const tooMany = addCustomReminderOffset(sixteen, "200");
+    expect(tooMany.accepted).toBe(false);
+    expect(tooMany.reason).toBe("tooMany");
   });
 
   it("preserves the auto-calculate switch in the draft", () => {

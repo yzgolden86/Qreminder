@@ -1,24 +1,21 @@
 /**
  * 订阅相关 React Query Hooks（前端数据层）。
  *
- * 说明：
- * - 通过 PocketBase collection 读写当前用户订阅数据
- * - PocketBase SDK 返回的是 RecordModel，前端在 hook 边界统一 normalize + Zod parse
- * - API 返回 date-only 字符串（YYYY-MM-DD），前端在这里统一转成品牌类型
- *
- * Caveat: Date 转换只发生在 hook 边界。页面/组件内部应使用 `Subscription` domain 类型，
- * 不要直接消费 API row，避免日期处理散落。
- * Caveat: `billingCycle=custom` 与 `customDays` 的判别关系在这里落入 domain union；
- * 修改该转换会影响统计折算、表单回填和通知提醒。
+ * 通过 `/api/subscriptions` 与后端交互（server-ts Hono 路由）。
+ * 后端使用 Better Auth cookie 鉴权，前端无需手动注入 token。
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { assertDateOnly } from "@/lib/time/date-only";
-import { getCurrentUserId, pb, type RecordModel } from "@/lib/pocketbase";
-import { apiSubscriptionSchema, type ApiSubscription } from "@/lib/api/schemas/subscriptions";
+import { apiFetch } from "@/lib/api-client";
+import {
+  apiSubscriptionSchema,
+  subscriptionsListResponseSchema,
+  subscriptionResponseSchema,
+  subscriptionDeleteResponseSchema,
+  type ApiSubscription,
+} from "@/lib/api/schemas/subscriptions";
 import type { Subscription, SubscriptionDraft } from "@/types/subscription";
-import { getApiLocale } from "@/i18n/api-locale";
-import { translate } from "@/i18n/messages";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -41,10 +38,16 @@ function normalizeSubscriptionRecord(row: unknown): unknown {
     startDate: row["startDate"],
     nextBillingDate: row["nextBillingDate"],
     autoCalculateNextBillingDate: row["autoCalculateNextBillingDate"],
-    reminderDays: row["reminderDays"],
   };
-  // PocketBase 会把系统字段命名为 created/updated，而前端 schema 使用 createdAt/updatedAt。
-  // 在唯一边界做映射，可以让组件和 domain 函数完全不感知 SDK 的字段差异。
+  // v1 后端只发 reminderDays:number，v2 改成 reminderOffsets:number[]；
+  // 升级窗口期前端会同时遇到两种数据，唯一边界把旧字段包成单项数组。
+  if (Array.isArray(row["reminderOffsets"])) {
+    normalized["reminderOffsets"] = row["reminderOffsets"];
+  } else if (typeof row["reminderDays"] === "number") {
+    normalized["reminderOffsets"] = [row["reminderDays"]];
+  } else {
+    normalized["reminderOffsets"] = [];
+  }
   if (typeof row["customDays"] === "number") normalized["customDays"] = row["customDays"];
   if (Array.isArray(row["tags"])) normalized["tags"] = row["tags"];
 
@@ -60,8 +63,7 @@ function normalizeSubscriptionRecord(row: unknown): unknown {
   return normalized;
 }
 
-/** 将 API 返回的订阅对象转换为前端 domain 订阅对象（含 Date 类型字段）。 */
-function fromApiSubscription(row: ApiSubscription | RecordModel): Subscription {
+function fromApiSubscription(row: ApiSubscription | unknown): Subscription {
   const parsedRow = apiSubscriptionSchema.parse(normalizeSubscriptionRecord(row));
   const base = {
     id: parsedRow.id,
@@ -79,11 +81,9 @@ function fromApiSubscription(row: ApiSubscription | RecordModel): Subscription {
     website: parsedRow.website,
     notes: parsedRow.notes,
     tags: parsedRow.tags ?? [],
-    reminderDays: parsedRow.reminderDays,
+    reminderOffsets: parsedRow.reminderOffsets,
   };
   if (parsedRow.billingCycle === "custom") {
-    // 判别联合要求 custom 周期一定有 customDays。历史数据缺失时给出最小安全值，
-    // 防止下游 `toMonthlyAmount`/nextBillingDate 计算遇到 undefined。
     return {
       ...base,
       billingCycle: "custom",
@@ -93,20 +93,11 @@ function fromApiSubscription(row: ApiSubscription | RecordModel): Subscription {
   return {
     ...base,
     billingCycle: parsedRow.billingCycle,
-    // 非 custom 周期主动清空 customDays，避免历史脏数据影响统计换算。
     customDays: undefined,
   };
 }
 
-/**
- * 将订阅转换为 API 写入请求体（用于创建/更新；date 字段转为 YYYY-MM-DD）。
- *
- * 说明：
- * - create/update 的字段结构一致（差别仅在 URL 与是否包含 id），因此统一到一个函数避免重复维护
- * - 可选字段统一转为 null，便于后端用同一套 schema 校验与 merge 策略
- */
 function toWritePayload(sub: SubscriptionDraft | Subscription) {
-  // 后端 schema 接受 null 表达“清空可选字段”；undefined 则容易在 JSON 序列化后丢失语义。
   return {
     name: sub.name,
     logo: sub.logo ?? null,
@@ -124,39 +115,29 @@ function toWritePayload(sub: SubscriptionDraft | Subscription) {
     website: sub.website ?? null,
     notes: sub.notes ?? null,
     tags: sub.tags ?? [],
-    reminderDays: sub.reminderDays,
+    reminderOffsets: sub.reminderOffsets,
   };
 }
 
-/** 获取订阅列表（未登录时返回空数组）。 */
 export function useSubscriptions() {
   return useQuery({
     queryKey: ["subscriptions"],
     queryFn: async () => {
-      const userId = getCurrentUserId();
-      if (!userId) return [];
-      const rows = await pb.collection("subscriptions").getFullList<ApiSubscription>({
-        filter: `user = "${userId}"`,
-        sort: "-created",
-      });
-      // SDK 泛型只是编译期提示，运行时仍可能拿到旧字段/脏字段；进入缓存前必须 parse。
-      return rows.map(fromApiSubscription);
+      const res = await apiFetch("/api/subscriptions", subscriptionsListResponseSchema);
+      return res.subscriptions.map(fromApiSubscription);
     },
   });
 }
 
-/** 创建订阅（成功后自动刷新订阅列表）。 */
 export function useCreateSubscription() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (sub: SubscriptionDraft) => {
-      const userId = getCurrentUserId();
-      if (!userId) throw new Error(translate(getApiLocale(), "auth.loginRequired"));
-      const row = await pb.collection("subscriptions").create<ApiSubscription>({
-        ...toWritePayload(sub),
-        user: userId,
+      const res = await apiFetch("/api/subscriptions", subscriptionResponseSchema, {
+        method: "POST",
+        body: JSON.stringify(toWritePayload(sub)),
       });
-      return fromApiSubscription(row);
+      return fromApiSubscription(res.subscription);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
@@ -164,13 +145,19 @@ export function useCreateSubscription() {
   });
 }
 
-/** 更新订阅（成功后自动刷新订阅列表）。 */
 export function useUpdateSubscription() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (sub: Subscription) => {
-      const row = await pb.collection("subscriptions").update<ApiSubscription>(sub.id, toWritePayload(sub));
-      return fromApiSubscription(row);
+      const res = await apiFetch(
+        `/api/subscriptions/${encodeURIComponent(sub.id)}`,
+        subscriptionResponseSchema,
+        {
+          method: "PATCH",
+          body: JSON.stringify(toWritePayload(sub)),
+        },
+      );
+      return fromApiSubscription(res.subscription);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
@@ -178,12 +165,15 @@ export function useUpdateSubscription() {
   });
 }
 
-/** 删除订阅（成功后自动刷新订阅列表）。 */
 export function useDeleteSubscription() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      await pb.collection("subscriptions").delete(id);
+      await apiFetch(
+        `/api/subscriptions/${encodeURIComponent(id)}`,
+        subscriptionDeleteResponseSchema,
+        { method: "DELETE" },
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["subscriptions"] });

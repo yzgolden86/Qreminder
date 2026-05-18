@@ -115,7 +115,7 @@ describe("SubscriptionDialog", () => {
       trialEndDate: undefined,
       website: undefined,
       notes: undefined,
-      reminderDays: 3,
+      reminderOffsets: [3],
       tags: [],
     };
 
