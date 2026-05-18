@@ -1,0 +1,11 @@
+services:
+  qreminder:
+    image: ghcr.io/yzgolden86/qreminder:latest
+    container_name: qreminder
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/data

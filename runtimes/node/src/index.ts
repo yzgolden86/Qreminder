@@ -1,10 +1,12 @@
 import { serve } from "@hono/node-server";
+import { serveStatic } from "@hono/node-server/serve-static";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import cron from "node-cron";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
 import { createApp, runNotificationCron } from "@qreminder/server";
 import * as schema from "@qreminder/server";
 import type {
@@ -73,6 +75,20 @@ const deps: AppDeps = {
 };
 
 const app = createApp(deps);
+
+const clientDistDir =
+  process.env.CLIENT_DIST_DIR ??
+  resolve(dirname(fileURLToPath(import.meta.url)), "../../../packages/client/dist");
+const clientIndexPath = resolve(clientDistDir, "index.html");
+
+if (existsSync(clientIndexPath)) {
+  const indexHtml = readFileSync(clientIndexPath, "utf-8");
+  app.use("/*", serveStatic({ root: clientDistDir }));
+  app.get("*", (c) => {
+    if (c.req.path.startsWith("/api/")) return c.json({ error: "not_found" }, 404);
+    return c.html(indexHtml);
+  });
+}
 
 serve({ fetch: app.fetch, port }, ({ port: listenPort }) => {
   console.log(`qreminder-node listening on http://0.0.0.0:${listenPort}`);

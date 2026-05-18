@@ -96,9 +96,23 @@ wrangler login
 
 Then follow [docs/WORKER_DEPLOY.md](./docs/WORKER_DEPLOY.md) step by step: create D1 + R2 → set secrets → apply D1 migrations → build the client → `wrangler deploy` → register the first admin. About 15 minutes total (excluding Resend domain verification propagation time).
 
-## Node Self-Hosted Deployment (experimental)
+## Node Self-Hosted Deployment (Docker)
 
-If you have your own VPS and want to run the v2 TypeScript backend on Node + SQLite instead of Cloudflare:
+Run the whole app in a single Docker container: v2 TS backend + frontend SPA + SQLite + built-in cron scheduler.
+
+```bash
+mkdir -p qreminder && cd qreminder
+curl -fsSL https://raw.githubusercontent.com/yzgolden86/Qreminder/main/runtimes/node/docker-compose.yml -o docker-compose.yml
+curl -fsSL https://raw.githubusercontent.com/yzgolden86/Qreminder/main/runtimes/node/.env.example -o .env
+
+# Edit .env — at minimum set BETTER_AUTH_SECRET and APP_URL
+docker compose pull
+docker compose up -d
+```
+
+The image defaults to `ghcr.io/yzgolden86/qreminder:latest`. Full walkthrough — first-admin signup, reverse proxy, custom domain, backup, troubleshooting — see [docs/NODE_DOCKER_DEPLOY.md](./docs/NODE_DOCKER_DEPLOY.md).
+
+Without Docker, run from source:
 
 ```bash
 git clone https://github.com/yzgolden86/Qreminder.git
@@ -107,24 +121,6 @@ pnpm install --frozen-lockfile
 pnpm --filter @qreminder/client build
 pnpm --filter @qreminder/runtime-node start
 ```
-
-Environment variables, see [runtimes/node/src/index.ts](./runtimes/node/src/index.ts). Key ones:
-
-| Variable | Default | Description |
-| --- | --- | --- |
-| `PORT` | `3000` | Listen port. |
-| `DATABASE_PATH` | `./data/qreminder.db` | SQLite file path. |
-| `ASSETS_DIR` | `./data/assets` | Logo and asset storage directory. |
-| `BETTER_AUTH_SECRET` | (required) | 32+ char random string. Generate with `openssl rand -hex 32`. |
-| `APP_URL` | `http://localhost:3000` | Public URL for email links and cookie domain. |
-| `TRUSTED_ORIGINS` | empty | Better Auth cookie origin allowlist. Comma-separated. |
-| `SIGNUP_ENABLED` | `false` | Set to `true` only when registering the first admin, then back to `false`. |
-| `SIGNUP_ALLOWLIST` | empty | Email signup allowlist (effective only when `SIGNUP_ENABLED=true`). |
-| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` | empty | Configure to enable password reset and renewal reminder email. |
-| `NOTIFICATION_SCHEDULER_ENABLED` | `true` | Whether to enable the built-in node-cron scheduler. |
-| `NOTIFICATION_SCHEDULER_CRON` | `* * * * *` | Cron expression for the scheduler. |
-
-> The Node runtime doesn't have a dedicated Docker image or compose template yet. PRs welcome — see [runtimes/node/Dockerfile](./runtimes/node/Dockerfile).
 
 ## Local Development
 

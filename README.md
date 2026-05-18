@@ -96,9 +96,23 @@ wrangler login
 
 然后照 [docs/WORKER_DEPLOY.md](./docs/WORKER_DEPLOY.md) 的清单依次：创建 D1 + R2 → 填 secrets → 应用 D1 migrations → 构建前端 → `wrangler deploy` → 注册第一个 admin。整体大约 15 分钟（不含 Resend 域名验证传播时间）。
 
-## Node 自托管部署（实验中）
+## Node 自托管部署（Docker）
 
-如果你有自己的 VPS，希望把 v2 TypeScript 后端跑在 Node + SQLite 上而不是 Cloudflare：
+如果你有自己的 VPS，整个应用打成一个 Docker 镜像跑：v2 TS 后端 + 前端 SPA + SQLite + 内置 cron 调度器全在一个容器里。
+
+```bash
+mkdir -p qreminder && cd qreminder
+curl -fsSL https://raw.githubusercontent.com/yzgolden86/Qreminder/main/runtimes/node/docker-compose.yml -o docker-compose.yml
+curl -fsSL https://raw.githubusercontent.com/yzgolden86/Qreminder/main/runtimes/node/.env.example -o .env
+
+# 编辑 .env，至少填好 BETTER_AUTH_SECRET 和 APP_URL
+docker compose pull
+docker compose up -d
+```
+
+镜像默认从 `ghcr.io/yzgolden86/qreminder:latest` 拉。完整步骤、注册第一个 admin、反向代理 + 自定义域名、备份和故障排查见 [docs/NODE_DOCKER_DEPLOY.md](./docs/NODE_DOCKER_DEPLOY.md)。
+
+如果不想用 Docker，可以直接源码起：
 
 ```bash
 git clone https://github.com/yzgolden86/Qreminder.git
@@ -107,24 +121,6 @@ pnpm install --frozen-lockfile
 pnpm --filter @qreminder/client build
 pnpm --filter @qreminder/runtime-node start
 ```
-
-环境变量参考 [runtimes/node/src/index.ts](./runtimes/node/src/index.ts)，关键项：
-
-| 变量 | 默认 | 说明 |
-| --- | --- | --- |
-| `PORT` | `3000` | 监听端口。 |
-| `DATABASE_PATH` | `./data/qreminder.db` | SQLite 文件路径。 |
-| `ASSETS_DIR` | `./data/assets` | Logo 等资源存储目录。 |
-| `BETTER_AUTH_SECRET` | （必填） | 32+ 位随机串，可用 `openssl rand -hex 32` 生成。 |
-| `APP_URL` | `http://localhost:3000` | 对外访问地址，用于邮件链接和 cookie 域。 |
-| `TRUSTED_ORIGINS` | 空 | Better Auth cookie 域允许列表，多个用逗号分隔。 |
-| `SIGNUP_ENABLED` | `false` | 第一次需要打开注册第一个 admin 时设为 `true`，注册完改回 `false`。 |
-| `SIGNUP_ALLOWLIST` | 空 | 注册邮箱白名单（仅 `SIGNUP_ENABLED=true` 时生效）。 |
-| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` | 空 | 配置后启用密码找回与续费提醒邮件。 |
-| `NOTIFICATION_SCHEDULER_ENABLED` | `true` | 是否启用内置 node-cron 调度器。 |
-| `NOTIFICATION_SCHEDULER_CRON` | `* * * * *` | 调度 cron 表达式。 |
-
-> Node 模式还没有专门的 Docker 镜像和 compose 模板，欢迎 PR 一份 [runtimes/node/Dockerfile](./runtimes/node/Dockerfile) 配套的部署脚本。
 
 ## 本地开发
 

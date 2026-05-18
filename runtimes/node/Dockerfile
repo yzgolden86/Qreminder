@@ -1,15 +1,38 @@
-FROM node:22-alpine AS builder
-WORKDIR /app
-RUN corepack enable
-COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
-COPY packages/shared ./packages/shared
-COPY packages/server-ts ./packages/server-ts
-COPY runtimes/node ./runtimes/node
-RUN pnpm install --frozen-lockfile
+# syntax=docker/dockerfile:1.7
 
-FROM node:22-alpine
+FROM node:22-alpine AS builder
+RUN corepack enable
+RUN apk add --no-cache python3 make g++
 WORKDIR /app
-COPY --from=builder /app /app
+
+COPY . .
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @qreminder/client build
+
+FROM node:22-alpine AS runner
+RUN apk add --no-cache wget tini
+
+RUN addgroup -S -g 1000 qreminder \
+  && adduser -S -D -h /home/qreminder -u 1000 -G qreminder qreminder \
+  && mkdir -p /data /home/qreminder \
+  && chown -R qreminder:qreminder /data /home/qreminder
+
+WORKDIR /app
+COPY --from=builder --chown=qreminder:qreminder /app /app
+
+USER qreminder
+
+ENV HOME=/home/qreminder
 ENV NODE_ENV=production
+ENV PORT=3000
+ENV DATABASE_PATH=/data/qreminder.db
+ENV ASSETS_DIR=/data/assets
+
 EXPOSE 3000
-CMD ["pnpm", "--filter", "@qreminder/runtime-node", "start"]
+VOLUME ["/data"]
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD wget --spider --quiet "http://127.0.0.1:3000/api/setup-status" || exit 1
+
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["node", "--experimental-strip-types", "runtimes/node/src/index.ts"]
