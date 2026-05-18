@@ -57,7 +57,7 @@ jobs:
             echo "D1 not found, creating..."
             CREATE_OUT="$(wrangler d1 create "$NAME")"
             echo "$CREATE_OUT"
-            DB_ID="$(printf '%s\n' "$CREATE_OUT" | sed -n 's/.*database_id = "\([^"]*\)".*/\1/p' | head -n1)"
+            DB_ID="$(printf '%s\n' "$CREATE_OUT" | sed -n 's/.*database_id["[:space:]]*[:=][[:space:]]*"\([0-9a-f-]\{36\}\)".*/\1/p' | head -n1)"
           else
             echo "D1 already exists, reusing."
           fi
