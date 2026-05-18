@@ -1,0 +1,28 @@
+name = "renewlet"
+main = "src/index.ts"
+compatibility_date = "2025-05-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+# 非 secret 配置；secret 用 `wrangler secret put` 设置（见 docs/WORKER_DEPLOY.md §2）。
+# 部署后第一次需要把 SIGNUP_ENABLED 临时设为 "true" 注册第一个 admin，再改回 "false"。
+SIGNUP_ENABLED = "false"
+SIGNUP_ALLOWLIST = ""
+TRUSTED_ORIGINS = ""
+
+[assets]
+directory = "../../packages/client/dist"
+binding = "ASSETS"
+
+[triggers]
+crons = ["* * * * *"]
+
+[[d1_databases]]
+binding = "RENEWLET_DB"
+database_name = "renewlet"
+database_id = "REPLACE_ME_AFTER_wrangler_d1_create"
+migrations_dir = "../../packages/server-ts/drizzle"
+
+[[r2_buckets]]
+binding = "RENEWLET_ASSETS"
+bucket_name = "renewlet-assets"
