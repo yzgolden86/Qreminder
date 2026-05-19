@@ -2,7 +2,9 @@ import { useState } from "react";
 import { StatCard } from "@/components/ui/stat-card";
 import { SubscriptionCard } from "@/components/subscription-card";
 import { SpendingChart } from "@/components/spending-chart";
-import { UpcomingRenewals } from "@/components/upcoming-renewals";
+import { BillingCycleChart } from "@/components/billing-cycle-chart";
+import { MonthlyTop5Chart } from "@/components/monthly-top5-chart";
+import { RenewalTop5Chart } from "@/components/renewal-top5-chart";
 import { AddSubscriptionDialog } from "@/components/add-subscription-dialog";
 import { EditSubscriptionDialog } from "@/components/edit-subscription-dialog";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
@@ -176,18 +178,30 @@ export default function Home() {
           />
         </div>
 
-        <div className="mb-6 grid gap-6 lg:grid-cols-3">
-          <div className="rounded-xl border border-border bg-card p-6 shadow-card lg:col-span-2">
-            <h3 className="mb-3 text-lg font-semibold text-foreground">
+        <div className="mb-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-xl border border-border bg-card p-5 shadow-card">
+            <h3 className="mb-3 text-sm font-semibold text-foreground">
               {t("dashboard.spendingDistribution")}
             </h3>
             <SpendingChart subscriptions={subscriptions} />
           </div>
-          <div className="rounded-xl border border-border bg-card p-6 shadow-card">
-            <h3 className="mb-4 text-lg font-semibold text-foreground">
-              {t("dashboard.upcomingRenewals")}
+          <div className="rounded-xl border border-border bg-card p-5 shadow-card">
+            <h3 className="mb-3 text-sm font-semibold text-foreground">
+              {t("dashboard.billingCycleDistribution")}
             </h3>
-            <UpcomingRenewals subscriptions={subscriptions} timeZone={timeZone} />
+            <BillingCycleChart subscriptions={subscriptions} />
+          </div>
+          <div className="rounded-xl border border-border bg-card p-5 shadow-card">
+            <h3 className="mb-3 text-sm font-semibold text-foreground">
+              {t("dashboard.renewalTop5")}
+            </h3>
+            <RenewalTop5Chart subscriptions={subscriptions} timeZone={timeZone} />
+          </div>
+          <div className="rounded-xl border border-border bg-card p-5 shadow-card">
+            <h3 className="mb-3 text-sm font-semibold text-foreground">
+              {t("dashboard.monthlyTop5")}
+            </h3>
+            <MonthlyTop5Chart subscriptions={subscriptions} />
           </div>
         </div>
 
