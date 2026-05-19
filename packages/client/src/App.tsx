@@ -8,6 +8,7 @@ import Login from "@/pages/login";
 import ForgotPassword from "@/pages/forgot-password";
 import ResetPassword from "@/pages/reset-password";
 import ChangeCredentials from "@/pages/change-credentials";
+import Register from "@/pages/register";
 import NotFound from "@/pages/not-found";
 import Privacy from "@/pages/privacy";
 import Terms from "@/pages/terms";
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/admin/users" element={<AdminUsers />} />
       </Route>
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/change-credentials" element={<ChangeCredentials />} />

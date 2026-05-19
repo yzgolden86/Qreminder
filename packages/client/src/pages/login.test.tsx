@@ -7,6 +7,7 @@ import Login from "./login";
 const mocks = vi.hoisted(() => ({
   signInEmail: vi.fn(),
   usePasswordResetAvailability: vi.fn(),
+  useSignupStatus: vi.fn(),
 }));
 
 vi.mock("@/lib/auth-client", () => ({
@@ -21,6 +22,10 @@ vi.mock("@/hooks/use-password-reset-availability", () => ({
   usePasswordResetAvailability: mocks.usePasswordResetAvailability,
 }));
 
+vi.mock("@/hooks/use-signup-status", () => ({
+  useSignupStatus: mocks.useSignupStatus,
+}));
+
 function renderLogin() {
   return render(
     <MemoryRouter>
@@ -32,6 +37,7 @@ function renderLogin() {
 describe("Login page", () => {
   beforeEach(() => {
     mocks.usePasswordResetAvailability.mockReturnValue(false);
+    mocks.useSignupStatus.mockReturnValue({ data: false, isPending: false });
   });
 
   it("uses login autofill metadata for email and password fields", () => {
