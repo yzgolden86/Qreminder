@@ -20,8 +20,6 @@ export interface WorkerEnv {
   BETTER_AUTH_SECRET: string;
   APP_URL: string;
   TRUSTED_ORIGINS?: string;
-  SIGNUP_ENABLED?: string;
-  SIGNUP_ALLOWLIST?: string;
 }
 
 const scheduler: SchedulerAdapter = { kind: "cf-cron-trigger" };
@@ -55,8 +53,6 @@ function buildApp(env: WorkerEnv) {
       secret: env.BETTER_AUTH_SECRET,
       baseURL: env.APP_URL,
       trustedOrigins: parseList(env.TRUSTED_ORIGINS),
-      signupEnabled: env.SIGNUP_ENABLED === "true",
-      signupAllowlist: parseList(env.SIGNUP_ALLOWLIST),
     },
   };
   return createApp(deps);

@@ -15,6 +15,13 @@
       "when": 1779119356990,
       "tag": "0001_loose_synch",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1779155937906,
+      "tag": "0002_cultured_the_enforcers",
+      "breakpoints": true
     }
   ]
 }

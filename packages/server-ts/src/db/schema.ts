@@ -113,6 +113,12 @@ export const customConfigs = sqliteTable(
   }),
 );
 
+export const appSettings = sqliteTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: text("value", { mode: "json" }).notNull(),
+  updatedAt: integer("updatedAt", { mode: "timestamp_ms" }).notNull(),
+});
+
 export const assets = sqliteTable("assets", {
   id: text("id").primaryKey(),
   user: text("user").notNull().references(() => users.id),

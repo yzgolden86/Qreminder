@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Header } from "@/components/header";
 import { StatCard } from "@/components/ui/stat-card";
 import { SubscriptionCard } from "@/components/subscription-card";
 import { SpendingChart } from "@/components/spending-chart";
@@ -134,22 +133,12 @@ export default function Home() {
   const sortOptionLabel = t(SORT_OPTION_LABEL_KEYS[sortOption]);
 
   if (subscriptionsQuery.isPending || settingsQuery.isPending) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header onAddSubscription={handleAddSubscription} />
-        <main className="mx-auto max-w-7xl px-6 py-8">
-          <DashboardSkeleton />
-        </main>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header onAddSubscription={handleAddSubscription} />
-
-      <main className="mx-auto max-w-7xl px-6 py-8">
-        <div className="mb-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+    <>
+      <div className="mb-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             title={t("dashboard.monthlySpend")}
             value={formatCurrency(totalMonthly, defaultCurrency)}
@@ -414,7 +403,6 @@ export default function Home() {
             ))}
           </div>
         )}
-      </main>
 
       <EditSubscriptionDialog
         subscription={editingSubscription}
@@ -422,6 +410,6 @@ export default function Home() {
         onOpenChange={handleEditDialogOpenChange}
         onSave={handleSaveSubscription}
       />
-    </div>
+    </>
   );
 }

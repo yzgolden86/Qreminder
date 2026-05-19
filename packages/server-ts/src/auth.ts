@@ -4,6 +4,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import type { Database } from "./db/types.js";
 import type { MailerAdapter } from "./adapters/mailer.js";
 import * as schema from "./db/schema.js";
+import { readSignupConfig, isEmailAllowedBySignupConfig } from "./signup-config.js";
 
 export interface AuthOptions {
   db: Database;
@@ -11,16 +12,9 @@ export interface AuthOptions {
   secret: string;
   baseURL: string;
   trustedOrigins: string[];
-  signupEnabled: boolean;
-  signupAllowlist: string[];
 }
 
 export function createAuth(options: AuthOptions) {
-  const allowlist = new Set(
-    options.signupAllowlist.map((email) => email.trim().toLowerCase()).filter(Boolean),
-  );
-  const allowSignup = options.signupEnabled;
-
   return betterAuth({
     secret: options.secret,
     baseURL: options.baseURL,
@@ -59,11 +53,12 @@ export function createAuth(options: AuthOptions) {
         if (ctx.path !== "/sign-up/email") {
           return;
         }
-        if (!allowSignup) {
+        const config = await readSignupConfig(options.db);
+        if (!config.enabled) {
           throw new APIError("FORBIDDEN", { message: "signup_disabled" });
         }
         const email = String(ctx.body?.email ?? "").trim().toLowerCase();
-        if (allowlist.size > 0 && !allowlist.has(email)) {
+        if (!isEmailAllowedBySignupConfig(email, config)) {
           throw new APIError("FORBIDDEN", { message: "signup_not_allowed" });
         }
       }),

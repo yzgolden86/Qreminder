@@ -14,7 +14,6 @@
  */
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { Shield, UserPlus } from "lucide-react";
-import { Header } from "@/components/header";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import { apiFetch, ApiError } from "@/lib/api-client";
@@ -340,10 +339,8 @@ export default function AdminUsersPage() {
   }, [patchUser, t]);
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <>
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <Shield className="h-7 w-7 text-primary" />
             <div>
@@ -424,7 +421,6 @@ export default function AdminUsersPage() {
             ))
           )}
         </section>
-      </main>
-    </div>
+    </>
   );
 }

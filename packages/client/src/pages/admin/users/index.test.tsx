@@ -28,10 +28,6 @@ const mocks = vi.hoisted(() => ({
   useSession: vi.fn(),
 }));
 
-vi.mock("@/components/header", () => ({
-  Header: () => <header data-testid="header" />,
-}));
-
 vi.mock("@/components/ui/sonner", () => ({
   toast: {
     error: mocks.toastError,

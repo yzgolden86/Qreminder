@@ -16,7 +16,6 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Header } from '@/components/header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -175,17 +174,14 @@ export function SettingsScreen() {
   useUnsavedChangesGuard(hasUnsavedChanges, t("settings.unsavedLeavePrompt"), handleDiscardChanges);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <Header />
+    <div className="flex flex-col">
+      <div className={cn("flex-1", hasUnsavedChanges && "pb-24")}>
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-foreground">{t("settings.title")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("settings.subtitle")}</p>
+        </div>
 
-      <main className={cn("flex-1", hasUnsavedChanges && "pb-24")}>
-        <div className="mx-auto max-w-7xl px-6 py-8">
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-foreground">{t("settings.title")}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">{t("settings.subtitle")}</p>
-          </div>
-
-          <div className="grid gap-8">
+        <div className="grid gap-8">
             <AccountSettingsSection
               accountEmail={accountEmail}
               canAccessPocketBaseAdmin={canAccessPocketBaseAdmin}
@@ -459,7 +455,6 @@ export function SettingsScreen() {
 
           </div>
         </div>
-      </main>
 
       {hasUnsavedChanges ? (
         <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card/95 p-4 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] backdrop-blur-sm">

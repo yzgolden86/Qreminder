@@ -1,27 +1,28 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import { MainLayout } from "@/components/main-layout";
 import Dashboard from "@/pages/dashboard";
-import Subscriptions from "@/pages/subscriptions";
 import Calendar from "@/pages/calendar";
-import Statistics from "@/pages/statistics";
 import Settings from "@/pages/settings";
-import Login from "@/pages/login";
-import Privacy from "@/pages/privacy";
-import Terms from "@/pages/terms";
 import AdminUsers from "@/pages/admin/users";
+import Login from "@/pages/login";
 import ForgotPassword from "@/pages/forgot-password";
 import ResetPassword from "@/pages/reset-password";
 import ChangeCredentials from "@/pages/change-credentials";
 import NotFound from "@/pages/not-found";
+import Privacy from "@/pages/privacy";
+import Terms from "@/pages/terms";
+import Cards from "@/pages/cards";
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Dashboard />} />
-      <Route path="/subscriptions" element={<Subscriptions />} />
-      <Route path="/calendar" element={<Calendar />} />
-      <Route path="/statistics" element={<Statistics />} />
-      <Route path="/settings" element={<Settings />} />
-      <Route path="/admin/users" element={<AdminUsers />} />
+      <Route element={<MainLayout />}>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/calendar" element={<Calendar />} />
+        <Route path="/cards" element={<Cards />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/admin/users" element={<AdminUsers />} />
+      </Route>
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />

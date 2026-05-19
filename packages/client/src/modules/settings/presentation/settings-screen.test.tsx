@@ -17,10 +17,6 @@ const mocks = vi.hoisted(() => ({
   useSettingsFormController: vi.fn(),
 }));
 
-vi.mock("@/components/header", () => ({
-  Header: () => <header data-testid="header" />,
-}));
-
 vi.mock("@/modules/custom-config/presentation/config-manager-dialog", () => ({
   ConfigManagerDialog: () => null,
 }));

@@ -11,6 +11,7 @@ import { assetsRouter } from "./routes/assets.js";
 import { adminUsersRouter } from "./routes/admin-users.js";
 import { customConfigsRouter } from "./routes/custom-configs.js";
 import { accountRouter } from "./routes/account.js";
+import { signupConfigRouter } from "./routes/signup-config.js";
 
 export interface AppDeps {
   db: Database;
@@ -21,8 +22,6 @@ export interface AppDeps {
     secret: string;
     baseURL: string;
     trustedOrigins: string[];
-    signupEnabled: boolean;
-    signupAllowlist: string[];
   };
 }
 
@@ -59,8 +58,6 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
     secret: deps.auth.secret,
     baseURL: deps.auth.baseURL,
     trustedOrigins,
-    signupEnabled: deps.auth.signupEnabled,
-    signupAllowlist: deps.auth.signupAllowlist,
   });
 
   app.use("*", async (c, next) => {
@@ -81,11 +78,18 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   app.route("/api/custom-configs", customConfigsRouter);
   app.route("/api/assets", assetsRouter);
   app.route("/api/app/admin/users", adminUsersRouter);
+  app.route("/api/app/admin/signup-config", signupConfigRouter);
   app.route("/api/account", accountRouter);
 
   app.get("/api/app/health", (c) =>
     c.json({ status: "ok", runtime: deps.scheduler.kind }),
   );
+
+  app.get("/api/app/signup-status", async (c) => {
+    const { readSignupConfig } = await import("./signup-config.js");
+    const config = await readSignupConfig(deps.db);
+    return c.json({ enabled: config.enabled });
+  });
 
   return app;
 }

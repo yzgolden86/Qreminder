@@ -66,11 +66,6 @@ const deps: AppDeps = {
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean),
-    signupEnabled: process.env.SIGNUP_ENABLED === "true",
-    signupAllowlist: (process.env.SIGNUP_ALLOWLIST ?? "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean),
   },
 };
 
