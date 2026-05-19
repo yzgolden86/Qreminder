@@ -109,151 +109,137 @@ export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDe
   return (
     <>
     <div className={cn(
-      "group relative h-full overflow-hidden rounded-xl border border-border bg-card p-5 shadow-card transition-all duration-300 hover:bg-card-hover",
+      "group relative h-full overflow-hidden rounded-xl border border-border bg-card shadow-card transition-all duration-200 hover:shadow-md hover:border-border/80",
       isRenewingSoon && "border-warning/40",
       isTrialEndingSoon && "animate-pulse-glow"
     )}>
-      <div className="flex items-start gap-4">
-        {/* Logo（有则显示图片，否则显示订阅名称前 2 个字符作为占位） */}
+      <div className="flex items-center gap-4 p-5 pb-3">
         <div className={cn(
-          "flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br text-lg font-bold",
+          "flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl text-xl font-bold",
         )} style={logoBackgroundStyle}>
           {subscription.logo && !logoLoadFailed ? (
             <AuthorizedImage
               src={subscription.logo}
               alt={subscription.name}
-              className="h-full w-full object-contain p-1"
+              className="h-full w-full object-contain p-1.5"
               onError={() => setLogoLoadFailed(true)}
             />
           ) : (
-            subscription.name.slice(0, 2).toUpperCase()
+            <span style={{ color: categoryColor }}>{subscription.name.slice(0, 2).toUpperCase()}</span>
           )}
         </div>
 
-        {/* Content */}
-        <div className="min-w-0 flex-1 grid gap-3">
-          <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-start gap-x-3 gap-y-2">
-            <TruncatedTooltipText
-              as="h3"
-              text={subscription.name}
-              className="min-w-0 font-semibold text-foreground"
-            />
-
-            <div className="shrink-0 text-right">
-              <p className="whitespace-nowrap text-xl font-bold text-foreground">
-                {formatCurrency(subscription.price, subscription.currency)}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {localizedLabel(CYCLE_LABELS[subscription.billingCycle], locale)}
-              </p>
-            </div>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 shrink-0 text-muted-foreground transition-colors hover:text-foreground"
-                  aria-label={t("subscription.moreActions")}
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onEdit?.(subscription.id)}>
-                  {t("common.edit")}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setShowDeleteDialog(true)}
-                  className="text-destructive"
-                >
-                  {t("common.delete")}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <div className="col-span-full flex flex-wrap items-center gap-2">
-              <Badge
-                variant="outline"
-                className="max-w-full shrink-0 overflow-hidden whitespace-nowrap text-xs"
-                style={categoryBadgeStyle}
-              >
-                <TruncatedTooltipText text={categoryLabel} className="block max-w-full" />
-              </Badge>
-              <Badge
-                variant="outline"
-                className={cn("shrink-0 whitespace-nowrap text-xs", statusStyles[subscription.status])}
-              >
-                {localizedLabel(STATUS_LABELS[subscription.status], locale)}
-              </Badge>
-            </div>
-          </div>
-
-          {/* Date info */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-            {/* Start date */}
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <CalendarClock className="h-3.5 w-3.5" />
-              <span className="text-xs">
-                {t("subscription.card.startPrefix")} {formatDateOnly(subscription.startDate)}
-              </span>
-            </div>
-            
-            {/* Next billing info */}
-            <div className={cn(
-              "flex items-center gap-1.5",
-              isRenewingSoon ? "text-warning" : "text-muted-foreground"
-            )}>
-              <Calendar className="h-3.5 w-3.5" />
-              <span className="text-xs">
-                {isRenewingSoon ? (
-                  daysUntilRenewal === 0 ? t("subscription.card.renewsToday") : t("subscription.card.renewsInDays", { days: daysUntilRenewal })
-                ) : (
-                  t("subscription.card.duePrefix", { date: formatDateOnly(subscription.nextBillingDate) })
-                )}
-              </span>
-            </div>
-
-            {/* Payment method with icon */}
-            {subscription.paymentMethod && (() => {
-              const paymentConfig = config.paymentMethods.find(
-                m => m.value === subscription.paymentMethod
-              );
-              return (
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  {paymentConfig?.icon ? (
-                    <AuthorizedImage src={paymentConfig.icon} alt="" className="h-3.5 w-3.5 object-contain" />
-                  ) : (
-                    <CreditCard className="h-3.5 w-3.5" />
-                  )}
-                  <span className="text-xs">{paymentConfig ? label(paymentConfig.labels) : subscription.paymentMethod}</span>
-                </div>
-              );
-            })()}
-
-            {/* Reminder setting - only show in list mode */}
-            {viewMode === 'list' && (
-              <div className="flex items-center gap-1.5 text-muted-foreground">
-                <Bell className="h-3.5 w-3.5" />
-                <span className="text-xs">
-                  {subscription.reminderOffsets.length === 0
-                    ? t("subscription.card.reminderEmpty")
-                    : t("subscription.card.reminderOffsets", { offsets: subscription.reminderOffsets.join("/") })}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Trial warning */}
-          {isTrialEndingSoon && subscription.trialEndDate && (
-            <div className="flex items-center gap-2 rounded-md bg-warning/10 px-3 py-2 text-sm text-warning">
-              <span className="font-medium">
-                {t("subscription.card.trialEnds", { date: formatDateOnly(subscription.trialEndDate, "monthDay") })}
-              </span>
-            </div>
-          )}
+        <div className="min-w-0 flex-1">
+          <TruncatedTooltipText
+            as="h3"
+            text={subscription.name}
+            className="min-w-0 text-base font-semibold text-foreground"
+          />
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {localizedLabel(CYCLE_LABELS[subscription.billingCycle], locale)}
+          </p>
         </div>
+
+        <div className="shrink-0 text-right">
+          <p className="whitespace-nowrap text-2xl font-bold tracking-tight text-foreground">
+            {formatCurrency(subscription.price, subscription.currency)}
+          </p>
+        </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+              aria-label={t("subscription.moreActions")}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onEdit?.(subscription.id)}>
+              {t("common.edit")}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => setShowDeleteDialog(true)}
+              className="text-destructive"
+            >
+              {t("common.delete")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
+
+      <div className="flex flex-wrap items-center gap-2 px-5 pb-3">
+        <Badge
+          variant="outline"
+          className="max-w-full shrink-0 overflow-hidden whitespace-nowrap text-xs"
+          style={categoryBadgeStyle}
+        >
+          <TruncatedTooltipText text={categoryLabel} className="block max-w-full" />
+        </Badge>
+        <Badge
+          variant="outline"
+          className={cn("shrink-0 whitespace-nowrap text-xs", statusStyles[subscription.status])}
+        >
+          {localizedLabel(STATUS_LABELS[subscription.status], locale)}
+        </Badge>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border/50 px-5 py-3 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1.5">
+          <CalendarClock className="h-3.5 w-3.5" />
+          <span>{t("subscription.card.startPrefix")} {formatDateOnly(subscription.startDate)}</span>
+        </div>
+
+        <div className={cn(
+          "flex items-center gap-1.5",
+          isRenewingSoon && "text-warning"
+        )}>
+          <Calendar className="h-3.5 w-3.5" />
+          <span>
+            {isRenewingSoon ? (
+              daysUntilRenewal === 0 ? t("subscription.card.renewsToday") : t("subscription.card.renewsInDays", { days: daysUntilRenewal })
+            ) : (
+              t("subscription.card.duePrefix", { date: formatDateOnly(subscription.nextBillingDate) })
+            )}
+          </span>
+        </div>
+
+        {subscription.paymentMethod && (() => {
+          const paymentConfig = config.paymentMethods.find(
+            m => m.value === subscription.paymentMethod
+          );
+          return (
+            <div className="flex items-center gap-1.5">
+              {paymentConfig?.icon ? (
+                <AuthorizedImage src={paymentConfig.icon} alt="" className="h-3.5 w-3.5 object-contain" />
+              ) : (
+                <CreditCard className="h-3.5 w-3.5" />
+              )}
+              <span>{paymentConfig ? label(paymentConfig.labels) : subscription.paymentMethod}</span>
+            </div>
+          );
+        })()}
+
+        {viewMode === 'list' && (
+          <div className="flex items-center gap-1.5">
+            <Bell className="h-3.5 w-3.5" />
+            <span>
+              {subscription.reminderOffsets.length === 0
+                ? t("subscription.card.reminderEmpty")
+                : t("subscription.card.reminderOffsets", { offsets: subscription.reminderOffsets.join("/") })}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {isTrialEndingSoon && subscription.trialEndDate && (
+        <div className="flex items-center gap-2 border-t border-warning/20 bg-warning/5 px-5 py-2.5 text-xs font-medium text-warning">
+          {t("subscription.card.trialEnds", { date: formatDateOnly(subscription.trialEndDate, "monthDay") })}
+        </div>
+      )}
     </div>
 
     <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

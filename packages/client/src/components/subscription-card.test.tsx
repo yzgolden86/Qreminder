@@ -112,7 +112,7 @@ describe("SubscriptionCard", () => {
     const statusBadge = screen.getByText("活跃").closest("div");
     const subscriptionName = screen.getByText(baseSubscription.name);
 
-    expect(badgeGroup).toHaveClass("col-span-full", "flex", "flex-wrap", "items-center", "gap-2");
+    expect(badgeGroup).toHaveClass("flex", "flex-wrap", "items-center", "gap-2");
     expect(badgeGroup).not.toHaveClass("overflow-hidden");
     expect(subscriptionName).toHaveAttribute("data-slot", "truncated-tooltip-text");
     expect(subscriptionName).not.toHaveAttribute("title");
