@@ -45,29 +45,30 @@ export interface AppEnv {
 
 export function createApp(deps: AppDeps): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
+
+  const baseOrigin = (() => {
+    try { return new URL(deps.auth.baseURL).origin; } catch { return ""; }
+  })();
+  const trustedOrigins = deps.auth.trustedOrigins.length > 0
+    ? deps.auth.trustedOrigins
+    : baseOrigin ? [baseOrigin] : [];
+
   const auth = createAuth({
     db: deps.db,
     mailer: deps.mailer,
     secret: deps.auth.secret,
     baseURL: deps.auth.baseURL,
-    trustedOrigins: deps.auth.trustedOrigins,
+    trustedOrigins,
     signupEnabled: deps.auth.signupEnabled,
     signupAllowlist: deps.auth.signupAllowlist,
   });
 
-  let bootstrapPromise: Promise<void> | null = null;
-  const runBootstrap = () => {
-    if (!bootstrapPromise) {
-      bootstrapPromise = ensureDefaultAdmin(deps.db, deps.auth.secret).catch((err) => {
-        console.error("[bootstrap] ensureDefaultAdmin failed:", err);
-        bootstrapPromise = null;
-      });
-    }
-    return bootstrapPromise;
-  };
-
   app.use("*", async (c, next) => {
-    await runBootstrap();
+    try {
+      await ensureDefaultAdmin(deps.db, deps.auth.secret, deps.auth.baseURL);
+    } catch (err) {
+      console.error("[bootstrap] ensureDefaultAdmin failed:", err);
+    }
     c.set("deps", deps);
     c.set("auth", auth);
     await next();

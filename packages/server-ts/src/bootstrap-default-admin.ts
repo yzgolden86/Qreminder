@@ -7,13 +7,21 @@ import type { Database } from "./db/types.js";
 export const DEFAULT_ADMIN_EMAIL = "admin@qreminder.local";
 export const DEFAULT_ADMIN_PASSWORD = "Qreminder@2026";
 
-export async function ensureDefaultAdmin(db: Database, secret: string): Promise<void> {
+let bootstrapped = false;
+
+export async function ensureDefaultAdmin(db: Database, secret: string, baseURL: string): Promise<void> {
+  if (bootstrapped) return;
+
   const rows = await db.select({ count: sql<number>`count(*)` }).from(schema.users);
   const count = Number(rows[0]?.count ?? 0);
-  if (count > 0) return;
+  if (count > 0) {
+    bootstrapped = true;
+    return;
+  }
 
   const bootstrapAuth = betterAuth({
     secret,
+    baseURL,
     database: drizzleAdapter(db, {
       provider: "sqlite",
       schema: {
@@ -57,5 +65,6 @@ export async function ensureDefaultAdmin(db: Database, secret: string): Promise<
     })
     .where(eq(schema.users.email, DEFAULT_ADMIN_EMAIL));
 
+  bootstrapped = true;
   console.log(`[bootstrap] default admin created: ${DEFAULT_ADMIN_EMAIL}`);
 }
