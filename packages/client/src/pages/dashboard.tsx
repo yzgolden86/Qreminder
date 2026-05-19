@@ -5,6 +5,7 @@ import { SpendingChart } from "@/components/spending-chart";
 import { BillingCycleChart } from "@/components/billing-cycle-chart";
 import { MonthlyTop5Chart } from "@/components/monthly-top5-chart";
 import { RenewalTop5Chart } from "@/components/renewal-top5-chart";
+import { UpcomingRenewalsStrip } from "@/components/upcoming-renewals-strip";
 import { AddSubscriptionDialog } from "@/components/add-subscription-dialog";
 import { EditSubscriptionDialog } from "@/components/edit-subscription-dialog";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
@@ -203,6 +204,10 @@ export default function Home() {
             </h3>
             <MonthlyTop5Chart subscriptions={subscriptions} />
           </div>
+        </div>
+
+        <div className="mb-6">
+          <UpcomingRenewalsStrip subscriptions={subscriptions} timeZone={timeZone} />
         </div>
 
         <div className="mb-4 flex items-center justify-between">
