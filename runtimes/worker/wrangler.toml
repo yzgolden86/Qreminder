@@ -5,7 +5,7 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 # 非 secret 配置；secret 用 `wrangler secret put` 设置（见 docs/WORKER_DEPLOY.md §2）。
-# 部署后第一次需要把 SIGNUP_ENABLED 临时设为 "true" 注册第一个 admin，再改回 "false"。
+# 首次部署会自动创建默认 admin（admin@qreminder.local / Qreminder@2026），登录后强制改凭证。
 SIGNUP_ENABLED = "false"
 SIGNUP_ALLOWLIST = ""
 TRUSTED_ORIGINS = ""

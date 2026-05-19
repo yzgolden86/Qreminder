@@ -8,6 +8,7 @@ export const users = sqliteTable("users", {
   image: text("image"),
   role: text("role", { enum: ["admin", "user"] }).notNull().default("user"),
   banned: integer("banned", { mode: "boolean" }).notNull().default(false),
+  mustChangeCredentials: integer("mustChangeCredentials", { mode: "boolean" }).notNull().default(false),
   createdAt: integer("createdAt", { mode: "timestamp_ms" }).notNull(),
   updatedAt: integer("updatedAt", { mode: "timestamp_ms" }).notNull(),
 });

@@ -51,6 +51,7 @@ export function createAuth(options: AuthOptions) {
       additionalFields: {
         role: { type: "string", defaultValue: "user", input: false },
         banned: { type: "boolean", defaultValue: false, input: false },
+        mustChangeCredentials: { type: "boolean", defaultValue: false, input: false },
       },
     },
     hooks: {

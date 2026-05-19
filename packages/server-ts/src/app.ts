@@ -4,11 +4,13 @@ import type { MailerAdapter } from "./adapters/mailer.js";
 import type { SchedulerAdapter } from "./adapters/scheduler.js";
 import type { Database } from "./db/types.js";
 import { createAuth, type Auth } from "./auth.js";
+import { ensureDefaultAdmin } from "./bootstrap-default-admin.js";
 import { subscriptionsRouter } from "./routes/subscriptions.js";
 import { settingsRouter } from "./routes/settings.js";
 import { assetsRouter } from "./routes/assets.js";
 import { adminUsersRouter } from "./routes/admin-users.js";
 import { customConfigsRouter } from "./routes/custom-configs.js";
+import { accountRouter } from "./routes/account.js";
 
 export interface AppDeps {
   db: Database;
@@ -53,7 +55,19 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
     signupAllowlist: deps.auth.signupAllowlist,
   });
 
+  let bootstrapPromise: Promise<void> | null = null;
+  const runBootstrap = () => {
+    if (!bootstrapPromise) {
+      bootstrapPromise = ensureDefaultAdmin(deps.db, deps.auth.secret).catch((err) => {
+        console.error("[bootstrap] ensureDefaultAdmin failed:", err);
+        bootstrapPromise = null;
+      });
+    }
+    return bootstrapPromise;
+  };
+
   app.use("*", async (c, next) => {
+    await runBootstrap();
     c.set("deps", deps);
     c.set("auth", auth);
     await next();
@@ -66,6 +80,7 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   app.route("/api/custom-configs", customConfigsRouter);
   app.route("/api/assets", assetsRouter);
   app.route("/api/app/admin/users", adminUsersRouter);
+  app.route("/api/account", accountRouter);
 
   app.get("/api/app/health", (c) =>
     c.json({ status: "ok", runtime: deps.scheduler.kind }),

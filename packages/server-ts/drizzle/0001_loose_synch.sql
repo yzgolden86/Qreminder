@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `mustChangeCredentials` integer DEFAULT false NOT NULL;

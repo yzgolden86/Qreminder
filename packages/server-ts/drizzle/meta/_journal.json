@@ -8,6 +8,13 @@
       "when": 1779000301590,
       "tag": "0000_sloppy_rhodey",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1779119356990,
+      "tag": "0001_loose_synch",
+      "breakpoints": true
     }
   ]
 }

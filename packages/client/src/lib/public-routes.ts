@@ -17,7 +17,7 @@ export function isPublicRoutePath(pathname: string): boolean {
     pathname === "/login" ||
     pathname === "/forgot-password" ||
     pathname === "/reset-password" ||
-    pathname === "/setup"
+    pathname === "/change-credentials"
   ) {
     return true;
   }

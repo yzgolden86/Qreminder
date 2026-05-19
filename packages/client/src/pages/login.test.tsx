@@ -7,7 +7,6 @@ import Login from "./login";
 const mocks = vi.hoisted(() => ({
   signInEmail: vi.fn(),
   usePasswordResetAvailability: vi.fn(),
-  useSetupStatus: vi.fn(),
 }));
 
 vi.mock("@/lib/auth-client", () => ({
@@ -22,10 +21,6 @@ vi.mock("@/hooks/use-password-reset-availability", () => ({
   usePasswordResetAvailability: mocks.usePasswordResetAvailability,
 }));
 
-vi.mock("@/hooks/use-setup-status", () => ({
-  useSetupStatus: mocks.useSetupStatus,
-}));
-
 function renderLogin() {
   return render(
     <MemoryRouter>
@@ -37,31 +32,6 @@ function renderLogin() {
 describe("Login page", () => {
   beforeEach(() => {
     mocks.usePasswordResetAvailability.mockReturnValue(false);
-    mocks.useSetupStatus.mockReturnValue({
-      setupRequired: false,
-      setupEnabled: true,
-      isLoading: false,
-    });
-  });
-
-  it("hides the first deployment setup prompt after setup is complete", () => {
-    renderLogin();
-
-    expect(screen.queryByText("首次部署请先前往")).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "初始化管理员" })).not.toBeInTheDocument();
-  });
-
-  it("shows the setup prompt only when setup is required and enabled", () => {
-    mocks.useSetupStatus.mockReturnValue({
-      setupRequired: true,
-      setupEnabled: true,
-      isLoading: false,
-    });
-
-    renderLogin();
-
-    expect(screen.getByText("首次部署请先前往")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "初始化管理员" })).toHaveAttribute("href", "/setup");
   });
 
   it("uses login autofill metadata for email and password fields", () => {

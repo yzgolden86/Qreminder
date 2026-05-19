@@ -24,7 +24,6 @@ import { authClient } from '@/lib/auth-client';
 import { getAuthDisplayMessage } from '@/lib/display-error';
 import { sanitizeNextPath } from '@/lib/redirect';
 import { usePasswordResetAvailability } from '@/hooks/use-password-reset-availability';
-import { useSetupStatus } from '@/hooks/use-setup-status';
 import { useI18n } from '@/i18n/I18nProvider';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -41,9 +40,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<LoginErrors>({});
   const passwordResetEnabled = usePasswordResetAvailability();
-  const setupStatus = useSetupStatus();
   const { t } = useI18n();
-  const showSetupPrompt = setupStatus.setupRequired && setupStatus.setupEnabled;
 
   /** 读取并校验 next 跳转路径（只允许站内路径）。 */
   const getNextPath = () => {
@@ -254,11 +251,6 @@ const Login = () => {
                 </Button>
               </div>
             </form>
-            {showSetupPrompt ? (
-              <p className="text-center text-xs text-muted-foreground">
-                {t("auth.firstDeploy")} <Link href="/setup" className="text-primary hover:underline">{t("auth.setupAdminLink")}</Link>
-              </p>
-            ) : null}
           </div>
         </div>
       </div>

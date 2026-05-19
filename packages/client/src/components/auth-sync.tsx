@@ -41,14 +41,19 @@ export function AuthSync() {
   })();
 
   useEffect(() => {
-    // 等待首轮 session 加载完成；pending 阶段不能把空 data 当成未登录。
     if (isPending) return;
 
     const hasSession = Boolean(sessionData?.session);
+    const mustChange = Boolean((sessionData?.user as { mustChangeCredentials?: boolean })?.mustChangeCredentials);
+
     if (!hasSession && !isPublicRoute && pathname) {
       const qs = searchParams?.toString() ?? "";
       const next = qs ? `${pathname}?${qs}` : pathname;
       router.replace(`/login?next=${encodeURIComponent(next)}`);
+      return;
+    }
+    if (hasSession && mustChange && pathname !== "/change-credentials") {
+      router.replace("/change-credentials");
       return;
     }
     if (hasSession && pathname === "/login") {
