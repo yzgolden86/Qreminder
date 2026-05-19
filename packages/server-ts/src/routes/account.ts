@@ -57,3 +57,50 @@ accountRouter.post("/change-credentials", requireSession, async (c) => {
 
   return c.json({ ok: true });
 });
+
+const changeEmailSchema = z.object({
+  currentPassword: z.string().min(1),
+  newEmail: z.string().email(),
+});
+
+accountRouter.patch("/email", requireSession, async (c) => {
+  const auth = c.get("auth");
+  const user = c.get("user") as { id: string; email: string };
+  const deps = c.get("deps");
+
+  const body = await c.req.json().catch(() => null);
+  const parsed = changeEmailSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "invalid_body", issues: parsed.error.issues }, 400);
+  }
+  const { currentPassword, newEmail } = parsed.data;
+
+  if (newEmail === user.email) {
+    return c.json({ ok: true, email: user.email });
+  }
+
+  const emailTaken = await deps.db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, newEmail))
+    .limit(1);
+  if (emailTaken.length > 0 && emailTaken[0]!.id !== user.id) {
+    return c.json({ error: "email_taken" }, 409);
+  }
+
+  try {
+    await auth.api.changePassword({
+      headers: c.req.raw.headers,
+      body: { currentPassword, newPassword: currentPassword, revokeOtherSessions: false },
+    });
+  } catch {
+    return c.json({ error: "invalid_password" }, 400);
+  }
+
+  await deps.db
+    .update(users)
+    .set({ email: newEmail, updatedAt: new Date() })
+    .where(eq(users.id, user.id));
+
+  return c.json({ ok: true, email: newEmail });
+});

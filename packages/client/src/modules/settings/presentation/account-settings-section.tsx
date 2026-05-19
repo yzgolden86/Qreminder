@@ -30,6 +30,15 @@ export interface AccountSettingsSectionProps {
   setConfirmPassword: (value: string) => void;
   isUpdatingPassword: boolean;
   updatePassword: () => void | Promise<void>;
+  emailDialogOpen: boolean;
+  setEmailDialogOpen: (open: boolean) => void;
+  handleEmailDialogOpenChange: (open: boolean) => void;
+  emailCurrentPassword: string;
+  setEmailCurrentPassword: (value: string) => void;
+  newEmail: string;
+  setNewEmail: (value: string) => void;
+  isUpdatingEmail: boolean;
+  updateEmail: () => void | Promise<void>;
 }
 
 export function AccountSettingsSection({
@@ -47,6 +56,15 @@ export function AccountSettingsSection({
   setConfirmPassword,
   isUpdatingPassword,
   updatePassword,
+  emailDialogOpen,
+  setEmailDialogOpen,
+  handleEmailDialogOpenChange,
+  emailCurrentPassword,
+  setEmailCurrentPassword,
+  newEmail,
+  setNewEmail,
+  isUpdatingEmail,
+  updateEmail,
 }: AccountSettingsSectionProps) {
   const { t } = useI18n();
 
@@ -64,7 +82,18 @@ export function AccountSettingsSection({
                           readOnly
                           className="border-border bg-secondary"
                         />
-                        <p className="text-xs text-muted-foreground">{t("settings.usernameHelp")}</p>
+                        <div className="flex items-center gap-3">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="border-primary/40 text-primary hover:bg-primary/10"
+                            onClick={() => setEmailDialogOpen(true)}
+                          >
+                            {t("settings.email.changeEmail")}
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{t("settings.email.help")}</p>
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                           <Link
                             href="/admin/users"
@@ -185,7 +214,62 @@ export function AccountSettingsSection({
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
-      
+
+                  <Dialog
+                    open={emailDialogOpen}
+                    onOpenChange={handleEmailDialogOpenChange}
+                  >
+                    <DialogContent className="border-border bg-card">
+                      <DialogHeader>
+                        <DialogTitle>{t("settings.email.dialogTitle")}</DialogTitle>
+                        <DialogDescription>
+                          {t("settings.email.dialogDescription")}
+                        </DialogDescription>
+                      </DialogHeader>
+
+                      <div className="grid gap-4">
+                        <div className="grid gap-2">
+                          <Label htmlFor="emailNewEmail">{t("settings.email.newEmailLabel")}</Label>
+                          <Input
+                            id="emailNewEmail"
+                            type="email"
+                            value={newEmail}
+                            onChange={(e) => setNewEmail(e.target.value)}
+                            placeholder={t("settings.email.newEmailPlaceholder")}
+                            className="border-border bg-secondary"
+                            autoComplete="email"
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="emailCurrentPassword">{t("settings.currentPassword")}</Label>
+                          <Input
+                            id="emailCurrentPassword"
+                            type="password"
+                            value={emailCurrentPassword}
+                            onChange={(e) => setEmailCurrentPassword(e.target.value)}
+                            placeholder={t("settings.currentPasswordPlaceholder")}
+                            className="border-border bg-secondary"
+                            autoComplete="current-password"
+                          />
+                        </div>
+                      </div>
+
+                      <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setEmailDialogOpen(false)}>
+                          {t("common.cancel")}
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={updateEmail}
+                          disabled={isUpdatingEmail}
+                          className="bg-primary text-primary-foreground hover:bg-primary-glow"
+                        >
+                          {isUpdatingEmail ? t("common.saving") : t("common.save")}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+
     </>
   );
 }

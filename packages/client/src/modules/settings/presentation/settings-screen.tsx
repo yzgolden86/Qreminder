@@ -40,6 +40,7 @@ import { AccountSettingsSection } from './account-settings-section';
 import { NotificationChannelConfigPanel } from './notification-channel-config-panel';
 import { NotificationChannelList } from './notification-channel-list';
 import { ExchangeRatesSection } from './exchange-rates-section';
+import { RegistrationManagementSection } from './registration-management-section';
 import { CheckboxSettingRow, LoadingButtonContent } from './settings-shared-controls';
 
 function useUnsavedChangesGuard(enabled: boolean, message: string, onConfirmLeave: () => void) {
@@ -135,6 +136,7 @@ export function SettingsScreen() {
     isSavingSettings,
     notificationHistory,
     password,
+    emailChange,
     passwordResetEnabled,
   } = useSettingsFormController();
 
@@ -151,6 +153,17 @@ export function SettingsScreen() {
     isUpdatingPassword,
     updatePassword,
   } = password;
+  const {
+    emailDialogOpen,
+    setEmailDialogOpen,
+    handleEmailDialogOpenChange,
+    emailCurrentPassword,
+    setEmailCurrentPassword,
+    newEmail,
+    setNewEmail,
+    isUpdatingEmail,
+    updateEmail,
+  } = emailChange;
   const timezoneOptions = createTimeZoneSelectOptions(getSupportedTimeZones());
   const defaultCurrencyOptions = createCurrencySelectOptions({
     currencies: customConfig.currencies,
@@ -197,6 +210,15 @@ export function SettingsScreen() {
               setConfirmPassword={setConfirmPassword}
               isUpdatingPassword={isUpdatingPassword}
               updatePassword={updatePassword}
+              emailDialogOpen={emailDialogOpen}
+              setEmailDialogOpen={setEmailDialogOpen}
+              handleEmailDialogOpenChange={handleEmailDialogOpenChange}
+              emailCurrentPassword={emailCurrentPassword}
+              setEmailCurrentPassword={setEmailCurrentPassword}
+              newEmail={newEmail}
+              setNewEmail={setNewEmail}
+              isUpdatingEmail={isUpdatingEmail}
+              updateEmail={updateEmail}
             />
 
           {/* 外观设置 */}
@@ -346,6 +368,8 @@ export function SettingsScreen() {
               />
             </div>
           </section>
+
+          {canAccessPocketBaseAdmin && <RegistrationManagementSection />}
 
           <ExchangeRatesSection
             settings={settings}

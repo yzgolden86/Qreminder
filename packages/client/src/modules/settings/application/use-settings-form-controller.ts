@@ -47,6 +47,7 @@ import { enforceCurrencyConfigPolicy } from "../domain/currency-config-policy";
 import { useAccountIdentity } from "./use-account-email";
 import { useNotificationTest } from "./use-notification-test";
 import { usePasswordChange, type PasswordChangeController } from "./use-password-change";
+import { useEmailChange, type EmailChangeController } from "./use-email-change";
 import {
   useNotificationHistory,
   type NotificationHistoryResponse,
@@ -168,6 +169,7 @@ export interface SettingsFormController {
   handleTestConnection: (channel: NotificationChannel) => void | Promise<void>;
   notificationHistory: SettingsNotificationHistoryController;
   password: PasswordChangeController;
+  emailChange: EmailChangeController;
   passwordResetEnabled: boolean;
 }
 
@@ -205,6 +207,7 @@ export function useSettingsFormController(): SettingsFormController {
   const { toast } = useToast();
   const { t, setLocale } = useI18n();
   const password = usePasswordChange();
+  const emailChange = useEmailChange();
   const passwordResetEnabled = usePasswordResetAvailability();
   const notificationTest = useNotificationTest(settings);
   const notificationHistory = useNotificationHistory();
@@ -565,6 +568,7 @@ export function useSettingsFormController(): SettingsFormController {
     handleTestConnection: notificationTest.testConnection,
     notificationHistory,
     password,
+    emailChange,
     passwordResetEnabled,
   };
 }

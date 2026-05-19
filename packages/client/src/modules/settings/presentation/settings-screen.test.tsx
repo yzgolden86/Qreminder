@@ -21,6 +21,10 @@ vi.mock("@/modules/custom-config/presentation/config-manager-dialog", () => ({
   ConfigManagerDialog: () => null,
 }));
 
+vi.mock("./registration-management-section", () => ({
+  RegistrationManagementSection: () => null,
+}));
+
 vi.mock("@/components/theme-selector", () => ({
   ThemeSelector: () => null,
 }));
@@ -112,6 +116,17 @@ function createControllerState(overrides: {
       setConfirmPassword: fn,
       isUpdatingPassword: false,
       updatePassword: fn,
+    },
+    emailChange: {
+      emailDialogOpen: false,
+      setEmailDialogOpen: fn,
+      handleEmailDialogOpenChange: fn,
+      emailCurrentPassword: "",
+      setEmailCurrentPassword: fn,
+      newEmail: "",
+      setNewEmail: fn,
+      isUpdatingEmail: false,
+      updateEmail: fn,
     },
     passwordResetEnabled: true,
   };
