@@ -84,7 +84,11 @@ export default {
     if (isApiPath(url.pathname)) {
       return buildApp(env).fetch(request);
     }
-    return env.ASSETS.fetch(request);
+    const assetResponse = await env.ASSETS.fetch(request);
+    if (assetResponse.status === 404 && request.method === "GET" && !url.pathname.includes(".")) {
+      return env.ASSETS.fetch(new Request(new URL("/", request.url), request));
+    }
+    return assetResponse;
   },
   async scheduled(_event: ScheduledEvent, env: WorkerEnv, ctx: ExecutionContext) {
     const { db, mailer } = buildEnv(env);

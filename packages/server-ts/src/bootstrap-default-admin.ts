@@ -3,6 +3,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { eq, sql } from "drizzle-orm";
 import * as schema from "./db/schema.js";
 import type { Database } from "./db/types.js";
+import { hashPassword, verifyPassword } from "./auth/password-hash.js";
 
 export const DEFAULT_ADMIN_EMAIL = "admin@qreminder.local";
 export const DEFAULT_ADMIN_PASSWORD = "Qreminder@2026";
@@ -31,7 +32,7 @@ export async function ensureDefaultAdmin(db: Database, secret: string, baseURL: 
         verification: schema.verifications,
       },
     }),
-    emailAndPassword: { enabled: true, autoSignIn: false, minPasswordLength: 8 },
+    emailAndPassword: { enabled: true, autoSignIn: false, minPasswordLength: 8, password: { hash: hashPassword, verify: verifyPassword } },
     user: {
       additionalFields: {
         role: { type: "string", defaultValue: "user", input: false },

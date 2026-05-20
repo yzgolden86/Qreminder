@@ -5,6 +5,7 @@ import type { Database } from "./db/types.js";
 import type { MailerAdapter } from "./adapters/mailer.js";
 import * as schema from "./db/schema.js";
 import { readSignupConfig, isEmailAllowedBySignupConfig } from "./signup-config.js";
+import { hashPassword, verifyPassword } from "./auth/password-hash.js";
 
 export interface AuthOptions {
   db: Database;
@@ -32,6 +33,10 @@ export function createAuth(options: AuthOptions) {
       enabled: true,
       autoSignIn: true,
       minPasswordLength: 8,
+      password: {
+        hash: hashPassword,
+        verify: verifyPassword,
+      },
       sendResetPassword: async ({ user, url }) => {
         await options.mailer.send({
           to: [user.email],
