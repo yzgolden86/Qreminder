@@ -46,11 +46,11 @@ Qreminder is a self-hosted subscription manager. It puts the prices, renewal dat
 
 ## Overview
 
-If you subscribe to lots of tools, Qreminder keeps the receipts: who charges you when, how much you spend per month, what's about to renew, and where reminders should go. You record price, currency, billing cycle, renewal date, payment method, tags, website, and notes — and then look at the dashboard, calendar, and statistics pages to see the whole picture.
+If you subscribe to lots of tools, Qreminder keeps the receipts: who charges you when, how much you spend per month, what's about to renew, and where reminders should go. You record price, currency, billing cycle, renewal date, payment method, tags, website, and notes — and then look at the dashboard, calendar, payment-method aggregate, and notification center to see the whole picture and verify reminder delivery.
 
 Tech stack:
 
-- `packages/client`: Vite + React 19 SPA, Tailwind 4 + shadcn/Radix, dashboard and subscription list merged into one page (Mock A), bilingual (zh-CN / en).
+- `packages/client`: Vite + React 19 SPA, Tailwind 4 + shadcn/Radix. Dashboard and subscription list share the home page; cards, calendar, and notification center each have their own route. Bilingual (zh-CN / en).
 - `packages/server-ts`: TypeScript + Hono + Drizzle + Better Auth backend. The same code runs in two runtimes:
   - [runtimes/worker](./runtimes/worker/): Cloudflare Workers + D1 + R2 + Cron Triggers + Workers Assets — no VPS required.
   - [runtimes/node](./runtimes/node/): Node + better-sqlite3 + nodemailer + node-cron (experimental, runs on your own VPS).
@@ -65,9 +65,10 @@ The recommended deployment target is Cloudflare Workers. There are two paths: fo
 - Track subscriptions: name, logo, price, currency, billing cycle, status, category, payment method, website, tags, and notes.
 - Multi-tier reminders: each subscription has its own `reminderOffsets` array like `[7, 3, 1]` (up to 365 days, monotonically decreasing). Subscriptions hit on the same day are merged into a single email so users don't get spammed.
 - Multi-channel notifications: Workers mode uses Resend HTTP API; Node mode supports SMTP / Telegram / Notifyx / Webhook / WeCom Bot / Bark.
+- Notification center: dedicated page combining "upcoming" batches and dispatched job history, filterable by status, drillable into per-recipient delivery results.
 - Spending insights: normalize different billing cycles to monthly cost, show budget usage, category breakdown, payment-method breakdown, and savings from inactive subscriptions.
 - Multiple currencies: Frankfurter or FloatRates as exchange-rate source, with fallback rates if remote sources fail.
-- Multi-user: Better Auth with email/password sign-in. Admins can temporarily open signup and configure an email allowlist (supports `*@example.com` wildcards) under Settings → Signup.
+- Multi-user: Better Auth with email/password sign-in. Admins can temporarily open signup and configure an email allowlist (supports `*@example.com` wildcards) under Settings → Signup. The sidebar "Users" entry (admin only) lets admins create, delete, and reset passwords directly.
 - Bilingual UI: Simplified Chinese and English, switchable in app.
 
 ## Cloudflare Workers Deployment (recommended)

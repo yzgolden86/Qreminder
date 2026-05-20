@@ -25,7 +25,6 @@ import { SearchableSelect } from '@/components/ui/searchable-select';
 import { TimePicker } from '@/components/ui/time-picker';
 import { ConfigManagerDialog } from '@/modules/custom-config/presentation/config-manager-dialog';
 import { ThemeSelector } from '@/components/theme-selector';
-import { NotificationHistoryPanel } from './notification-history-panel';
 import { Settings2, FolderKanban, Activity, CreditCard, Coins, Palette } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CURRENCY_OPTIONS, type NotificationChannel } from '@/types/subscription';
@@ -134,7 +133,6 @@ export function SettingsScreen() {
     testingChannel,
     handleTestConnection,
     isSavingSettings,
-    notificationHistory,
     password,
     emailChange,
     passwordResetEnabled,
@@ -463,17 +461,6 @@ export function SettingsScreen() {
                   {t("settings.testPhoneHelp")}
                 </p>
               </div>
-
-              <NotificationHistoryPanel
-                data={notificationHistory.data}
-                isLoading={notificationHistory.isLoading}
-                isFetching={notificationHistory.isFetching}
-                error={notificationHistory.error}
-                status={notificationHistory.historyStatus}
-                setStatus={notificationHistory.setStatus}
-                loadMore={notificationHistory.loadMore}
-                refetch={notificationHistory.refetch}
-              />
             </div>
           </section>
 

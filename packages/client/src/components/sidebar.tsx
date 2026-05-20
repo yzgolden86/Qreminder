@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link, { NavLink } from "@/components/router-link";
 import { useRouter } from "@/lib/router";
 import {
-  List,
+  LayoutDashboard,
   CalendarDays,
   CreditCard,
+  Bell,
+  ShieldCheck,
   Settings as SettingsIcon,
   Sun,
   Moon,
@@ -20,32 +22,130 @@ import { QreminderLogo } from "@/components/icons/qreminder-logo";
 import { writeAppearancePendingToStorage } from "@/lib/theme-storage";
 import { authClient } from "@/lib/auth-client";
 import { useI18n } from "@/i18n/I18nProvider";
+import { useAccountIdentity } from "@/modules/settings/application/use-account-email";
 import type { MessageKey } from "@/i18n/messages";
 
-type NavIconKey = "subscriptions" | "calendar" | "cards" | "settings";
+type NavIconKey = "dashboard" | "calendar" | "cards" | "notifications" | "admin" | "settings";
 
-const navItems: Array<{ path: string; labelKey: MessageKey; icon: NavIconKey }> = [
-  { path: "/", labelKey: "nav.subscriptions", icon: "subscriptions" },
+interface NavItem {
+  path: string;
+  labelKey: MessageKey;
+  icon: NavIconKey;
+  adminOnly?: boolean;
+  end?: boolean;
+}
+
+const primaryNav: NavItem[] = [
+  { path: "/", labelKey: "nav.subscriptions", icon: "dashboard", end: true },
   { path: "/calendar", labelKey: "nav.calendar", icon: "calendar" },
   { path: "/cards", labelKey: "nav.cards", icon: "cards" },
+  { path: "/notifications", labelKey: "nav.notifications", icon: "notifications" },
+];
+
+const systemNav: NavItem[] = [
+  { path: "/admin/users", labelKey: "nav.adminUsers", icon: "admin", adminOnly: true },
   { path: "/settings", labelKey: "nav.settings", icon: "settings" },
 ];
 
 function renderNavIcon(icon: NavIconKey, className: string) {
   switch (icon) {
-    case "subscriptions":
-      return <List className={className} />;
+    case "dashboard":
+      return <LayoutDashboard className={className} />;
     case "calendar":
       return <CalendarDays className={className} />;
     case "cards":
       return <CreditCard className={className} />;
+    case "notifications":
+      return <Bell className={className} />;
+    case "admin":
+      return <ShieldCheck className={className} />;
     case "settings":
       return <SettingsIcon className={className} />;
   }
 }
 
+interface NavListProps {
+  items: NavItem[];
+  onNavigate?: (() => void) | undefined;
+  role: string;
+}
+
+function NavList({ items, onNavigate, role }: NavListProps) {
+  const { t } = useI18n();
+  const isAdmin = role === "admin";
+  return (
+    <div className="grid gap-0.5">
+      {items.map((item) => {
+        if (item.adminOnly && !isAdmin) return null;
+        return (
+          <NavLink
+            key={item.path}
+            href={item.path}
+            end={item.end ?? false}
+            onClick={onNavigate}
+            className={({ isActive }) =>
+              cn(
+                "flex items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] font-medium transition-colors",
+                isActive
+                  ? "bg-primary/15 text-primary"
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+              )
+            }
+          >
+            {renderNavIcon(item.icon, "h-3.5 w-3.5 shrink-0")}
+            <span className="truncate">{t(item.labelKey)}</span>
+          </NavLink>
+        );
+      })}
+    </div>
+  );
+}
+
+function useNowMinute(): Date {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
+  return now;
+}
+
+interface BrandHeaderProps {
+  onNavigate?: (() => void) | undefined;
+}
+
+function BrandHeader({ onNavigate }: BrandHeaderProps) {
+  const { locale, formatDateTime } = useI18n();
+  const now = useNowMinute();
+  // sidebar 宽度有限，日期用 short 月份 + 短星期，整体一行能装下。
+  const dateLabel = formatDateTime(now, { month: "short", day: "numeric", weekday: "short" });
+  return (
+    <Link
+      href="/"
+      onClick={onNavigate}
+      className="flex items-center gap-2 border-b border-border px-3 py-3"
+    >
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#111720] text-[#f8fafc] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_12px_24px_-16px_rgba(0,0,0,0.7)] ring-1 ring-white/10">
+        <QreminderLogo className="h-4 w-4" />
+      </div>
+      <div className="grid leading-tight">
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-[13px] font-extrabold tracking-tight text-foreground">Qreminder</span>
+          <span className="text-[9.5px] text-muted-foreground/80">v2.0</span>
+        </div>
+        <span
+          className="text-[9.5px] text-muted-foreground/80"
+          lang={locale}
+        >
+          {dateLabel}
+        </span>
+      </div>
+    </Link>
+  );
+}
+
 interface SidebarContentProps {
-  onNavigate?: () => void;
+  onNavigate?: (() => void) | undefined;
 }
 
 function SidebarContent({ onNavigate }: SidebarContentProps) {
@@ -53,6 +153,7 @@ function SidebarContent({ onNavigate }: SidebarContentProps) {
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   const { t } = useI18n();
+  const { email, role } = useAccountIdentity();
 
   const handleToggleTheme = () => {
     const nextTheme = theme === "dark" ? "light" : "dark";
@@ -79,58 +180,45 @@ function SidebarContent({ onNavigate }: SidebarContentProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <Link
-        href="/"
-        onClick={onNavigate}
-        className="flex items-center gap-2.5 border-b border-border px-4 py-4"
-      >
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#111720] text-[#f8fafc] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_12px_24px_-16px_rgba(0,0,0,0.7)] ring-1 ring-white/10">
-          <QreminderLogo className="h-[18px] w-[18px]" />
-        </div>
-        <div className="grid">
-          <span className="text-[15px] font-extrabold tracking-tight text-foreground">Qreminder</span>
-          <span className="text-[10px] text-muted-foreground">{t("app.tagline")}</span>
-        </div>
-      </Link>
+      <BrandHeader onNavigate={onNavigate} />
 
-      <nav className="flex-1 grid gap-0.5 px-2.5 py-3">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.path}
-            href={item.path}
-            end={item.path === "/"}
-            onClick={onNavigate}
-            className={({ isActive }) =>
-              cn(
-                "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-medium transition-colors",
-                isActive
-                  ? "bg-primary/15 text-primary"
-                  : "text-muted-foreground hover:bg-secondary hover:text-foreground",
-              )
-            }
-          >
-            {renderNavIcon(item.icon, "h-4 w-4")}
-            <span>{t(item.labelKey)}</span>
-          </NavLink>
-        ))}
+      <nav className="flex-1 overflow-y-auto px-2 py-3">
+        <NavList items={primaryNav} onNavigate={onNavigate} role={role} />
+        <div className="my-2.5 h-px bg-border/60" />
+        <NavList items={systemNav} onNavigate={onNavigate} role={role} />
       </nav>
 
-      <div className="grid gap-0.5 border-t border-border px-2.5 py-2.5">
+      {email ? (
+        <div className="border-t border-border px-3 pt-2.5 pb-1">
+          <div className="flex items-center gap-2 text-[10.5px] text-muted-foreground/80">
+            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[9px] font-semibold text-primary">
+              {email.slice(0, 1).toUpperCase()}
+            </div>
+            <span className="truncate" title={email}>{email}</span>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="grid gap-0.5 border-t border-border px-2 py-2">
         <Button
           variant="ghost"
+          size="sm"
           onClick={handleToggleTheme}
-          className="justify-start gap-2.5 px-2.5 text-[13px] text-muted-foreground hover:text-foreground"
+          className="h-7 justify-start gap-2 px-2 text-[12px] text-muted-foreground hover:text-foreground"
         >
-          <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          <span className="relative flex h-3.5 w-3.5 items-center justify-center">
+            <Sun className="absolute h-3.5 w-3.5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-3.5 w-3.5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          </span>
           <span>{t("header.toggleTheme")}</span>
         </Button>
         <Button
           variant="ghost"
+          size="sm"
           onClick={handleLogout}
-          className="justify-start gap-2.5 px-2.5 text-[13px] text-muted-foreground hover:text-destructive"
+          className="h-7 justify-start gap-2 px-2 text-[12px] text-muted-foreground hover:text-destructive"
         >
-          <LogOut className="h-4 w-4" />
+          <LogOut className="h-3.5 w-3.5" />
           <span>{t("header.logout")}</span>
         </Button>
       </div>
@@ -143,7 +231,7 @@ export function Sidebar() {
 
   return (
     <>
-      <aside className="sticky top-0 hidden h-screen w-[200px] shrink-0 border-r border-border bg-card md:block">
+      <aside className="sticky top-0 hidden h-screen w-[176px] shrink-0 border-r border-border bg-card md:block">
         <SidebarContent />
       </aside>
 
@@ -170,7 +258,7 @@ export function Sidebar() {
             className="absolute inset-0 bg-black/50"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="absolute left-0 top-0 h-full w-[240px] bg-card shadow-xl">
+          <div className="absolute left-0 top-0 h-full w-[220px] bg-card shadow-xl">
             <button
               type="button"
               onClick={() => setMobileOpen(false)}

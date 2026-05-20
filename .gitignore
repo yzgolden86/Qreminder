@@ -34,3 +34,6 @@ dist-ssr
 
 # Claude Code local state (settings.local.json contains personal permission grants)
 .claude/
+
+# Wrangler local dev state (D1/R2/KV simulators, cached bindings)
+.wrangler/
