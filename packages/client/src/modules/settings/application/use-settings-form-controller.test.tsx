@@ -226,7 +226,7 @@ describe("useSettingsFormController", () => {
     });
   });
 
-  it("discards draft settings and restores locale/theme previews", () => {
+  it("discards draft settings and restores locale, but keeps the appearance preview", () => {
     const { result } = renderHook(() => useSettingsFormController());
 
     act(() => {
@@ -239,14 +239,26 @@ describe("useSettingsFormController", () => {
       result.current.handleDiscardChanges();
     });
 
-    expect(result.current.settings.themeMode).toBe(BASE_SETTINGS.themeMode);
+    // 主题不能被还原（属于即时预览且独立持久化），但其他字段必须回到保存前的快照。
+    expect(result.current.settings.themeMode).toBe("light");
     expect(result.current.settings.locale).toBe(BASE_SETTINGS.locale);
     expect(result.current.hasUnsavedChanges).toBe(false);
-    expect(mocks.setTheme).toHaveBeenLastCalledWith(BASE_SETTINGS.themeMode);
     expect(mocks.setLocale).toHaveBeenLastCalledWith(BASE_SETTINGS.locale, {
       persist: false,
       markAsSaved: true,
     });
+  });
+
+  it("does not flag the form as dirty when only the appearance changes", () => {
+    const { result } = renderHook(() => useSettingsFormController());
+
+    act(() => {
+      result.current.handleThemeModeChange("light");
+    });
+
+    // 主题切换走即时预览，不应触发“未保存更改”，否则会误触离开提示并把主题甩回旧值。
+    expect(result.current.settings.themeMode).toBe("light");
+    expect(result.current.hasUnsavedChanges).toBe(false);
   });
 
   it("saves custom configuration changes through the unified save action", async () => {

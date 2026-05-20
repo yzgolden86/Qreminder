@@ -104,6 +104,13 @@ function areJsonSnapshotsEqual(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
+// 主题字段（含模式/变体/自定义色）走即时预览，不通过“保存按钮”才能持久化，
+// 因此 dirty 比较必须排除它们，否则用户在 sidebar 切换主题就会让 Settings 页报“未保存更改”。
+function stripAppearanceFields(settings: AppSettings): Omit<AppSettings, "themeMode" | "themeVariant" | "themeCustomColor"> {
+  const { themeMode: _m, themeVariant: _v, themeCustomColor: _c, ...rest } = settings;
+  return rest;
+}
+
 function createDraftSettingsFromRemote(remoteSettings: AppSettings, themeMode: ThemeMode): AppSettings {
   if (!readAppearancePendingFromStorage()) return remoteSettings;
   const storedVariant = readThemeVariantFromStorage();
@@ -222,7 +229,7 @@ export function useSettingsFormController(): SettingsFormController {
   );
 
   const settingsDirty = useMemo(
-    () => !areJsonSnapshotsEqual(settings, savedSettings),
+    () => !areJsonSnapshotsEqual(stripAppearanceFields(settings), stripAppearanceFields(savedSettings)),
     [settings, savedSettings],
   );
   const customConfigDirty = useMemo(
@@ -478,11 +485,18 @@ export function useSettingsFormController(): SettingsFormController {
   ]);
 
   const handleDiscardChanges = useCallback(() => {
-    setSettings(savedSettings);
+    // 主题（mode/variant/customColor）是即时预览且独立持久化，放弃其他字段时必须保留用户当前选择，
+    // 否则取消“未保存更改”导航提示会把刚换的主题甩回数据库的旧值（用户感受到的就是“主题被回滚”）。
+    setSettings((current) => ({
+      ...savedSettings,
+      themeMode: current.themeMode,
+      themeVariant: current.themeVariant,
+      themeCustomColor: current.themeCustomColor,
+    }));
     setCustomConfig(savedCustomConfig);
     setMonthlyBudgetError(null);
-    syncSavedPreviewState(savedSettings);
-  }, [savedCustomConfig, savedSettings, syncSavedPreviewState]);
+    setLocale(savedSettings.locale, { persist: false, markAsSaved: true });
+  }, [savedCustomConfig, savedSettings, setLocale]);
 
   const handleDefaultCurrencyChange = useCallback(
     (value: string) => {
