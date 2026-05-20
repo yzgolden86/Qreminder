@@ -31,7 +31,7 @@ export const subscriptionSchema = z.object({
   id: z.string(),
   user: z.string(),
   name: z.string().min(1).max(120),
-  logo: z.string().optional(),
+  logo: z.string().nullable().optional(),
   price: z.number().nonnegative(),
   currency: z.string().regex(/^[A-Z]{3}$/),
   billingCycle: billingCycleSchema,
@@ -46,7 +46,7 @@ export const subscriptionSchema = z.object({
   website: z.url().nullable().optional(),
   notes: z.string().nullable().optional(),
   tags: z.array(z.string()).max(20),
-  extra: z.record(z.string(), z.unknown()),
+  extra: z.record(z.string(), z.unknown()).optional(),
   reminderOffsets: reminderOffsetsSchema,
 });
 
