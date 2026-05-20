@@ -109,13 +109,13 @@ export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDe
   return (
     <>
     <div className={cn(
-      "group relative h-full overflow-hidden rounded-xl border border-border bg-card shadow-card transition-all duration-200 hover:shadow-md hover:border-border/80",
+      "group relative h-full overflow-hidden rounded-lg border border-border bg-card shadow-card transition-all duration-200 hover:shadow-md hover:border-border/80",
       isRenewingSoon && "border-warning/40",
       isTrialEndingSoon && "animate-pulse-glow"
     )}>
       <div className="flex items-center gap-4 p-5 pb-3">
         <div className={cn(
-          "flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl text-xl font-bold",
+          "flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg text-xl font-bold",
         )} style={logoBackgroundStyle}>
           {subscription.logo && !logoLoadFailed ? (
             <AuthorizedImage

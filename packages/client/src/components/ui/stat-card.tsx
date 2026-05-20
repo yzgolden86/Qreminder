@@ -21,7 +21,7 @@ export function StatCard({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-xl border border-border bg-card p-6 shadow-card transition-all duration-300 hover:bg-card-hover",
+        "relative overflow-hidden rounded-lg border border-border bg-card p-5 shadow-card transition-all duration-300 hover:bg-card-hover",
         className,
       )}
     >
@@ -43,7 +43,7 @@ export function StatCard({
         </div>
         <div
           className={cn(
-            "flex h-12 w-12 items-center justify-center rounded-lg",
+            "flex h-11 w-11 items-center justify-center rounded-lg",
             variant === 'default' && "bg-secondary text-muted-foreground",
             variant === 'primary' && "bg-secondary text-primary",
             variant === 'warning' && "bg-warning/10 text-warning",

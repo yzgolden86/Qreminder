@@ -37,7 +37,7 @@ export function UpcomingRenewalsStrip({ subscriptions, timeZone }: UpcomingRenew
 
   if (items.length === 0) {
     return (
-      <div className="rounded-xl border border-border bg-card p-5 shadow-card">
+      <div className="rounded-lg border border-border bg-card p-5 shadow-card">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-success/10">
             <Clock className="h-5 w-5 text-success" />
@@ -54,7 +54,7 @@ export function UpcomingRenewalsStrip({ subscriptions, timeZone }: UpcomingRenew
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5 shadow-card">
+    <div className="rounded-lg border border-border bg-card p-5 shadow-card">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-foreground">
           {t("dashboard.upcomingRenewals")}

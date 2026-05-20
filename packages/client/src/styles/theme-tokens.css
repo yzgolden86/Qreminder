@@ -44,10 +44,10 @@
     --input: 220 20% 93%;
     --ring: 160 84% 39%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
     /* Custom tokens - subtle and refined */
-    --app-shadow-card: 0 1px 3px 0 hsla(220, 25%, 10%, 0.04), 0 1px 2px -1px hsla(220, 25%, 10%, 0.04);
+    --app-shadow-card: 0 1px 2px 0 hsla(220, 25%, 10%, 0.03), 0 1px 1px -1px hsla(220, 25%, 10%, 0.02);
 
     /* Chart colors */
     --chart-1: 160 84% 45%;
@@ -112,7 +112,7 @@
     --ring: 160 84% 39%;
 
     /* Custom tokens */
-    --app-shadow-card: 0 4px 24px -4px hsla(0, 0%, 0%, 0.4);
+    --app-shadow-card: 0 2px 8px -2px hsla(0, 0%, 0%, 0.25), 0 1px 2px -1px hsla(0, 0%, 0%, 0.15);
 
     --sidebar-background: 220 18% 7%;
     --sidebar-foreground: 210 20% 85%;

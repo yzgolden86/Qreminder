@@ -180,25 +180,25 @@ export default function Home() {
         </div>
 
         <div className="mb-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-xl border border-border bg-card p-5 shadow-card">
+          <div className="rounded-lg border border-border bg-card p-5 shadow-card">
             <h3 className="mb-3 text-sm font-semibold text-foreground">
               {t("dashboard.spendingDistribution")}
             </h3>
             <SpendingChart subscriptions={subscriptions} />
           </div>
-          <div className="rounded-xl border border-border bg-card p-5 shadow-card">
+          <div className="rounded-lg border border-border bg-card p-5 shadow-card">
             <h3 className="mb-3 text-sm font-semibold text-foreground">
               {t("dashboard.billingCycleDistribution")}
             </h3>
             <BillingCycleChart subscriptions={subscriptions} />
           </div>
-          <div className="rounded-xl border border-border bg-card p-5 shadow-card">
+          <div className="rounded-lg border border-border bg-card p-5 shadow-card">
             <h3 className="mb-3 text-sm font-semibold text-foreground">
               {t("dashboard.renewalTop5")}
             </h3>
             <RenewalTop5Chart subscriptions={subscriptions} timeZone={timeZone} />
           </div>
-          <div className="rounded-xl border border-border bg-card p-5 shadow-card">
+          <div className="rounded-lg border border-border bg-card p-5 shadow-card">
             <h3 className="mb-3 text-sm font-semibold text-foreground">
               {t("dashboard.monthlyTop5")}
             </h3>
@@ -252,7 +252,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="mb-6 grid gap-4 rounded-xl border border-border bg-card p-5">
+        <div className="mb-6 grid gap-4 rounded-lg border border-border bg-card p-5">
           <div className="flex flex-wrap items-center gap-4">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -374,7 +374,7 @@ export default function Home() {
         </div>
 
         {filteredSubscriptions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 py-16">
+          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card/50 py-16">
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
               <Search className="h-8 w-8 text-muted-foreground" />
             </div>

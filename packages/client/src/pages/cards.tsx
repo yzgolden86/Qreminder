@@ -108,7 +108,7 @@ export default function Cards() {
       </div>
 
       {cardsModel.groups.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 py-16">
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card/50 py-16">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
             <CreditCard className="h-8 w-8 text-muted-foreground" />
           </div>
@@ -133,7 +133,7 @@ export default function Cards() {
                 type="button"
                 onClick={() => setActiveGroupKey(group.key)}
                 className={cn(
-                  "group flex animate-fade-in flex-col gap-4 rounded-xl border border-border bg-card p-5 text-left shadow-card transition-all hover:bg-card-hover hover:border-primary/40",
+                  "group flex animate-fade-in flex-col gap-4 rounded-lg border border-border bg-card p-5 text-left shadow-card transition-all hover:bg-card-hover hover:border-primary/40",
                   isUnspecified && "border-dashed",
                 )}
                 style={{ animationDelay: `${index * 40}ms` }}

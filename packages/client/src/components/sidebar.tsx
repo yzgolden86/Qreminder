@@ -82,18 +82,18 @@ function SidebarContent({ onNavigate }: SidebarContentProps) {
       <Link
         href="/"
         onClick={onNavigate}
-        className="flex items-center gap-3 border-b border-border px-5 py-5"
+        className="flex items-center gap-2.5 border-b border-border px-4 py-4"
       >
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#111720] text-[#f8fafc] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_14px_30px_-20px_rgba(0,0,0,0.8)] ring-1 ring-white/10">
-          <QreminderLogo className="h-5 w-5" />
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#111720] text-[#f8fafc] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_12px_24px_-16px_rgba(0,0,0,0.7)] ring-1 ring-white/10">
+          <QreminderLogo className="h-[18px] w-[18px]" />
         </div>
         <div className="grid">
-          <span className="text-base font-extrabold tracking-tight text-foreground">Qreminder</span>
-          <span className="text-[11px] text-muted-foreground">{t("app.tagline")}</span>
+          <span className="text-[15px] font-extrabold tracking-tight text-foreground">Qreminder</span>
+          <span className="text-[10px] text-muted-foreground">{t("app.tagline")}</span>
         </div>
       </Link>
 
-      <nav className="flex-1 grid gap-1 px-3 py-4">
+      <nav className="flex-1 grid gap-0.5 px-2.5 py-3">
         {navItems.map((item) => (
           <NavLink
             key={item.path}
@@ -102,7 +102,7 @@ function SidebarContent({ onNavigate }: SidebarContentProps) {
             onClick={onNavigate}
             className={({ isActive }) =>
               cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-medium transition-colors",
                 isActive
                   ? "bg-primary/15 text-primary"
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground",
@@ -115,11 +115,11 @@ function SidebarContent({ onNavigate }: SidebarContentProps) {
         ))}
       </nav>
 
-      <div className="grid gap-1 border-t border-border px-3 py-3">
+      <div className="grid gap-0.5 border-t border-border px-2.5 py-2.5">
         <Button
           variant="ghost"
           onClick={handleToggleTheme}
-          className="justify-start gap-3 px-3 text-muted-foreground hover:text-foreground"
+          className="justify-start gap-2.5 px-2.5 text-[13px] text-muted-foreground hover:text-foreground"
         >
           <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
           <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
@@ -128,7 +128,7 @@ function SidebarContent({ onNavigate }: SidebarContentProps) {
         <Button
           variant="ghost"
           onClick={handleLogout}
-          className="justify-start gap-3 px-3 text-muted-foreground hover:text-destructive"
+          className="justify-start gap-2.5 px-2.5 text-[13px] text-muted-foreground hover:text-destructive"
         >
           <LogOut className="h-4 w-4" />
           <span>{t("header.logout")}</span>
@@ -143,7 +143,7 @@ export function Sidebar() {
 
   return (
     <>
-      <aside className="sticky top-0 hidden h-screen w-[220px] shrink-0 border-r border-border bg-card md:block">
+      <aside className="sticky top-0 hidden h-screen w-[200px] shrink-0 border-r border-border bg-card md:block">
         <SidebarContent />
       </aside>
 
@@ -170,7 +170,7 @@ export function Sidebar() {
             className="absolute inset-0 bg-black/50"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="absolute left-0 top-0 h-full w-[260px] bg-card shadow-xl">
+          <div className="absolute left-0 top-0 h-full w-[240px] bg-card shadow-xl">
             <button
               type="button"
               onClick={() => setMobileOpen(false)}
