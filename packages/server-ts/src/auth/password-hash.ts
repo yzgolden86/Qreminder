@@ -1,12 +1,19 @@
 /**
  * Workers-friendly password hashing using Web Crypto PBKDF2.
  *
- * Web Crypto operations don't count against Cloudflare Workers CPU time limit,
- * unlike bcrypt which runs in the V8 isolate and easily exceeds the 10ms/50ms cap.
+ * Why PBKDF2 (not Better Auth's default scrypt or bcrypt):
+ *   - bcrypt and pure-JS scrypt run in the V8 isolate and easily exceed the
+ *     Workers CPU time limit (10ms free / 50ms paid), causing sign-in to fail
+ *     with "Worker exceeded CPU time limit".
+ *   - Web Crypto's PBKDF2 is implemented natively by the runtime and does NOT
+ *     count against Workers CPU time, so it scales to 100k iterations safely.
  *
  * Format: `pbkdf2:iterations:base64(salt):base64(hash)`
- * Backward-compatible verify: detects bcrypt hashes ($2a$/$2b$) and attempts
- * verification via the crypto module (best-effort, may still hit CPU limit on free tier).
+ *
+ * Legacy scrypt hashes (Better Auth default, format `hex(salt):hex(key)`) are
+ * NOT verifiable here. The bootstrap migration resets the default admin's
+ * scrypt hash to PBKDF2; other users with legacy hashes need an admin password
+ * reset or a forgot-password flow.
  */
 
 const ALGORITHM = "PBKDF2";
@@ -59,35 +66,17 @@ export async function hashPassword(password: string): Promise<string> {
   return `pbkdf2:${ITERATIONS}:${toBase64(salt.buffer as ArrayBuffer)}:${toBase64(hash)}`;
 }
 
-function isBcryptHash(hash: string): boolean {
-  return hash.startsWith("$2a$") || hash.startsWith("$2b$") || hash.startsWith("$2y$");
-}
-
-async function verifyBcrypt(password: string, hash: string): Promise<boolean> {
-  try {
-    const { compare } = await import("bcryptjs");
-    return await compare(password, hash);
-  } catch {
-    return false;
-  }
-}
-
 export async function verifyPassword(data: { hash: string; password: string }): Promise<boolean> {
   const { hash, password } = data;
 
-  if (hash.startsWith("pbkdf2:")) {
-    const parts = hash.split(":");
-    if (parts.length !== 4) return false;
-    const iterations = parseInt(parts[1]!, 10);
-    const salt = fromBase64(parts[2]!);
-    const storedHash = fromBase64(parts[3]!);
-    const derived = new Uint8Array(await deriveKey(password, salt, iterations));
-    return timingSafeEqual(derived, storedHash);
-  }
+  if (!hash.startsWith("pbkdf2:")) return false;
 
-  if (isBcryptHash(hash)) {
-    return verifyBcrypt(password, hash);
-  }
-
-  return false;
+  const parts = hash.split(":");
+  if (parts.length !== 4) return false;
+  const iterations = parseInt(parts[1]!, 10);
+  if (!Number.isFinite(iterations) || iterations <= 0) return false;
+  const salt = fromBase64(parts[2]!);
+  const storedHash = fromBase64(parts[3]!);
+  const derived = new Uint8Array(await deriveKey(password, salt, iterations));
+  return timingSafeEqual(derived, storedHash);
 }
