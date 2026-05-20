@@ -51,6 +51,7 @@ export interface CustomConfig {
  * - 用户自定义新增的支付方式可以上传/修改图标（存储到 PocketBase files）
  */
 export const DEFAULT_PAYMENT_METHOD_ICONS: Record<BuiltInPaymentMethod, string> = {
+  free: "/icons/payment-methods/free.svg",
   alipay: "/icons/payment-methods/alipay.svg",
   wechat: "/icons/payment-methods/wechat.svg",
   credit_card: "/icons/payment-methods/credit_card.svg",

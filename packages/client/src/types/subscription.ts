@@ -60,6 +60,7 @@ export type BuiltInCategory = (typeof CATEGORIES)[number];
 export type Category = BuiltInCategory | (string & {});
 
 export const PAYMENT_METHODS = [
+  'free',
   'alipay',
   'wechat',
   'credit_card',
@@ -302,6 +303,7 @@ export const CHANNEL_LABELS: Record<NotificationChannel, LocalizedLabels> = {
 };
 
 export const PAYMENT_METHOD_LABELS: Record<BuiltInPaymentMethod, LocalizedLabels> = {
+  free: labels('免费', 'Free'),
   alipay: labels('支付宝', 'Alipay'),
   wechat: labels('微信支付', 'WeChat Pay'),
   credit_card: labels('信用卡', 'Credit card'),
