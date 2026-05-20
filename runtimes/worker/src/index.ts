@@ -42,7 +42,20 @@ function buildEnv(env: WorkerEnv) {
   return { db, storage, mailer };
 }
 
+// Cache app instance per environment to avoid recreating auth on every request
+let cachedApp: ReturnType<typeof createApp> | null = null;
+let cachedEnvHash: string | null = null;
+
+function getEnvHash(env: WorkerEnv): string {
+  return `${env.BETTER_AUTH_SECRET}-${env.APP_URL}`;
+}
+
 function buildApp(env: WorkerEnv) {
+  const envHash = getEnvHash(env);
+  if (cachedApp && cachedEnvHash === envHash) {
+    return cachedApp;
+  }
+
   const { db, storage, mailer } = buildEnv(env);
   const deps: AppDeps = {
     db,
@@ -55,7 +68,10 @@ function buildApp(env: WorkerEnv) {
       trustedOrigins: parseList(env.TRUSTED_ORIGINS),
     },
   };
-  return createApp(deps);
+
+  cachedApp = createApp(deps);
+  cachedEnvHash = envHash;
+  return cachedApp;
 }
 
 function isApiPath(pathname: string): boolean {

@@ -1,7 +1,6 @@
 name = "qreminder"
 main = "src/index.ts"
-compatibility_date = "2025-05-01"
-compatibility_flags = ["nodejs_compat"]
+compatibility_date = "2024-11-01"
 
 [vars]
 # 非 secret 配置；secret 用 `wrangler secret put` 设置（见 docs/WORKER_DEPLOY.md §2）。
