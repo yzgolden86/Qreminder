@@ -25,7 +25,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select';
 import { TimePicker } from '@/components/ui/time-picker';
 import { ConfigManagerDialog } from '@/modules/custom-config/presentation/config-manager-dialog';
 import { ThemeSelector } from '@/components/theme-selector';
-import { Settings2, FolderKanban, Activity, CreditCard, Coins, Palette } from 'lucide-react';
+import { Settings2, FolderKanban, Activity, CreditCard, Coins, Palette, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CURRENCY_OPTIONS, type NotificationChannel } from '@/types/subscription';
 import { isBuiltInPaymentMethodValue } from '@/types/config';
@@ -188,8 +188,8 @@ export function SettingsScreen() {
     <div className="flex flex-col">
       <div className={cn("flex-1", hasUnsavedChanges && "pb-24")}>
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-foreground">{t("settings.title")}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t("settings.subtitle")}</p>
+          <h1 className="text-[22px] font-semibold tracking-tight text-foreground">{t("settings.title")}</h1>
+          <p className="mt-1 text-[13px] text-muted-foreground">{t("settings.subtitle")}</p>
         </div>
 
         <div className="grid gap-8">
@@ -461,6 +461,29 @@ export function SettingsScreen() {
                   {t("settings.testPhoneHelp")}
                 </p>
               </div>
+            </div>
+          </section>
+
+          {/* 关于 */}
+          <section className="surface-card rounded-xl p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Info className="h-4 w-4 text-primary" />
+              <h2 className="text-[15px] font-semibold text-foreground">{t("settings.about")}</h2>
+            </div>
+            <div className="grid gap-3 text-[13px] text-muted-foreground">
+              <p>{t("settings.about.description")}</p>
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                <span><span className="font-medium text-foreground">{t("settings.about.version")}:</span> 2.0.0</span>
+                <a
+                  href="https://github.com/yzgolden86/Qreminder"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  {t("settings.about.sourceCode")}
+                </a>
+              </div>
+              <p className="text-[12px] text-muted-foreground/70">{t("settings.about.copyrightText")}</p>
             </div>
           </section>
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link, { NavLink } from "@/components/router-link";
 import { useRouter } from "@/lib/router";
 import {
@@ -112,45 +112,22 @@ function NavList({ items, onNavigate, role }: NavListProps) {
   );
 }
 
-function useNowMinute(): Date {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const interval = window.setInterval(() => setNow(new Date()), 60_000);
-    return () => window.clearInterval(interval);
-  }, []);
-  return now;
-}
-
 interface BrandHeaderProps {
   onNavigate?: (() => void) | undefined;
 }
 
 function BrandHeader({ onNavigate }: BrandHeaderProps) {
-  const { locale, formatDateTime } = useI18n();
-  const now = useNowMinute();
-  const dateLabel = formatDateTime(now, { month: "short", day: "numeric", weekday: "short" });
   return (
     <div className="border-b border-border px-3 py-3">
       <Link
         href="/"
         onClick={onNavigate}
-        className="flex items-center gap-2"
+        className="flex items-center gap-2.5"
       >
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#111720] text-[#f8fafc] shadow-[inset_0_1px_0_rgba(255,255,255,0.10),0_12px_24px_-16px_rgba(0,0,0,0.7)] ring-1 ring-white/10">
-          <QreminderLogo className="h-4 w-4" />
+          <QreminderLogo className="h-4.5 w-4.5" />
         </div>
-        <div className="grid leading-tight">
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-[13px] font-semibold tracking-tight text-foreground">Qreminder</span>
-            <span className="num-display text-[9px] font-medium text-muted-foreground/70">v2.0</span>
-          </div>
-          <span
-            className="text-[10px] text-muted-foreground/70"
-            lang={locale}
-          >
-            {dateLabel}
-          </span>
-        </div>
+        <span className="text-[14px] font-semibold tracking-tight text-foreground">Qreminder</span>
       </Link>
     </div>
   );

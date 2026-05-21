@@ -180,3 +180,46 @@ export function useDeleteSubscription() {
     },
   });
 }
+
+export function useBatchDeleteSubscriptions() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      await Promise.all(
+        ids.map((id) =>
+          apiFetch(
+            `/api/subscriptions/${encodeURIComponent(id)}`,
+            subscriptionDeleteResponseSchema,
+            { method: "DELETE" },
+          ),
+        ),
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
+    },
+  });
+}
+
+export function useBatchUpdateSubscriptions() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (updates: Array<{ subscription: Subscription; patch: Partial<Pick<Subscription, "status" | "category">> }>) => {
+      await Promise.all(
+        updates.map(({ subscription, patch }) =>
+          apiFetch(
+            `/api/subscriptions/${encodeURIComponent(subscription.id)}`,
+            subscriptionResponseSchema,
+            {
+              method: "PATCH",
+              body: JSON.stringify(toWritePayload({ ...subscription, ...patch })),
+            },
+          ),
+        ),
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
+    },
+  });
+}

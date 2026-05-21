@@ -195,6 +195,12 @@ export const zhCN = {
   "settings.email.updatedDescription": "下次登录请使用新邮箱。",
   "settings.email.updateFailed": "邮箱修改失败",
   "settings.email.updateFailedDescription": "请检查密码是否正确或邮箱是否已被使用。",
+  "settings.about": "关于",
+  "settings.about.version": "版本",
+  "settings.about.copyright": "版权",
+  "settings.about.copyrightText": "© 2024-2026 yzgolden86. 基于 MIT 许可证开源。",
+  "settings.about.description": "Qreminder 是一款自托管的订阅管理与续费提醒工具，运行在 Cloudflare Workers 上。",
+  "settings.about.sourceCode": "源代码",
 } satisfies MessageMap;
 
 export const enUS = {
@@ -385,4 +391,10 @@ export const enUS = {
   "settings.email.updatedDescription": "Use your new email to sign in next time.",
   "settings.email.updateFailed": "Email update failed",
   "settings.email.updateFailedDescription": "Check your password or whether the email is already in use.",
+  "settings.about": "About",
+  "settings.about.version": "Version",
+  "settings.about.copyright": "Copyright",
+  "settings.about.copyrightText": "© 2024-2026 yzgolden86. Open-sourced under the MIT License.",
+  "settings.about.description": "Qreminder is a self-hosted subscription management and renewal reminder tool running on Cloudflare Workers.",
+  "settings.about.sourceCode": "Source code",
 } satisfies Record<keyof typeof zhCN, MessageValue>;

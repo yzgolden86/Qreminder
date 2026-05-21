@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { StatCard } from "@/components/ui/stat-card";
 import { SubscriptionCard } from "@/components/subscription-card";
 import { SpendingChart } from "@/components/spending-chart";
@@ -12,6 +12,7 @@ import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -41,10 +42,24 @@ import {
   Grid,
   List as ListIcon,
   Download,
+  CheckSquare,
+  Trash2,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "@/components/ui/sonner";
 import { useExchangeRates } from "@/hooks/use-exchange-rates";
-import { useSubscriptions } from "@/hooks/use-subscriptions";
+import { useSubscriptions, useBatchDeleteSubscriptions, useBatchUpdateSubscriptions } from "@/hooks/use-subscriptions";
 import { useSettings } from "@/hooks/use-settings";
 import { useDashboardStats } from "@/modules/subscriptions/application/use-dashboard-stats";
 import { useSubscriptionCrud } from "@/modules/subscriptions/application/use-subscription-crud";
@@ -81,6 +96,12 @@ export default function Home() {
   const { convert, loading: ratesLoading } = useExchangeRates(exchangeRateProvider);
   const timeZone = settings?.timezone ?? "UTC";
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+
+  const [batchMode, setBatchMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
+  const batchDelete = useBatchDeleteSubscriptions();
+  const batchUpdate = useBatchUpdateSubscriptions();
 
   const { activeSubscriptions, totalMonthly, upcomingCount, trialCount } =
     useDashboardStats(subscriptions, defaultCurrency, convert, timeZone);
@@ -134,6 +155,62 @@ export default function Home() {
         ? label(config.statuses.find((status) => status.value === statusFilter)!.labels)
         : statusFilter;
   const sortOptionLabel = t(SORT_OPTION_LABEL_KEYS[sortOption]);
+
+  const toggleSelection = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    setSelectedIds(new Set(filteredSubscriptions.map((s) => s.id)));
+  };
+
+  const exitBatchMode = () => {
+    setBatchMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const selectedSubscriptions = useMemo(
+    () => subscriptions.filter((s) => selectedIds.has(s.id)),
+    [subscriptions, selectedIds],
+  );
+
+  const handleBatchDelete = async () => {
+    try {
+      await batchDelete.mutateAsync([...selectedIds]);
+      toast.success(t("subscriptions.batchSelected", { count: selectedIds.size }));
+      exitBatchMode();
+    } catch {
+      toast.error(t("error.generic"));
+    }
+    setBatchDeleteDialogOpen(false);
+  };
+
+  const handleBatchStatusChange = async (status: SubscriptionStatus) => {
+    const updates = selectedSubscriptions.map((s) => ({ subscription: s, patch: { status } }));
+    try {
+      await batchUpdate.mutateAsync(updates);
+      toast.success(t("subscriptions.batchSelected", { count: selectedIds.size }));
+      exitBatchMode();
+    } catch {
+      toast.error(t("error.generic"));
+    }
+  };
+
+  const handleBatchCategoryChange = async (category: string) => {
+    const updates = selectedSubscriptions.map((s) => ({ subscription: s, patch: { category } }));
+    try {
+      await batchUpdate.mutateAsync(updates);
+      toast.success(t("subscriptions.batchSelected", { count: selectedIds.size }));
+      exitBatchMode();
+    } catch {
+      toast.error(t("error.generic"));
+    }
+  };
 
   if (subscriptionsQuery.isPending || settingsQuery.isPending) {
     return <DashboardSkeleton />;
@@ -222,6 +299,27 @@ export default function Home() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {!batchMode ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setBatchMode(true)}
+                className="gap-1.5"
+              >
+                <CheckSquare className="h-3.5 w-3.5" />
+                {t("subscriptions.batchSelect")}
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={exitBatchMode}
+                className="gap-1.5 text-muted-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+                {t("subscriptions.batchCancel")}
+              </Button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="icon" className="border-border">
@@ -411,20 +509,115 @@ export default function Home() {
             {filteredSubscriptions.map((sub, index) => (
               <div
                 key={sub.id}
-                className="h-full animate-fade-in"
+                className={cn(
+                  "relative h-full animate-fade-in",
+                  batchMode && selectedIds.has(sub.id) && "ring-2 ring-primary rounded-lg",
+                )}
                 style={{ animationDelay: `${index * 30}ms` }}
+                onClick={batchMode ? () => toggleSelection(sub.id) : undefined}
               >
+                {batchMode && (
+                  <div className="absolute left-2 top-2 z-10">
+                    <Checkbox
+                      checked={selectedIds.has(sub.id)}
+                      onCheckedChange={() => toggleSelection(sub.id)}
+                      aria-label={`Select ${sub.name}`}
+                    />
+                  </div>
+                )}
                 <SubscriptionCard
                   subscription={sub}
                   viewMode={viewMode}
                   timeZone={timeZone}
-                  onEdit={handleEditSubscription}
-                  onDelete={handleDeleteSubscription}
+                  {...(!batchMode && {
+                    onEdit: handleEditSubscription,
+                    onDelete: handleDeleteSubscription,
+                  })}
                 />
               </div>
             ))}
           </div>
         )}
+
+      {batchMode && selectedIds.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card/95 px-4 py-3 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] backdrop-blur-sm">
+          <div className="mx-auto flex max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-[13px] font-medium text-foreground">
+                {t("subscriptions.batchSelected", { count: selectedIds.size })}
+              </span>
+              <Button variant="ghost" size="sm" onClick={selectAll} className="text-[12px]">
+                {t("subscriptions.batchSelectAll")}
+              </Button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1.5">
+                    {t("subscriptions.batchChangeStatus")}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {config.statuses.map((status) => (
+                    <DropdownMenuItem
+                      key={status.id}
+                      onClick={() => void handleBatchStatusChange(status.value as SubscriptionStatus)}
+                    >
+                      {label(status.labels)}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1.5">
+                    {t("subscriptions.batchChangeCategory")}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {config.categories.map((cat) => (
+                    <DropdownMenuItem
+                      key={cat.id}
+                      onClick={() => void handleBatchCategoryChange(cat.value)}
+                    >
+                      {label(cat.labels)}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => setBatchDeleteDialogOpen(true)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                {t("subscriptions.batchDelete")}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <AlertDialog open={batchDeleteDialogOpen} onOpenChange={setBatchDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("subscriptions.batchDeleteTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("subscriptions.batchDeleteDescription", { count: selectedIds.size })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void handleBatchDelete()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <EditSubscriptionDialog
         subscription={editingSubscription}

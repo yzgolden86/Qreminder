@@ -169,6 +169,15 @@ export const zhCN = {
   "calendar.dayRenewals": ({ date }) => `${date} 续费`,
   "calendar.dayListDescription": ({ date }) => `选择 ${date} 要查看的订阅。`,
   "calendar.dayListFallbackDescription": "选择当天要查看的订阅。",
+  "subscriptions.batchSelect": "批量选择",
+  "subscriptions.batchCancel": "取消选择",
+  "subscriptions.batchSelected": ({ count }) => `已选择 ${count} 项`,
+  "subscriptions.batchSelectAll": "全选",
+  "subscriptions.batchDelete": "批量删除",
+  "subscriptions.batchChangeStatus": "修改状态",
+  "subscriptions.batchChangeCategory": "修改分类",
+  "subscriptions.batchDeleteTitle": "批量删除订阅",
+  "subscriptions.batchDeleteDescription": ({ count }) => `确定要删除选中的 ${count} 个订阅吗？此操作不可撤销。`,
 } satisfies MessageMap;
 
 export const enUS = {
@@ -334,4 +343,13 @@ export const enUS = {
   "calendar.dayRenewals": ({ date }) => `${date} renewals`,
   "calendar.dayListDescription": ({ date }) => `Choose a subscription to view for ${date}.`,
   "calendar.dayListFallbackDescription": "Choose a subscription to view for this day.",
+  "subscriptions.batchSelect": "Batch select",
+  "subscriptions.batchCancel": "Cancel",
+  "subscriptions.batchSelected": ({ count }) => `${count} selected`,
+  "subscriptions.batchSelectAll": "Select all",
+  "subscriptions.batchDelete": "Delete",
+  "subscriptions.batchChangeStatus": "Change status",
+  "subscriptions.batchChangeCategory": "Change category",
+  "subscriptions.batchDeleteTitle": "Delete subscriptions",
+  "subscriptions.batchDeleteDescription": ({ count }) => `Are you sure you want to delete ${count} subscriptions? This action cannot be undone.`,
 } satisfies Record<keyof typeof zhCN, MessageValue>;
