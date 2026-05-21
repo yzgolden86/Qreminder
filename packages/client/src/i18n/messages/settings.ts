@@ -199,7 +199,7 @@ export const zhCN = {
   "settings.about.version": "版本",
   "settings.about.copyright": "版权",
   "settings.about.copyrightText": "© 2024-2026 yzgolden86. 基于 MIT 许可证开源。",
-  "settings.about.description": "Qreminder 是一款自托管的订阅管理与续费提醒工具，运行在 Cloudflare Workers 上。",
+  "settings.about.description": "Qreminder 是一款自托管的订阅管理与续费提醒工具。",
   "settings.about.sourceCode": "源代码",
 } satisfies MessageMap;
 
@@ -395,6 +395,6 @@ export const enUS = {
   "settings.about.version": "Version",
   "settings.about.copyright": "Copyright",
   "settings.about.copyrightText": "© 2024-2026 yzgolden86. Open-sourced under the MIT License.",
-  "settings.about.description": "Qreminder is a self-hosted subscription management and renewal reminder tool running on Cloudflare Workers.",
+  "settings.about.description": "Qreminder is a self-hosted subscription management and renewal reminder tool.",
   "settings.about.sourceCode": "Source code",
 } satisfies Record<keyof typeof zhCN, MessageValue>;
