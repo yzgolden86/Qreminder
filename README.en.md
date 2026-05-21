@@ -2,104 +2,103 @@
 
 [简体中文](README.md) | [English](README.en.md)
 
-Qreminder is a self-hosted subscription manager. It puts the prices, renewal dates, budgets, and reminders for SaaS, AI tools, cloud services, and developer tools in one place. It works for individuals, indie teams, and home labs.
+Qreminder is a self-hosted subscription manager. It puts the prices, renewal dates, budgets, and reminders for SaaS, AI tools, cloud services, and developer tools in one place. Works for individuals, indie teams, and home labs.
 
 <p align="center">
   <img alt="Self-hosted" src="https://img.shields.io/badge/self--hosted-0f172a?style=flat-square">
-  <img alt="React" src="https://img.shields.io/badge/React-19-149eca?style=flat-square">
+  <img alt="React 19" src="https://img.shields.io/badge/React-19-149eca?style=flat-square">
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-Hono%20%2B%20Drizzle-3178c6?style=flat-square">
+  <img alt="Tailwind 4" src="https://img.shields.io/badge/Tailwind-4-38bdf8?style=flat-square">
   <img alt="Cloudflare Workers" src="https://img.shields.io/badge/Cloudflare-Workers-f38020?style=flat-square">
   <img alt="MIT License" src="https://img.shields.io/badge/license-MIT-111827?style=flat-square">
 </p>
 
-<p align="center">
-  <img src="./docs/screenshots/qreminder-dashboard-en.png" alt="Qreminder English dashboard, showing 20 developer subscriptions with monthly spend, upcoming renewals, and category breakdown" width="100%">
-</p>
+> Screenshots are being refreshed to match the 2026-05 visual redesign. Images under `docs/screenshots/` show the previous layout and are illustrative only; the sections below describe the current UI and feature set.
 
-<p align="center">
-  <sub>Screenshots use 20 developer-focused services with public pricing as demo data (price snapshot: 2026-05-17). Real prices may change with vendor pages, region, taxes, and billing cycles.</sub>
-</p>
+## What is it
 
-<p align="center"><strong>Subscription Grid</strong></p>
+If you subscribe to lots of tools, Qreminder keeps the receipts:
 
-<p align="center">
-  <img src="./docs/screenshots/qreminder-subscriptions-en.png" alt="Qreminder English subscription grid with filters, tags, renewal status, and service logos" width="100%">
-</p>
+- **Who charges you when** — multi-tier reminders (e.g. `[7, 3, 1]` days), same-day hits coalesced into a single email
+- **How much you spend** — different cycles normalized to monthly cost, then broken down by category and payment method
+- **What's about to renew** — renewal calendar + trial-end glow + dashboard top-N renewal list
+- **Where reminders go** — dedicated notification center with per-recipient drill-down
 
-<p align="center"><strong>Statistics</strong></p>
-
-<p align="center">
-  <img src="./docs/screenshots/qreminder-statistics-en.png" alt="Qreminder English statistics view with category spend, payment methods, and budget charts" width="100%">
-</p>
-
-<p align="center"><strong>Renewal Calendar</strong></p>
-
-<p align="center">
-  <img src="./docs/screenshots/qreminder-calendar-en.png" alt="Qreminder English renewal calendar showing monthly renewal events and projected spend for developer subscriptions" width="100%">
-</p>
-
-<p align="center"><strong>Notifications</strong></p>
-
-<p align="center">
-  <img src="./docs/screenshots/qreminder-notifications-en.png" alt="Qreminder English notification settings with notification methods list and email notification configuration panel" width="100%">
-</p>
-
-## Overview
-
-If you subscribe to lots of tools, Qreminder keeps the receipts: who charges you when, how much you spend per month, what's about to renew, and where reminders should go. You record price, currency, billing cycle, renewal date, payment method, tags, website, and notes — and then look at the dashboard, calendar, payment-method aggregate, and notification center to see the whole picture and verify reminder delivery.
-
-Tech stack:
-
-- `packages/client`: Vite + React 19 SPA, Tailwind 4 + shadcn/Radix. Dashboard and subscription list share the home page; cards, calendar, and notification center each have their own route. Bilingual (zh-CN / en).
-- `packages/server-ts`: TypeScript + Hono + Drizzle + Better Auth backend. The same code runs in two runtimes:
-  - [runtimes/worker](./runtimes/worker/): Cloudflare Workers + D1 + R2 + Cron Triggers + Workers Assets — no VPS required.
-  - [runtimes/node](./runtimes/node/): Node + better-sqlite3 + nodemailer + node-cron (experimental, runs on your own VPS).
-- `packages/shared`: zod schemas and domain helpers shared between client and server.
-- `tools/pb-importer`: CLI that imports legacy Go + PocketBase data into the new schema.
-- `packages/server`: previous-generation Go + PocketBase backend, now in maintenance mode (see "Legacy Docker deployment (v1)" at the bottom).
-
-The recommended deployment target is Cloudflare Workers. There are two paths: fork the repo and run everything from the GitHub web UI (recommended), or install wrangler CLI locally and run the commands yourself.
+Self-hosted: your subscription data only lives in the instance you deploy. Nothing is reported to third parties.
 
 ## Features
 
-- Track subscriptions: name, logo, price, currency, billing cycle, status, category, payment method, website, tags, and notes.
-- Multi-tier reminders: each subscription has its own `reminderOffsets` array like `[7, 3, 1]` (up to 365 days, monotonically decreasing). Subscriptions hit on the same day are merged into a single email so users don't get spammed.
-- Multi-channel notifications: Workers mode uses Resend HTTP API; Node mode supports SMTP / Telegram / Notifyx / Webhook / WeCom Bot / Bark.
-- Notification center: dedicated page combining "upcoming" batches and dispatched job history, filterable by status, drillable into per-recipient delivery results.
-- Spending insights: normalize different billing cycles to monthly cost, show budget usage, category breakdown, payment-method breakdown, and savings from inactive subscriptions.
-- Multiple currencies: Frankfurter or FloatRates as exchange-rate source, with fallback rates if remote sources fail.
-- Multi-user: Better Auth with email/password sign-in. Admins can temporarily open signup and configure an email allowlist (supports `*@example.com` wildcards) under Settings → Signup. The sidebar "Users" entry (admin only) lets admins create, delete, and reset passwords directly.
-- Bilingual UI: Simplified Chinese and English, switchable in app.
+| Area | Capabilities |
+| --- | --- |
+| **Subscription record** | Name, logo, price, currency, billing cycle (weekly/monthly/quarterly/semi-annual/annual/custom days), status (trial/active/paused/cancelled), category, payment method (including **Free**), website, tags, notes |
+| **Multi-tier reminders** | Per-subscription `reminderOffsets`; same-day matches merged into one email |
+| **Notification channels** | Workers uses Resend HTTP API; Node self-hosted supports SMTP, Telegram, Notifyx, Webhook, WeCom Bot, Bark |
+| **Notification center** | Dedicated page combining upcoming batches + dispatch history, filterable by status, drillable into per-recipient results |
+| **Spending insights** | Normalize cycles to monthly cost; category share, payment-method share, billing-cycle distribution, renewal/monthly top 5 |
+| **Multi-currency** | Frankfurter or FloatRates; fallback rates when remote sources fail |
+| **Multi-user** | Better Auth email/password sign-in; admins can open signup under Settings → Registration, with quick-toggle checkboxes for 12 common providers (Gmail / Outlook / QQ / 163 / iCloud / Proton …) or manual allowlist entries |
+| **Admin tools** | Sidebar "Users" entry lets admins create, delete, reset passwords, ban accounts |
+| **Bilingual** | Simplified Chinese / English, switchable in-app |
+| **Theming** | Five preset themes (Emerald / Ocean / Sunset / Lavender / Rose) with light/dark mode, plus custom-color support |
 
-## Cloudflare Workers Deployment (recommended)
+## App structure
+
+| Route | Purpose |
+| --- | --- |
+| `/` | Dashboard: monthly spend, active subs, upcoming renewals, trial counts; below is the filterable/sortable subscription grid/list |
+| `/calendar` | Renewal calendar: month view of renewal events, hover for amount |
+| `/cards` | Cards: subscriptions grouped by payment method |
+| `/notifications` | Notification center: upcoming + history with drill-down |
+| `/settings` | System settings: account, appearance, exchange rates, notification channels, signup config, custom config |
+| `/admin/users` | User management (admin only) |
+| `/login` `/register` `/forgot-password` `/reset-password` | Auth flows |
+
+## Stack
+
+| Package | Description |
+| --- | --- |
+| [packages/client](./packages/client/) | Vite + React 19 + Tailwind 4 + shadcn/Radix SPA. Unified design system: 5-step elevation scale, surface/lift utilities, Apple-style motion easing. Bilingual zh-CN / en |
+| [packages/server-ts](./packages/server-ts/) | TypeScript + Hono + Drizzle + Better Auth backend; one codebase, two runtimes |
+| [runtimes/worker](./runtimes/worker/) | Cloudflare Workers + D1 + R2 + Cron Triggers + Workers Assets — no VPS |
+| [runtimes/node](./runtimes/node/) | Node + better-sqlite3 + nodemailer + node-cron — your own VPS (experimental) |
+| [packages/shared](./packages/shared/) | zod schemas and domain helpers shared between client and server |
+| [tools/pb-importer](./tools/pb-importer/) | CLI that imports legacy Go + PocketBase data into the new schema |
+| [packages/server](./packages/server/) | Previous-generation Go + PocketBase backend, maintenance mode (see legacy section) |
+
+## Cloudflare Workers deployment (recommended)
 
 You only need a Cloudflare account and a Resend account. The whole app runs on Cloudflare's free tier (D1 + R2 + Workers + Cron Triggers + Workers Assets).
 
-### Path A: fork + GitHub Actions (no local wrangler required)
+### Path A: fork + GitHub Actions (no local CLI required)
 
-For users who don't want a VPS and don't want to install CLI tools. Fork the repo and run the entire deployment from the GitHub web UI.
+For users who don't want a VPS or local tooling. Fork the repo and run everything from the GitHub web UI.
 
-Two steps:
+1. In your fork: **Settings → Environments** → create an environment named `cloudflare`, add the 6 required secrets per [docs/CF_GH_ACTIONS_DEPLOY.md §1](./docs/CF_GH_ACTIONS_DEPLOY.md#1-配置-github-secrets--variables) (Cloudflare API token, account id, Better Auth secret, APP_URL, Resend API key + sender)
+2. **Actions** → manually run **Cloudflare Bootstrap** (creates D1 + R2, auto-commits `database_id` back to `wrangler.toml`). When it finishes, **Wrangler Deploy** runs automatically and ships the worker
 
-1. In your fork, go to Settings → Environments and create an environment named `cloudflare`. Add the 6 required secrets per [docs/CF_GH_ACTIONS_DEPLOY.md §1](./docs/CF_GH_ACTIONS_DEPLOY.md#1-配置-github-secrets--variables) (Cloudflare API token / account id / Better Auth secret / app url / Resend api key + sender).
-2. Actions → manually Run **Cloudflare Bootstrap** (creates D1 + R2, auto-commits the `database_id` back to `wrangler.toml`). When it finishes, **Wrangler Deploy** runs automatically and ships the worker.
-
-See [docs/CF_GH_ACTIONS_DEPLOY.md](./docs/CF_GH_ACTIONS_DEPLOY.md) for the full walkthrough, first-admin signup, custom domain, and troubleshooting.
+See [docs/CF_GH_ACTIONS_DEPLOY.md](./docs/CF_GH_ACTIONS_DEPLOY.md) for the full walkthrough, first-login, custom domain, and troubleshooting.
 
 ### Path B: local wrangler CLI
-
-If you already have wrangler installed, prefer the command line, or want to test the workflow locally first:
 
 ```bash
 pnpm install -g wrangler@latest
 wrangler login
 ```
 
-Then follow [docs/WORKER_DEPLOY.md](./docs/WORKER_DEPLOY.md) step by step: create D1 + R2 → set secrets → apply D1 migrations → build the client → `wrangler deploy` → register the first admin. About 15 minutes total (excluding Resend domain verification propagation time).
+Then follow [docs/WORKER_DEPLOY.md](./docs/WORKER_DEPLOY.md) step by step: create D1 + R2 → set secrets → apply D1 migrations → build the client → `wrangler deploy` → log in as default admin. About 15 minutes total (excluding Resend domain verification propagation).
 
-## Node Self-Hosted Deployment (Docker)
+### First login
 
-Run the whole app in a single Docker container: v2 TS backend + frontend SPA + SQLite + built-in cron scheduler.
+After deployment, sign in with the default credentials. The system will force a password change on first login:
+
+```
+Email:    admin@qreminder.local
+Password: Qreminder@2026
+```
+
+## Node self-hosted (Docker)
+
+If you have a VPS, run the whole app in a single Docker container: v2 TS backend + frontend SPA + SQLite + built-in cron scheduler.
 
 ```bash
 mkdir -p qreminder && cd qreminder
@@ -111,7 +110,7 @@ docker compose pull
 docker compose up -d
 ```
 
-The image defaults to `ghcr.io/yzgolden86/qreminder:latest`. Full walkthrough — first-admin signup, reverse proxy, custom domain, backup, troubleshooting — see [docs/NODE_DOCKER_DEPLOY.md](./docs/NODE_DOCKER_DEPLOY.md).
+The image defaults to `ghcr.io/yzgolden86/qreminder:latest`. Full walkthrough — first-login, reverse proxy, custom domain, backup, troubleshooting — see [docs/NODE_DOCKER_DEPLOY.md](./docs/NODE_DOCKER_DEPLOY.md).
 
 Without Docker, run from source:
 
@@ -123,29 +122,19 @@ pnpm --filter @qreminder/client build
 pnpm --filter @qreminder/runtime-node start
 ```
 
-## Local Development
-
-Install dependencies:
+## Local development
 
 ```bash
 pnpm install
-```
 
-Start the v2 TS backend (Node runtime):
-
-```bash
+# v2 TS backend (Node runtime, listens on :3000)
 pnpm --filter @qreminder/runtime-node dev
-```
 
-Start the client (defaults to `http://localhost:5173`, proxies `/api` to `http://127.0.0.1:3000`):
-
-```bash
+# Frontend SPA (http://localhost:5173, /api proxied to :3000)
 pnpm --filter @qreminder/client dev
 ```
 
-## Verification
-
-Common checks:
+Pre-submit checks:
 
 ```bash
 pnpm -r typecheck
@@ -154,7 +143,7 @@ pnpm --filter @qreminder/client build
 pnpm --filter @qreminder/server test
 ```
 
-## Data Migration (v1 → v2)
+## Data migration (v1 → v2)
 
 If you're already on v1 (Go + PocketBase), use [tools/pb-importer](./tools/pb-importer/) to import the old data into v2:
 
@@ -174,10 +163,10 @@ Issues, doc improvements, tests, and pull requests are welcome. Before submittin
 
 For larger features, please open an issue first to align on goals, use cases, and approach before implementing.
 
-## Friendly Links
+## Friendly links
 
-- [LINUX DO](https://linux.do/): Qreminder appreciates the LINUX DO community for fostering open-source discussion.
+- [LINUX DO](https://linux.do/) — Qreminder appreciates the LINUX DO community for fostering open-source discussion.
 
 ## License
 
-Qreminder is open-sourced under the [MIT License](LICENSE).
+Qreminder is open-sourced under the [MIT License](LICENSE). Copyright © 2026 yzgolden86.
