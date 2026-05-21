@@ -1,14 +1,26 @@
 import { useMemo, useState } from "react";
-import { CreditCard, Layers, Wallet, ChevronRight } from "lucide-react";
+import { CreditCard, Layers, Wallet, ChevronRight, CheckSquare, Trash2, X } from "lucide-react";
 import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "@/components/ui/sonner";
 import { AuthorizedImage } from "@/components/authorized-image";
 import { SubscriptionCard } from "@/components/subscription-card";
 import { EditSubscriptionDialog } from "@/components/edit-subscription-dialog";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
-import { useSubscriptions } from "@/hooks/use-subscriptions";
+import { useSubscriptions, useBatchDeleteSubscriptions } from "@/hooks/use-subscriptions";
 import { useSettings } from "@/hooks/use-settings";
 import { useExchangeRates } from "@/hooks/use-exchange-rates";
 import { useCustomConfig } from "@/contexts/CustomConfigContext";
@@ -50,11 +62,40 @@ export default function Cards() {
   } = useSubscriptionCrud(subscriptions);
 
   const [activeGroupKey, setActiveGroupKey] = useState<string | null>(null);
+  const [batchMode, setBatchMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
+  const batchDelete = useBatchDeleteSubscriptions();
 
   const activeGroup = useMemo(
     () => (activeGroupKey ? cardsModel.groups.find((g) => g.key === activeGroupKey) ?? null : null),
     [activeGroupKey, cardsModel.groups],
   );
+
+  const toggleSelection = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const exitBatchMode = () => {
+    setBatchMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const handleBatchDelete = async () => {
+    try {
+      await batchDelete.mutateAsync([...selectedIds]);
+      toast.success(t("subscriptions.batchSelected", { count: selectedIds.size }));
+      exitBatchMode();
+    } catch {
+      toast.error(t("error.generic"));
+    }
+    setBatchDeleteDialogOpen(false);
+  };
 
   if (subscriptionsQuery.isPending || settingsQuery.isPending) {
     return <DashboardSkeleton />;
@@ -237,23 +278,63 @@ export default function Cards() {
                   </div>
                 </DialogTitle>
               </DialogHeader>
+              <div className="mt-2 flex items-center justify-between">
+                {!batchMode ? (
+                  <Button variant="outline" size="sm" onClick={() => setBatchMode(true)} className="gap-1.5">
+                    <CheckSquare className="h-3.5 w-3.5" />
+                    {t("subscriptions.batchSelect")}
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[13px] font-medium text-foreground">
+                      {t("subscriptions.batchSelected", { count: selectedIds.size })}
+                    </span>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="gap-1.5"
+                      disabled={selectedIds.size === 0}
+                      onClick={() => setBatchDeleteDialogOpen(true)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      {t("subscriptions.batchDelete")}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={exitBatchMode} className="gap-1.5 text-muted-foreground">
+                      <X className="h-3.5 w-3.5" />
+                      {t("subscriptions.batchCancel")}
+                    </Button>
+                  </div>
+                )}
+              </div>
               <div className="mt-2 grid max-h-[60vh] gap-3 overflow-y-auto pr-1">
                 {activeGroup.subscriptions.map((sub) => (
-                  <SubscriptionCard
-                    key={sub.id}
-                    subscription={sub}
-                    viewMode="list"
-                    timeZone={timeZone}
-                    onEdit={(id) => {
-                      setActiveGroupKey(null);
-                      handleEditSubscription(id);
-                    }}
-                    onDelete={handleDeleteSubscription}
-                  />
+                  <div key={sub.id} className={cn("relative", batchMode && selectedIds.has(sub.id) && "ring-2 ring-primary rounded-lg")}>
+                    {batchMode && (
+                      <div className="absolute right-2.5 bottom-2.5 z-10">
+                        <Checkbox
+                          checked={selectedIds.has(sub.id)}
+                          onCheckedChange={() => toggleSelection(sub.id)}
+                          className="h-5 w-5 rounded-md border-2 border-primary/40 data-[state=checked]:bg-primary data-[state=checked]:border-primary shadow-sm"
+                        />
+                      </div>
+                    )}
+                    <SubscriptionCard
+                      subscription={sub}
+                      viewMode="list"
+                      timeZone={timeZone}
+                      {...(!batchMode && {
+                        onEdit: (id: string) => {
+                          setActiveGroupKey(null);
+                          handleEditSubscription(id);
+                        },
+                        onDelete: handleDeleteSubscription,
+                      })}
+                    />
+                  </div>
                 ))}
               </div>
               <div className="mt-4 flex justify-end">
-                <Button variant="outline" onClick={() => setActiveGroupKey(null)}>
+                <Button variant="outline" onClick={() => { setActiveGroupKey(null); exitBatchMode(); }}>
                   {t("common.close")}
                 </Button>
               </div>
@@ -268,6 +349,26 @@ export default function Cards() {
         onOpenChange={handleEditDialogOpenChange}
         onSave={handleSaveSubscription}
       />
+
+      <AlertDialog open={batchDeleteDialogOpen} onOpenChange={setBatchDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("subscriptions.batchDeleteTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("subscriptions.batchDeleteDescription", { count: selectedIds.size })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void handleBatchDelete()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

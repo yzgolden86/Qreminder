@@ -76,6 +76,16 @@ const Register = () => {
     });
   };
 
+  const getSignupErrorMessage = (error: unknown): string => {
+    const msg = typeof error === "object" && error !== null && "message" in error
+      ? String((error as { message?: unknown }).message)
+      : "";
+    if (msg.includes("signup_disabled")) return t("register.error.disabled");
+    if (msg.includes("signup_not_allowed")) return t("register.error.domainNotAllowed");
+    if (msg.includes("FORBIDDEN")) return t("register.error.contactAdmin");
+    return getAuthDisplayMessage(error);
+  };
+
   const handleRegister = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const { nextErrors, trimmedName, trimmedEmail } = validate();
@@ -95,7 +105,7 @@ const Register = () => {
       });
       if (error) {
         toast.error(t('register.failed'), {
-          description: getAuthDisplayMessage(error),
+          description: getSignupErrorMessage(error),
         });
         return;
       }
@@ -103,7 +113,7 @@ const Register = () => {
       router.push('/');
     } catch (err: unknown) {
       toast.error(t('register.failed'), {
-        description: getAuthDisplayMessage(err),
+        description: getSignupErrorMessage(err),
       });
     } finally {
       setIsLoading(false);

@@ -115,6 +115,9 @@ export const zhCN = {
   "register.validation.emailInvalid": "请输入有效邮箱",
   "register.validation.passwordRequired": "请输入密码",
   "register.validation.passwordLength": "密码至少 8 位",
+  "register.error.domainNotAllowed": "该邮箱域名不支持注册，请更换邮箱",
+  "register.error.contactAdmin": "注册功能尚未完全配置，请联系管理员开启邮箱白名单",
+  "register.error.disabled": "注册功能已关闭",
 } satisfies MessageMap;
 
 export const enUS = {
@@ -226,4 +229,7 @@ export const enUS = {
   "register.validation.emailInvalid": "Enter a valid email",
   "register.validation.passwordRequired": "Enter a password",
   "register.validation.passwordLength": "Password must be at least 8 characters",
+  "register.error.domainNotAllowed": "This email domain is not allowed for registration. Please use a different email.",
+  "register.error.contactAdmin": "Registration is not fully configured. Please contact the administrator to enable email domains.",
+  "register.error.disabled": "Registration is disabled",
 } satisfies Record<keyof typeof zhCN, MessageValue>;

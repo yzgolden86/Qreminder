@@ -347,6 +347,15 @@ export default function Home() {
                 <Grid className="h-4 w-4" />
               )}
             </Button>
+            <AddSubscriptionDialog
+              onAdd={handleAddSubscription}
+              trigger={
+                <Button size="sm" className="gap-1.5">
+                  <Plus className="h-3.5 w-3.5" />
+                  {t("subscription.add")}
+                </Button>
+              }
+            />
           </div>
         </div>
 
@@ -517,11 +526,12 @@ export default function Home() {
                 onClick={batchMode ? () => toggleSelection(sub.id) : undefined}
               >
                 {batchMode && (
-                  <div className="absolute left-2 top-2 z-10">
+                  <div className="absolute right-2.5 bottom-2.5 z-10">
                     <Checkbox
                       checked={selectedIds.has(sub.id)}
                       onCheckedChange={() => toggleSelection(sub.id)}
                       aria-label={`Select ${sub.name}`}
+                      className="h-5 w-5 rounded-md border-2 border-primary/40 data-[state=checked]:bg-primary data-[state=checked]:border-primary shadow-sm"
                     />
                   </div>
                 )}

@@ -342,7 +342,6 @@ export function SettingsScreen() {
                 items={customConfig.statuses}
                 onUpdate={updateStatuses}
                 showColor={true}
-                readOnly={true}
                 icon={<Activity className="h-4 w-4" />}
               />
 
@@ -362,7 +361,6 @@ export function SettingsScreen() {
                 items={customConfig.currencies}
                 onUpdate={handleUpdateCurrencies}
                 icon={<Coins className="h-4 w-4" />}
-                toggleMode={true}
               />
             </div>
           </section>
