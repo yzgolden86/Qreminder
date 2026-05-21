@@ -61,7 +61,7 @@ export function ExchangeRatesSection({
       : null;
 
   return (
-            <section className="rounded-xl border border-border bg-card p-6">
+            <section className="surface-card rounded-xl p-6">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-2">
                     <TrendingUp className="h-5 w-5 text-primary" />

@@ -220,7 +220,7 @@ export function SettingsScreen() {
             />
 
           {/* 外观设置 */}
-          <section className="rounded-xl border border-border bg-card p-6">
+          <section className="surface-card rounded-xl p-6">
             <div className="flex items-center gap-2 mb-6">
               <Palette className="h-5 w-5 text-primary" />
               <h2 className="text-lg font-semibold text-foreground">{t("settings.appearance")}</h2>
@@ -236,7 +236,7 @@ export function SettingsScreen() {
           </section>
 
           {/* 显示设置 */}
-            <section className="rounded-xl border border-border bg-card p-6">
+            <section className="surface-card rounded-xl p-6">
               <h2 className="mb-6 text-lg font-semibold text-foreground">{t("settings.display")}</h2>
               <div className="grid gap-6">
                 <div className="grid gap-2">
@@ -263,7 +263,7 @@ export function SettingsScreen() {
           </section>
 
           {/* 预算设置 */}
-          <section className="rounded-xl border border-border bg-card p-6">
+          <section className="surface-card rounded-xl p-6">
             <h2 className="mb-6 text-lg font-semibold text-foreground">{t("settings.budget")}</h2>
             <div className="grid gap-4">
               <div className="grid gap-2">
@@ -297,7 +297,7 @@ export function SettingsScreen() {
           </section>
 
           {/* 数据配置 */}
-          <section className="rounded-xl border border-border bg-card p-6">
+          <section className="surface-card rounded-xl p-6">
             <div className="flex items-center gap-2 mb-4">
               <Settings2 className="h-5 w-5 text-primary" />
               <h2 className="text-lg font-semibold text-foreground">{t("settings.dataConfig")}</h2>
@@ -385,7 +385,7 @@ export function SettingsScreen() {
           />
 
           {/* 时区设置 */}
-          <section className="rounded-xl border border-border bg-card p-6">
+          <section className="surface-card rounded-xl p-6">
             <h2 className="mb-6 text-lg font-semibold text-foreground">{t("settings.timezone")}</h2>
             <div className="grid gap-2">
               <Label htmlFor="timezone">{t("settings.timezoneSelect")}</Label>
@@ -407,7 +407,7 @@ export function SettingsScreen() {
           </section>
 
           {/* 通知设置 */}
-          <section className="rounded-xl border border-border bg-card p-6">
+          <section className="surface-card rounded-xl p-6">
             <h2 className="mb-6 text-lg font-semibold text-foreground">{t("settings.notifications")}</h2>
             
             <div className="grid gap-6">

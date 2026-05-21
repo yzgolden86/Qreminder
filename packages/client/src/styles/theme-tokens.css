@@ -49,6 +49,22 @@
     /* Custom tokens - subtle and refined */
     --app-shadow-card: 0 1px 2px 0 hsla(220, 25%, 10%, 0.03), 0 1px 1px -1px hsla(220, 25%, 10%, 0.02);
 
+    /* Elevation scale (light theme) - tinted with foreground hue so shadows feel natural */
+    --app-shadow-xs: 0 1px 2px 0 hsla(220, 25%, 12%, 0.04);
+    --app-shadow-sm: 0 1px 3px 0 hsla(220, 25%, 12%, 0.06), 0 1px 2px -1px hsla(220, 25%, 12%, 0.04);
+    --app-shadow-md: 0 4px 8px -2px hsla(220, 25%, 12%, 0.06), 0 2px 4px -2px hsla(220, 25%, 12%, 0.04);
+    --app-shadow-lg: 0 12px 24px -8px hsla(220, 25%, 12%, 0.10), 0 4px 8px -4px hsla(220, 25%, 12%, 0.06);
+    --app-shadow-xl: 0 24px 48px -12px hsla(220, 25%, 12%, 0.14), 0 8px 16px -8px hsla(220, 25%, 12%, 0.08);
+    --app-shadow-primary: 0 8px 24px -8px hsl(var(--primary) / 0.30), 0 4px 8px -4px hsl(var(--primary) / 0.18);
+    --app-shadow-focus: 0 0 0 3px hsl(var(--ring) / 0.18);
+
+    /* Motion tokens — Apple-style easing for premium feel */
+    --motion-fast: 120ms;
+    --motion-base: 200ms;
+    --motion-slow: 320ms;
+    --motion-ease: cubic-bezier(0.32, 0.72, 0, 1);
+    --motion-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
     /* Chart colors */
     --chart-1: 160 84% 45%;
     --chart-2: 200 80% 50%;
@@ -113,6 +129,15 @@
 
     /* Custom tokens */
     --app-shadow-card: 0 2px 8px -2px hsla(0, 0%, 0%, 0.25), 0 1px 2px -1px hsla(0, 0%, 0%, 0.15);
+
+    /* Elevation scale (dark theme) - deeper shadows that read well against dark cards */
+    --app-shadow-xs: 0 1px 2px 0 hsla(0, 0%, 0%, 0.30);
+    --app-shadow-sm: 0 2px 4px -1px hsla(0, 0%, 0%, 0.30), 0 1px 2px -1px hsla(0, 0%, 0%, 0.20);
+    --app-shadow-md: 0 6px 12px -3px hsla(0, 0%, 0%, 0.35), 0 3px 6px -3px hsla(0, 0%, 0%, 0.22);
+    --app-shadow-lg: 0 16px 32px -8px hsla(0, 0%, 0%, 0.45), 0 6px 12px -6px hsla(0, 0%, 0%, 0.28);
+    --app-shadow-xl: 0 32px 60px -16px hsla(0, 0%, 0%, 0.55), 0 12px 24px -12px hsla(0, 0%, 0%, 0.32);
+    --app-shadow-primary: 0 12px 32px -8px hsl(var(--primary) / 0.40), 0 4px 12px -4px hsl(var(--primary) / 0.24);
+    --app-shadow-focus: 0 0 0 3px hsl(var(--ring) / 0.30);
 
     --sidebar-background: 220 18% 7%;
     --sidebar-foreground: 210 20% 85%;

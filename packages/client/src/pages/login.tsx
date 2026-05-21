@@ -119,150 +119,166 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background theme-gradient flex">
-      {/* Left side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary/20 via-primary/10 to-background items-center justify-center p-12">
-        <div className="max-w-md grid gap-8">
-          <div className="flex items-center gap-3">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#111720] text-[#f8fafc] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_18px_36px_-22px_rgba(0,0,0,0.82)] ring-1 ring-white/10">
-              <QreminderLogo className="h-7 w-7" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Qreminder</h1>
-              <p className="text-sm text-muted-foreground">{t("app.tagline")}</p>
-            </div>
-          </div>
-          
-          <div className="grid gap-4">
-            <h2 className="text-2xl font-semibold text-foreground">
-              {t("auth.heroTitle")}
-            </h2>
-            <ul className="grid gap-3 text-muted-foreground">
-              <li className="flex items-center gap-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                {t("auth.heroTrackCosts")}
-              </li>
-              <li className="flex items-center gap-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                {t("auth.heroRenewalReminder")}
-              </li>
-              <li className="flex items-center gap-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                {t("auth.heroAnalyzeSpending")}
-              </li>
-            </ul>
-          </div>
-        </div>
+    <div className="relative min-h-screen overflow-hidden bg-background theme-gradient">
+      {/* Ambient color glows */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-0"
+      >
+        <div className="absolute -left-32 top-1/4 h-96 w-96 rounded-full bg-primary/20 blur-[120px]" />
+        <div className="absolute -right-24 bottom-0 h-[420px] w-[420px] rounded-full bg-primary/10 blur-[140px]" />
       </div>
 
-      {/* Right side - Login Form */}
-      <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
-        <div className="w-full max-w-md grid gap-8">
-          {/* Mobile logo */}
-          <div className="flex items-center justify-center gap-3 lg:hidden">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#111720] text-[#f8fafc] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_16px_32px_-22px_rgba(0,0,0,0.8)] ring-1 ring-white/10">
-              <QreminderLogo className="h-6 w-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Qreminder</h1>
-              <p className="text-xs text-muted-foreground">{t("app.tagline")}</p>
-            </div>
-          </div>
-
-          <div className="text-center lg:text-left">
-            <h2 className="text-2xl font-bold text-foreground">{t("auth.welcomeBack")}</h2>
-            <p className="mt-2 text-muted-foreground">
-              {t("auth.loginSubtitle")}
-            </p>
-          </div>
-
-          <div className="grid gap-6">
-            <form onSubmit={handleLogin} className="grid gap-4" noValidate>
-              <div className="grid gap-2">
-                <Label htmlFor="login-email">{t("auth.email")}</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    ref={emailInputRef}
-                    id="login-email"
-                    name="email"
-                    type="email"
-                    autoComplete="username"
-                    placeholder="your@email.com"
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      clearError("email");
-                    }}
-                    className="pl-10 bg-secondary border-border"
-                    aria-invalid={Boolean(errors.email)}
-                    aria-describedby={errors.email ? "login-email-error" : undefined}
-                    required
-                  />
+      <div className="relative z-10 flex min-h-screen">
+        {/* Left side - Branding */}
+        <div className="hidden items-center justify-center p-12 lg:flex lg:w-1/2">
+          <div className="grid max-w-md gap-10 animate-[rise-in_var(--motion-slow)_var(--motion-ease-out)]">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="absolute -inset-2 rounded-2xl bg-primary/30 opacity-60 blur-xl" aria-hidden />
+                <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-[#111720] text-[#f8fafc] shadow-[inset_0_1px_0_rgba(255,255,255,0.10),0_18px_36px_-22px_rgba(0,0,0,0.85)] ring-1 ring-white/10">
+                  <QreminderLogo className="h-7 w-7" />
                 </div>
-                <FieldError id="login-email-error" message={errors.email} />
+              </div>
+              <div>
+                <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Qreminder</h1>
+                <p className="text-sm text-muted-foreground">{t("app.tagline")}</p>
+              </div>
+            </div>
+
+            <div className="grid gap-5">
+              <h2 className="text-3xl font-bold leading-tight tracking-tight text-foreground">
+                {t("auth.heroTitle")}
+              </h2>
+              <ul className="grid gap-3 text-sm text-muted-foreground">
+                {[
+                  t("auth.heroTrackCosts"),
+                  t("auth.heroRenewalReminder"),
+                  t("auth.heroAnalyzeSpending"),
+                ].map((line, idx) => (
+                  <li key={idx} className="flex items-center gap-3">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary ring-1 ring-primary/20">
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                    </span>
+                    <span>{line}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Right side - Login Form */}
+        <div className="flex flex-1 items-center justify-center p-6 lg:p-12">
+          <div className="grid w-full max-w-md gap-8 animate-[rise-in_var(--motion-slow)_var(--motion-ease-out)]">
+            {/* Mobile logo */}
+            <div className="flex items-center justify-center gap-3 lg:hidden">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#111720] text-[#f8fafc] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_16px_32px_-22px_rgba(0,0,0,0.8)] ring-1 ring-white/10">
+                <QreminderLogo className="h-6 w-6" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Qreminder</h1>
+                <p className="text-xs text-muted-foreground">{t("app.tagline")}</p>
+              </div>
+            </div>
+
+            <div className="surface-elevated rounded-2xl p-8 backdrop-blur-sm">
+              <div className="text-center lg:text-left">
+                <h2 className="text-2xl font-bold tracking-tight text-foreground">{t("auth.welcomeBack")}</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {t("auth.loginSubtitle")}
+                </p>
               </div>
 
-              <div className="grid gap-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="login-password">{t("auth.password")}</Label>
-                  {passwordResetEnabled ? (
-                    <Link href="/forgot-password" className="text-xs text-primary hover:underline">
-                      {t("auth.forgotPassword")}
+              <div className="mt-7 grid gap-6">
+                <form onSubmit={handleLogin} className="grid gap-4" noValidate>
+                  <div className="grid gap-2">
+                    <Label htmlFor="login-email">{t("auth.email")}</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        ref={emailInputRef}
+                        id="login-email"
+                        name="email"
+                        type="email"
+                        autoComplete="username"
+                        placeholder="your@email.com"
+                        value={email}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          clearError("email");
+                        }}
+                        className="h-11 border-border bg-secondary/60 pl-10"
+                        aria-invalid={Boolean(errors.email)}
+                        aria-describedby={errors.email ? "login-email-error" : undefined}
+                        required
+                      />
+                    </div>
+                    <FieldError id="login-email-error" message={errors.email} />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="login-password">{t("auth.password")}</Label>
+                      {passwordResetEnabled ? (
+                        <Link href="/forgot-password" className="text-xs font-medium text-primary hover:underline">
+                          {t("auth.forgotPassword")}
+                        </Link>
+                      ) : null}
+                    </div>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        ref={passwordInputRef}
+                        id="login-password"
+                        name="password"
+                        type={showPassword ? 'text' : 'password'}
+                        autoComplete="current-password"
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => {
+                          setPassword(e.target.value);
+                          clearError("password");
+                        }}
+                        className="h-11 border-border bg-secondary/60 pl-10 pr-10"
+                        aria-invalid={Boolean(errors.password)}
+                        aria-describedby={errors.password ? "login-password-error" : undefined}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground"
+                        aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    <FieldError id="login-password-error" message={errors.password} />
+                  </div>
+
+                  <div className="pt-3">
+                    <Button
+                      type="submit"
+                      className="group h-11 w-full bg-primary text-primary-foreground shadow-primary transition-all duration-200 hover:bg-primary-glow hover:shadow-[0_16px_40px_-8px_hsl(var(--primary)/0.45)]"
+                      disabled={isLoading}
+                    >
+                      {isLoading ? t("auth.loggingIn") : t("auth.login")}
+                      <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                    </Button>
+                  </div>
+                </form>
+
+                {signupEnabled && (
+                  <p className="text-center text-sm text-muted-foreground">
+                    {t("auth.noAccount")}{" "}
+                    <Link href="/register" className="font-medium text-primary hover:underline">
+                      {t("auth.signUp")}
                     </Link>
-                  ) : null}
-                </div>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    ref={passwordInputRef}
-                    id="login-password"
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="current-password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      clearError("password");
-                    }}
-                    className="pl-10 pr-10 bg-secondary border-border"
-                    aria-invalid={Boolean(errors.password)}
-                    aria-describedby={errors.password ? "login-password-error" : undefined}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                <FieldError id="login-password-error" message={errors.password} />
+                  </p>
+                )}
               </div>
-
-              <div className="pt-3">
-                <Button
-                  type="submit"
-                  className="w-full bg-primary text-primary-foreground hover:bg-primary-glow"
-                  disabled={isLoading}
-                >
-                  {isLoading ? t("auth.loggingIn") : t("auth.login")}
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-            </form>
-
-            {signupEnabled && (
-              <p className="text-center text-sm text-muted-foreground">
-                {t("auth.noAccount")}{" "}
-                <Link href="/register" className="text-primary hover:underline font-medium">
-                  {t("auth.signUp")}
-                </Link>
-              </p>
-            )}
+            </div>
           </div>
         </div>
       </div>

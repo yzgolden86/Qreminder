@@ -70,7 +70,7 @@ export function AccountSettingsSection({
 
   return (
     <>
-                  <section className="rounded-xl border border-border bg-card p-6">
+                  <section className="surface-card rounded-xl p-6">
                     <h2 className="mb-6 text-lg font-semibold text-foreground">{t("settings.account")}</h2>
                     <div className="grid gap-6 sm:grid-cols-2">
                       <div className="grid gap-2">

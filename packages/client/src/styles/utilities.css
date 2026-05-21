@@ -8,6 +8,98 @@
     display: none;
   }
 
+  /* Surface treatments — used by elevated cards, dashboards, dialogs */
+  .surface-card {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    box-shadow: var(--app-shadow-xs);
+    transition: box-shadow var(--motion-base) var(--motion-ease-out),
+                transform var(--motion-base) var(--motion-ease-out),
+                border-color var(--motion-base) var(--motion-ease-out);
+  }
+
+  .surface-elevated {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    box-shadow: var(--app-shadow-md);
+  }
+
+  .lift-on-hover {
+    transition: box-shadow var(--motion-base) var(--motion-ease-out),
+                transform var(--motion-base) var(--motion-ease-out),
+                border-color var(--motion-base) var(--motion-ease-out);
+  }
+
+  .lift-on-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--app-shadow-lg);
+    border-color: hsl(var(--border) / 0.6);
+  }
+
+  /* Glass effect for floating panels (header, modal, popovers) */
+  .glass-panel {
+    background: hsl(var(--card) / 0.72);
+    backdrop-filter: saturate(180%) blur(18px);
+    -webkit-backdrop-filter: saturate(180%) blur(18px);
+    border: 1px solid hsl(var(--border) / 0.6);
+  }
+
+  /* Subtle gradient border using before pseudo-element */
+  .gradient-border {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .gradient-border::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: inherit;
+    background: linear-gradient(
+      135deg,
+      hsl(var(--primary) / 0.45),
+      hsl(var(--primary) / 0) 35%,
+      hsl(var(--primary) / 0) 65%,
+      hsl(var(--primary) / 0.30)
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Display number: tabular figures with a touch of negative tracking — for big metric values */
+  .num-display {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" on, "lnum" on, "ss01" on;
+    letter-spacing: -0.02em;
+  }
+
+  /* Focus ring tuned to design token */
+  .focus-ring {
+    outline: none;
+  }
+
+  .focus-ring:focus-visible {
+    box-shadow: var(--app-shadow-focus);
+  }
+
+  /* Shimmer placeholder background */
+  .skeleton-shimmer {
+    background-image: linear-gradient(
+      100deg,
+      hsl(var(--muted)) 0%,
+      hsl(var(--muted-foreground) / 0.10) 50%,
+      hsl(var(--muted)) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.8s linear infinite;
+  }
+
   .theme-gradient {
     background: hsl(var(--background));
   }

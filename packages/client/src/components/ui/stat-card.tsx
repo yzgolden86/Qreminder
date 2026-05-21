@@ -10,6 +10,18 @@ interface StatCardProps {
   className?: string;
 }
 
+const ICON_VARIANTS: Record<NonNullable<StatCardProps['variant']>, string> = {
+  default: "bg-secondary text-muted-foreground ring-1 ring-border/50",
+  primary: "bg-primary/10 text-primary ring-1 ring-primary/20",
+  warning: "bg-warning/10 text-warning ring-1 ring-warning/20",
+};
+
+const VALUE_VARIANTS: Record<NonNullable<StatCardProps['variant']>, string> = {
+  default: "text-foreground",
+  primary: "text-foreground",
+  warning: "text-warning",
+};
+
 export function StatCard({
   title,
   value,
@@ -21,18 +33,29 @@ export function StatCard({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-lg border border-border bg-card p-5 shadow-card transition-all duration-300 hover:bg-card-hover",
+        "surface-card lift-on-hover group relative overflow-hidden rounded-xl p-5",
         className,
       )}
     >
-      <div className="flex items-start justify-between">
-        <div className="grid gap-2">
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+      <div
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-60",
+          variant === 'primary' && "bg-primary/25",
+          variant === 'warning' && "bg-warning/25",
+          variant === 'default' && "bg-foreground/10",
+        )}
+      />
+
+      <div className="relative flex items-start justify-between gap-4">
+        <div className="grid min-w-0 gap-1.5">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            {title}
+          </p>
           <p
             className={cn(
-              "text-3xl font-bold tracking-tight",
-              variant === 'primary' && "text-foreground",
-              variant === 'warning' && "text-warning",
+              "num-display text-3xl font-bold leading-tight",
+              VALUE_VARIANTS[variant],
             )}
           >
             {value}
@@ -43,10 +66,8 @@ export function StatCard({
         </div>
         <div
           className={cn(
-            "flex h-11 w-11 items-center justify-center rounded-lg",
-            variant === 'default' && "bg-secondary text-muted-foreground",
-            variant === 'primary' && "bg-secondary text-primary",
-            variant === 'warning' && "bg-warning/10 text-warning",
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-105",
+            ICON_VARIANTS[variant],
           )}
         >
           {icon}

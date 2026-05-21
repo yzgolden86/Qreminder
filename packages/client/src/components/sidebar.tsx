@@ -85,15 +85,26 @@ function NavList({ items, onNavigate, role }: NavListProps) {
             onClick={onNavigate}
             className={({ isActive }) =>
               cn(
-                "flex items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] font-medium transition-colors",
+                "group relative flex items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] font-medium transition-all duration-150",
                 isActive
-                  ? "bg-primary/15 text-primary"
-                  : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                  ? "bg-primary/12 text-primary"
+                  : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground",
               )
             }
           >
-            {renderNavIcon(item.icon, "h-3.5 w-3.5 shrink-0")}
-            <span className="truncate">{t(item.labelKey)}</span>
+            {({ isActive }) => (
+              <>
+                <span
+                  aria-hidden
+                  className={cn(
+                    "absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-primary transition-all duration-200",
+                    isActive ? "opacity-100" : "opacity-0 group-hover:opacity-30",
+                  )}
+                />
+                {renderNavIcon(item.icon, cn("h-3.5 w-3.5 shrink-0 transition-transform duration-200", isActive && "scale-110"))}
+                <span className="truncate">{t(item.labelKey)}</span>
+              </>
+            )}
           </NavLink>
         );
       })}

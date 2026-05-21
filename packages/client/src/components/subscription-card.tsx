@@ -109,14 +109,21 @@ export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDe
   return (
     <>
     <div className={cn(
-      "group relative h-full overflow-hidden rounded-lg border border-border bg-card shadow-card transition-all duration-200 hover:shadow-md hover:border-border/80",
+      "surface-card lift-on-hover group relative h-full overflow-hidden rounded-xl",
       isRenewingSoon && "border-warning/40",
       isTrialEndingSoon && "animate-pulse-glow"
     )}>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-px"
+        style={{ background: `linear-gradient(90deg, transparent, ${categoryColor}, transparent)` }}
+      />
+
       <div className="flex items-center gap-4 p-5 pb-3">
-        <div className={cn(
-          "flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg text-xl font-bold",
-        )} style={logoBackgroundStyle}>
+        <div
+          className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl text-xl font-bold ring-1 ring-border/40 transition-transform duration-300 group-hover:scale-[1.03]"
+          style={logoBackgroundStyle}
+        >
           {subscription.logo && !logoLoadFailed ? (
             <AuthorizedImage
               src={subscription.logo}
@@ -141,7 +148,7 @@ export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDe
         </div>
 
         <div className="shrink-0 text-right">
-          <p className="whitespace-nowrap text-2xl font-bold tracking-tight text-foreground">
+          <p className="num-display whitespace-nowrap text-2xl font-bold text-foreground">
             {formatCurrency(subscription.price, subscription.currency)}
           </p>
         </div>
@@ -151,7 +158,7 @@ export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDe
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+              className="h-8 w-8 shrink-0 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
               aria-label={t("subscription.moreActions")}
             >
               <MoreHorizontal className="h-4 w-4" />

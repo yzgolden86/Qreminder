@@ -37,7 +37,7 @@ export function RegistrationManagementSection() {
 
   if (configQuery.isPending) {
     return (
-      <section className="rounded-xl border border-border bg-card p-6">
+      <section className="surface-card rounded-xl p-6">
         <div className="flex items-center gap-2 mb-6">
           <UserPlus className="h-5 w-5 text-primary" />
           <h2 className="text-lg font-semibold text-foreground">
@@ -95,7 +95,7 @@ export function RegistrationManagementSection() {
   const customDomains = config.allowedDomains.filter((d) => !COMMON_DOMAIN_SET.has(d));
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6">
+    <section className="surface-card rounded-xl p-6">
       <div className="flex items-center gap-2 mb-6">
         <UserPlus className="h-5 w-5 text-primary" />
         <h2 className="text-lg font-semibold text-foreground">

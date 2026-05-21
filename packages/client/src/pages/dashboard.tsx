@@ -180,25 +180,25 @@ export default function Home() {
         </div>
 
         <div className="mb-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-lg border border-border bg-card p-5 shadow-card">
+          <div className="surface-card lift-on-hover rounded-xl p-5">
             <h3 className="mb-3 text-sm font-semibold text-foreground">
               {t("dashboard.spendingDistribution")}
             </h3>
             <SpendingChart subscriptions={subscriptions} />
           </div>
-          <div className="rounded-lg border border-border bg-card p-5 shadow-card">
+          <div className="surface-card lift-on-hover rounded-xl p-5">
             <h3 className="mb-3 text-sm font-semibold text-foreground">
               {t("dashboard.billingCycleDistribution")}
             </h3>
             <BillingCycleChart subscriptions={subscriptions} />
           </div>
-          <div className="rounded-lg border border-border bg-card p-5 shadow-card">
+          <div className="surface-card lift-on-hover rounded-xl p-5">
             <h3 className="mb-3 text-sm font-semibold text-foreground">
               {t("dashboard.renewalTop5")}
             </h3>
             <RenewalTop5Chart subscriptions={subscriptions} timeZone={timeZone} />
           </div>
-          <div className="rounded-lg border border-border bg-card p-5 shadow-card">
+          <div className="surface-card lift-on-hover rounded-xl p-5">
             <h3 className="mb-3 text-sm font-semibold text-foreground">
               {t("dashboard.monthlyTop5")}
             </h3>
@@ -252,7 +252,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="mb-6 grid gap-4 rounded-lg border border-border bg-card p-5">
+        <div className="mb-6 grid gap-4 rounded-xl surface-card p-5">
           <div className="flex flex-wrap items-center gap-4">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -260,7 +260,7 @@ export default function Home() {
                 placeholder={t("subscriptions.searchPlaceholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="border-border bg-secondary pl-10"
+                className="border-border bg-secondary/70 pl-10"
               />
             </div>
 
@@ -374,14 +374,17 @@ export default function Home() {
         </div>
 
         {filteredSubscriptions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card/50 py-16">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
-              <Search className="h-8 w-8 text-muted-foreground" />
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card/40 py-20 px-6 text-center">
+            <div className="relative mb-5">
+              <div className="absolute inset-0 rounded-full bg-primary/15 blur-xl" aria-hidden />
+              <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-secondary ring-1 ring-border">
+                <Search className="h-7 w-7 text-muted-foreground" />
+              </div>
             </div>
-            <h3 className="mb-2 text-lg font-medium text-foreground">
+            <h3 className="mb-1.5 text-lg font-semibold tracking-tight text-foreground">
               {t("subscriptions.emptyTitle")}
             </h3>
-            <p className="mb-6 text-sm text-muted-foreground">
+            <p className="mb-6 max-w-sm text-sm text-muted-foreground">
               {hasActiveFilters
                 ? t("subscriptions.emptyFiltered")
                 : t("subscriptions.emptyNoData")}
@@ -390,8 +393,8 @@ export default function Home() {
               <AddSubscriptionDialog
                 onAdd={handleAddSubscription}
                 trigger={
-                  <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary-glow">
-                    <Plus className="h-4 w-4" />
+                  <Button className="group gap-2 bg-primary text-primary-foreground shadow-primary hover:bg-primary-glow hover:shadow-[0_16px_40px_-8px_hsl(var(--primary)/0.45)]">
+                    <Plus className="h-4 w-4 transition-transform group-hover:rotate-90" />
                     {t("subscriptions.addFirst")}
                   </Button>
                 }
