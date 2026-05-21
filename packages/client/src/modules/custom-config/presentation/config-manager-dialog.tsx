@@ -69,7 +69,7 @@ interface ConfigManagerDialogProps {
   showIcon?: boolean;
   /** 颜色预设列表（用于颜色选择器）。 */
   colorOptions?: string[];
-  /** 最大允许的配置项数量（默认 20）。 */
+  /** 最大允许的配置项数量（默认 50）。 */
   maxItems?: number;
   /** 标题旁的图标（用于 UI 提示）。 */
   icon?: ReactNode;
@@ -103,7 +103,7 @@ export const ConfigManagerDialog = ({
   showColor = false,
   showIcon = false,
   colorOptions = DEFAULT_COLORS,
-  maxItems = 20,
+  maxItems = 50,
   icon,
   readOnly = false,
   toggleMode = false,
