@@ -15,6 +15,7 @@ export function isPublicRoutePath(pathname: string): boolean {
   // Auth pages
   if (
     pathname === "/login" ||
+    pathname === "/register" ||
     pathname === "/forgot-password" ||
     pathname === "/reset-password" ||
     pathname === "/change-credentials"
