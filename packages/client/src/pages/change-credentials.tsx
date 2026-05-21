@@ -73,14 +73,14 @@ export default function ChangeCredentials() {
   return (
     <div className="min-h-screen theme-gradient flex items-center justify-center p-6">
       <div className="w-full max-w-md">
-        <div className="rounded-2xl border border-border bg-card p-8 shadow-card grid gap-6">
+        <div className="surface-elevated rounded-2xl p-8 grid gap-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#111720] text-[#f8fafc] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_16px_32px_-22px_rgba(0,0,0,0.8)] ring-1 ring-white/10">
-              <QreminderLogo className="h-6 w-6" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#111720] text-[#f8fafc] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_12px_24px_-16px_rgba(0,0,0,0.7)] ring-1 ring-white/10">
+              <QreminderLogo className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground">{t("changeCredentials.title")}</h1>
-              <p className="text-xs text-muted-foreground">{t("changeCredentials.subtitle")}</p>
+              <h1 className="text-[18px] font-semibold tracking-tight text-foreground">{t("changeCredentials.title")}</h1>
+              <p className="text-[11px] text-muted-foreground">{t("changeCredentials.subtitle")}</p>
             </div>
           </div>
 

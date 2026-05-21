@@ -85,26 +85,26 @@ export function ResetPasswordClient({ token }: ResetPasswordClientProps) {
   return (
     <div className="min-h-screen theme-gradient flex items-center justify-center p-6">
       <div className="w-full max-w-md">
-        <div className="rounded-2xl border border-border bg-card p-8 shadow-card grid gap-6">
+        <div className="surface-elevated rounded-2xl p-8 grid gap-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#111720] text-[#f8fafc] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_16px_32px_-22px_rgba(0,0,0,0.8)] ring-1 ring-white/10">
-              <QreminderLogo className="h-6 w-6" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#111720] text-[#f8fafc] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_12px_24px_-16px_rgba(0,0,0,0.7)] ring-1 ring-white/10">
+              <QreminderLogo className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground">{t("passwordReset.newTitle")}</h1>
-              <p className="text-xs text-muted-foreground">{t("passwordReset.newSubtitle")}</p>
+              <h1 className="text-[18px] font-semibold tracking-tight text-foreground">{t("passwordReset.newTitle")}</h1>
+              <p className="text-[11px] text-muted-foreground">{t("passwordReset.newSubtitle")}</p>
             </div>
           </div>
 
           {!token ? (
-            <div className="rounded-lg border border-border bg-secondary/50 p-4 text-sm text-muted-foreground">
-              <ShieldAlert className="mb-3 h-5 w-5 text-primary" />
+            <div className="rounded-lg border border-border/60 bg-secondary/50 p-4 text-[13px] text-muted-foreground">
+              <ShieldAlert className="mb-3 h-4 w-4 text-primary" />
               <p>{t("passwordReset.tokenMissing1")}</p>
               <p className="mt-2">{t("passwordReset.tokenMissing2")}</p>
             </div>
           ) : succeeded ? (
-            <div className="rounded-lg border border-border bg-secondary/50 p-4 text-sm text-muted-foreground">
-              <CheckCircle2 className="mb-3 h-5 w-5 text-primary" />
+            <div className="rounded-lg border border-border/60 bg-secondary/50 p-4 text-[13px] text-muted-foreground">
+              <CheckCircle2 className="mb-3 h-4 w-4 text-primary" />
               <p>{t("passwordReset.updatedLogin")}</p>
             </div>
           ) : (
@@ -140,7 +140,7 @@ export function ResetPasswordClient({ token }: ResetPasswordClientProps) {
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
-                <p id="new-password-description" className="text-xs text-muted-foreground">
+                <p id="new-password-description" className="text-[11px] text-muted-foreground">
                   {t("passwordReset.passwordHelp")}
                 </p>
                 <FieldError id="new-password-error" message={errors.password} />
@@ -179,9 +179,9 @@ export function ResetPasswordClient({ token }: ResetPasswordClientProps) {
             </form>
           )}
 
-          <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center justify-between text-[13px]">
             <Link href="/login" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft className="h-3.5 w-3.5" />
               {t("common.backToLogin")}
             </Link>
             <Link href="/" className="text-muted-foreground hover:text-foreground">

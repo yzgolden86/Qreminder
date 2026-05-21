@@ -37,8 +37,8 @@ const Calendar = () => {
     return (
       <div>
         <div className="mb-6">
-          <div className="h-8 w-32 bg-muted rounded animate-pulse mb-2" />
-          <div className="h-4 w-48 bg-muted rounded animate-pulse" />
+          <div className="mb-2 h-7 w-32 rounded bg-muted skeleton-shimmer" />
+          <div className="h-4 w-48 rounded bg-muted skeleton-shimmer" />
         </div>
         <CalendarSkeleton />
       </div>
@@ -48,8 +48,8 @@ const Calendar = () => {
   return (
     <>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">{t("calendar.title")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("calendar.pageSubtitle")}</p>
+        <h1 className="text-[22px] font-semibold tracking-tight text-foreground">{t("calendar.title")}</h1>
+        <p className="mt-1 text-[13px] text-muted-foreground">{t("calendar.pageSubtitle")}</p>
       </div>
 
       <SubscriptionCalendar

@@ -10,7 +10,6 @@ import { usePathname } from '@/lib/router';
 import Link from '@/components/router-link';
 import { useI18n } from "@/i18n/I18nProvider";
 
-/** 404 兜底页面组件。 */
 export default function NotFound() {
   const pathname = usePathname();
   const { t } = useI18n();
@@ -20,11 +19,11 @@ export default function NotFound() {
   }, [pathname]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted">
+    <div className="grid-bg flex min-h-screen items-center justify-center">
       <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">404</h1>
-        <p className="mb-4 text-xl text-muted-foreground">{t("notFound.title")}</p>
-        <Link href="/" className="text-primary underline hover:text-primary/90">
+        <h1 className="num-display mb-2 text-[72px] font-semibold leading-none text-foreground/10">404</h1>
+        <p className="mb-4 text-[15px] text-muted-foreground">{t("notFound.title")}</p>
+        <Link href="/" className="text-[13px] text-primary hover:text-primary/80 hover:underline">
           {t("notFound.home")}
         </Link>
       </div>

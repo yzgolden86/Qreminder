@@ -342,15 +342,15 @@ export default function AdminUsersPage() {
     <>
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <Shield className="h-7 w-7 text-primary" />
+            <Shield className="h-5 w-5 text-primary" />
             <div>
-              <h1 className="text-2xl font-bold text-foreground">{t("admin.title")}</h1>
-              <p className="text-sm text-muted-foreground">{t("admin.subtitle")}</p>
+              <h1 className="text-[22px] font-semibold tracking-tight text-foreground">{t("admin.title")}</h1>
+              <p className="text-[13px] text-muted-foreground">{t("admin.subtitle")}</p>
             </div>
           </div>
           <Button
             type="button"
-            className="w-full bg-primary text-primary-foreground hover:bg-primary-glow sm:w-auto"
+            className="w-full sm:w-auto"
             onClick={() => setCreateDialogOpen(true)}
           >
             <UserPlus className="h-4 w-4" />
@@ -396,8 +396,8 @@ export default function AdminUsersPage() {
           onConfirm={confirmDeleteUser}
         />
 
-        <section className="overflow-hidden rounded-xl border border-border bg-card" aria-busy={isInitialLoading || isRefreshingUsers}>
-          <div className="hidden grid-cols-[minmax(0,1fr)_140px_120px_260px] gap-4 border-b border-border px-5 py-3 text-sm font-medium text-muted-foreground lg:grid">
+        <section className="surface-card overflow-hidden rounded-xl" aria-busy={isInitialLoading || isRefreshingUsers}>
+          <div className="hidden grid-cols-[minmax(0,1fr)_140px_120px_260px] gap-4 border-b border-border px-5 py-3 text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground lg:grid">
             <span>{t("admin.user")}</span>
             <span>{t("admin.role")}</span>
             <span>{t("admin.status")}</span>

@@ -152,12 +152,12 @@ export const SubscriptionCalendar = ({ subscriptions, onEditSubscription }: Subs
 
   return (
     <>
-      <div className="rounded-xl border border-border bg-card p-6 shadow-card">
+      <div className="surface-card rounded-xl p-5">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">
-            <CalendarDays className="h-5 w-5 text-primary" />
-            <h3 className="text-lg font-semibold text-foreground">{t("calendar.title")}</h3>
+            <CalendarDays className="h-4 w-4 text-primary" />
+            <h3 className="text-[15px] font-semibold tracking-tight text-foreground">{t("calendar.title")}</h3>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -315,11 +315,11 @@ export const SubscriptionCalendar = ({ subscriptions, onEditSubscription }: Subs
         </div>
 
         {/* Weekday Headers */}
-        <div className="grid grid-cols-7 mb-2">
+        <div className="grid grid-cols-7 mb-1">
           {weekdayLabels.map((day) => (
             <div
               key={day}
-              className="text-center text-xs font-medium text-muted-foreground py-2"
+              className="text-center text-[10.5px] font-medium uppercase tracking-[0.06em] text-muted-foreground py-2"
             >
               {day}
             </div>
@@ -327,7 +327,7 @@ export const SubscriptionCalendar = ({ subscriptions, onEditSubscription }: Subs
         </div>
 
         {/* Calendar Grid */}
-        <div className="grid grid-cols-7 gap-px bg-border/50 rounded-lg overflow-hidden">
+        <div className="grid grid-cols-7 gap-px rounded-lg overflow-hidden ring-1 ring-border/60">
           {calendarDays.map((day) => {
             const dateKey = format(day, 'yyyy-MM-dd');
             const daySubs = subscriptionsByDate.get(dateKey) || [];
@@ -339,17 +339,17 @@ export const SubscriptionCalendar = ({ subscriptions, onEditSubscription }: Subs
                 key={dateKey}
                 className={cn(
                   "min-h-[80px] bg-card p-1.5 transition-colors",
-                  !isCurrentMonth && "bg-muted/30"
+                  !isCurrentMonth && "bg-muted/20"
                 )}
               >
                 {/* Day Number */}
                 <div className="flex justify-end mb-1">
                   <span
                     className={cn(
-                      "text-xs w-6 h-6 flex items-center justify-center rounded-full",
+                      "num-display text-[11px] w-5 h-5 flex items-center justify-center rounded-full",
                       isDayToday && "bg-primary text-primary-foreground font-semibold",
                       !isDayToday && isCurrentMonth && "text-foreground",
-                      !isDayToday && !isCurrentMonth && "text-muted-foreground/50"
+                      !isDayToday && !isCurrentMonth && "text-muted-foreground/40"
                     )}
                   >
                     {format(day, 'd')}
@@ -365,9 +365,9 @@ export const SubscriptionCalendar = ({ subscriptions, onEditSubscription }: Subs
                           <button
                             onClick={() => handleSubscriptionClick(sub)}
                             className={cn(
-                              "w-full text-left text-xs px-1.5 py-0.5 rounded border truncate transition-colors",
-                              "bg-background hover:bg-secondary/60 border-border text-foreground",
-                              "cursor-pointer hover:border-border"
+                              "w-full text-left text-[10px] px-1.5 py-0.5 rounded border truncate transition-colors",
+                              "bg-background hover:bg-secondary/60 border-border/60 text-foreground",
+                              "cursor-pointer"
                             )}
                           >
                             {sub.name}
@@ -398,17 +398,17 @@ export const SubscriptionCalendar = ({ subscriptions, onEditSubscription }: Subs
         </div>
 
         {/* Monthly Summary */}
-        <div className="mt-4 pt-4 border-t border-border">
+        <div className="mt-4 pt-4 border-t border-border/60">
           <div className="grid grid-cols-2 gap-4">
-            <div className="text-sm">
+            <div className="text-[12px]">
               <span className="text-muted-foreground">{t("calendar.monthlyRenewals")}</span>
-              <p className="font-semibold text-foreground mt-1">
+              <p className="num-display font-semibold text-foreground mt-0.5">
                 {t("calendar.renewalCount", { count: monthlySummary.renewalsCount })}
               </p>
             </div>
-            <div className="text-sm text-right">
+            <div className="text-[12px] text-right">
               <span className="text-muted-foreground">{t("calendar.estimatedSpend")}</span>
-              <p className="font-semibold text-foreground mt-1">
+              <p className="num-display font-semibold text-foreground mt-0.5">
                 {formatCurrency(monthlySummary.estimatedSpending, defaultCurrency)}
               </p>
             </div>

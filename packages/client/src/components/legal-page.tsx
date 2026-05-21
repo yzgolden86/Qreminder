@@ -34,31 +34,31 @@ export function LegalPageShell({
   return (
     <div className="min-h-screen theme-gradient flex items-center justify-center p-6">
       <div className="w-full max-w-2xl">
-        <div className="rounded-2xl border border-border bg-card p-8 shadow-card grid gap-6">
+        <div className="surface-elevated rounded-2xl p-8 grid gap-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#111720] text-[#f8fafc] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_16px_32px_-22px_rgba(0,0,0,0.8)] ring-1 ring-white/10">
-              <QreminderLogo className="h-6 w-6" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#111720] text-[#f8fafc] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_12px_24px_-16px_rgba(0,0,0,0.7)] ring-1 ring-white/10">
+              <QreminderLogo className="h-5 w-5" />
             </div>
             <div className="flex-1">
-              <h1 className="text-xl font-bold text-foreground">{title}</h1>
-              {subtitle ? <p className="text-xs text-muted-foreground">{subtitle}</p> : null}
+              <h1 className="text-[18px] font-semibold tracking-tight text-foreground">{title}</h1>
+              {subtitle ? <p className="text-[11px] text-muted-foreground">{subtitle}</p> : null}
             </div>
           </div>
 
-          <div className="text-sm text-muted-foreground leading-relaxed">
+          <div className="text-[13px] text-muted-foreground leading-relaxed">
             {children}
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <Button asChild variant="outline" className="border-border">
+            <Button asChild variant="outline" size="sm">
               <Link href="/login" className="inline-flex items-center gap-2">
-                <ArrowLeft className="h-4 w-4" />
+                <ArrowLeft className="h-3.5 w-3.5" />
                 {t("common.backToLogin")}
               </Link>
             </Button>
-            <Button asChild variant="outline" className="border-border">
+            <Button asChild variant="outline" size="sm">
               <Link href="/" className="inline-flex items-center gap-2">
-                <Home className="h-4 w-4" />
+                <Home className="h-3.5 w-3.5" />
                 {t("common.backHome")}
               </Link>
             </Button>

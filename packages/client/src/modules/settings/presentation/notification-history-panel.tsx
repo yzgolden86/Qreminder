@@ -269,7 +269,7 @@ export function NotificationHistoryPanel({
   }, [latestJob, t]);
 
   return (
-    <div className="min-w-0 rounded-lg border border-border bg-secondary/30 p-4">
+    <div className="surface-card min-w-0 rounded-xl p-4">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-3">
           <SummaryValue

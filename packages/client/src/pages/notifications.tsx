@@ -18,8 +18,8 @@ export default function NotificationsPage() {
   return (
     <div className="flex flex-col">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">{t("notifications.pageTitle")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("notifications.pageSubtitle")}</p>
+        <h1 className="text-[22px] font-semibold tracking-tight text-foreground">{t("notifications.pageTitle")}</h1>
+        <p className="mt-1 text-[13px] text-muted-foreground">{t("notifications.pageSubtitle")}</p>
       </div>
 
       <NotificationHistoryPanel
