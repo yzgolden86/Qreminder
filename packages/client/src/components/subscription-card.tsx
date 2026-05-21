@@ -109,19 +109,20 @@ export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDe
   return (
     <>
     <div className={cn(
-      "surface-card lift-on-hover group relative h-full overflow-hidden rounded-xl",
+      "surface-card lift-on-hover group relative h-full overflow-hidden rounded-lg",
       isRenewingSoon && "border-warning/40",
       isTrialEndingSoon && "animate-pulse-glow"
     )}>
+      {/* Linear-style: thin category-tinted left rail */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-px"
-        style={{ background: `linear-gradient(90deg, transparent, ${categoryColor}, transparent)` }}
+        className="absolute inset-y-0 left-0 w-[2px] opacity-70"
+        style={{ background: categoryColor }}
       />
 
-      <div className="flex items-center gap-4 p-5 pb-3">
+      <div className="flex items-center gap-3 p-4 pb-2.5 pl-5">
         <div
-          className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl text-xl font-bold ring-1 ring-border/40 transition-transform duration-300 group-hover:scale-[1.03]"
+          className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-md text-base font-semibold ring-1 ring-border/60 transition-transform duration-200 group-hover:scale-[1.04]"
           style={logoBackgroundStyle}
         >
           {subscription.logo && !logoLoadFailed ? (
@@ -140,15 +141,15 @@ export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDe
           <TruncatedTooltipText
             as="h3"
             text={subscription.name}
-            className="min-w-0 text-base font-semibold text-foreground"
+            className="min-w-0 text-[14px] font-semibold tracking-tight text-foreground"
           />
-          <p className="mt-0.5 text-xs text-muted-foreground">
+          <p className="mt-0.5 text-[11px] uppercase tracking-[0.06em] text-muted-foreground">
             {localizedLabel(CYCLE_LABELS[subscription.billingCycle], locale)}
           </p>
         </div>
 
         <div className="shrink-0 text-right">
-          <p className="num-display whitespace-nowrap text-2xl font-bold text-foreground">
+          <p className="num-display whitespace-nowrap text-[20px] font-semibold leading-none text-foreground">
             {formatCurrency(subscription.price, subscription.currency)}
           </p>
         </div>
@@ -158,10 +159,10 @@ export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDe
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 shrink-0 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              className="h-7 w-7 shrink-0 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
               aria-label={t("subscription.moreActions")}
             >
-              <MoreHorizontal className="h-4 w-4" />
+              <MoreHorizontal className="h-3.5 w-3.5" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

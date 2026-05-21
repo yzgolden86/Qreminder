@@ -146,7 +146,7 @@ describe("SubscriptionCard", () => {
 
     const menuButton = screen.getByRole("button", { name: "更多操作" });
 
-    expect(menuButton).toHaveClass("h-8", "w-8", "shrink-0");
+    expect(menuButton).toHaveClass("h-7", "w-7", "shrink-0");
     expect(menuButton).not.toHaveClass("opacity-0");
     expect(menuButton.getAttribute("class")).not.toContain("group-hover:opacity-100");
   });

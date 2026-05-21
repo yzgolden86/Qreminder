@@ -10,13 +10,19 @@ interface StatCardProps {
   className?: string;
 }
 
-const ICON_VARIANTS: Record<NonNullable<StatCardProps['variant']>, string> = {
-  default: "bg-secondary text-muted-foreground ring-1 ring-border/50",
-  primary: "bg-primary/10 text-primary ring-1 ring-primary/20",
-  warning: "bg-warning/10 text-warning ring-1 ring-warning/20",
+const ACCENT: Record<NonNullable<StatCardProps['variant']>, string> = {
+  default: "bg-foreground/10",
+  primary: "bg-primary",
+  warning: "bg-warning",
 };
 
-const VALUE_VARIANTS: Record<NonNullable<StatCardProps['variant']>, string> = {
+const ICON: Record<NonNullable<StatCardProps['variant']>, string> = {
+  default: "text-muted-foreground",
+  primary: "text-primary",
+  warning: "text-warning",
+};
+
+const VALUE: Record<NonNullable<StatCardProps['variant']>, string> = {
   default: "text-foreground",
   primary: "text-foreground",
   warning: "text-warning",
@@ -33,45 +39,34 @@ export function StatCard({
   return (
     <div
       className={cn(
-        "surface-card lift-on-hover group relative overflow-hidden rounded-xl p-5",
+        "surface-card lift-on-hover group relative overflow-hidden rounded-lg p-4",
         className,
       )}
     >
-      <div
+      {/* Linear-style accent dot — replaces the bigger glow blob */}
+      <span
         aria-hidden
         className={cn(
-          "pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-60",
-          variant === 'primary' && "bg-primary/25",
-          variant === 'warning' && "bg-warning/25",
-          variant === 'default' && "bg-foreground/10",
+          "absolute left-4 top-4 h-1.5 w-1.5 rounded-full",
+          ACCENT[variant],
         )}
       />
 
-      <div className="relative flex items-start justify-between gap-4">
-        <div className="grid min-w-0 gap-1.5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+      <div className="ml-4 flex items-start justify-between gap-4">
+        <div className="grid min-w-0 gap-2">
+          <p className="text-[10.5px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
             {title}
           </p>
-          <p
-            className={cn(
-              "num-display text-3xl font-bold leading-tight",
-              VALUE_VARIANTS[variant],
-            )}
-          >
+          <p className={cn("num-display text-[28px] font-semibold leading-none", VALUE[variant])}>
             {value}
           </p>
           {subtitle && (
-            <p className="text-xs text-muted-foreground">{subtitle}</p>
+            <p className="text-[11.5px] text-muted-foreground">{subtitle}</p>
           )}
         </div>
-        <div
-          className={cn(
-            "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-105",
-            ICON_VARIANTS[variant],
-          )}
-        >
+        <span className={cn("opacity-50 transition-opacity duration-200 group-hover:opacity-100", ICON[variant])}>
           {icon}
-        </div>
+        </span>
       </div>
     </div>
   );

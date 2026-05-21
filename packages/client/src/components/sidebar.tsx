@@ -128,30 +128,31 @@ interface BrandHeaderProps {
 function BrandHeader({ onNavigate }: BrandHeaderProps) {
   const { locale, formatDateTime } = useI18n();
   const now = useNowMinute();
-  // sidebar 宽度有限，日期用 short 月份 + 短星期，整体一行能装下。
   const dateLabel = formatDateTime(now, { month: "short", day: "numeric", weekday: "short" });
   return (
-    <Link
-      href="/"
-      onClick={onNavigate}
-      className="flex items-center gap-2 border-b border-border px-3 py-3"
-    >
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#111720] text-[#f8fafc] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_12px_24px_-16px_rgba(0,0,0,0.7)] ring-1 ring-white/10">
-        <QreminderLogo className="h-4 w-4" />
-      </div>
-      <div className="grid leading-tight">
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-[13px] font-extrabold tracking-tight text-foreground">Qreminder</span>
-          <span className="text-[9.5px] text-muted-foreground/80">v2.0</span>
+    <div className="border-b border-border px-3 py-3">
+      <Link
+        href="/"
+        onClick={onNavigate}
+        className="flex items-center gap-2"
+      >
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#111720] text-[#f8fafc] shadow-[inset_0_1px_0_rgba(255,255,255,0.10),0_12px_24px_-16px_rgba(0,0,0,0.7)] ring-1 ring-white/10">
+          <QreminderLogo className="h-4 w-4" />
         </div>
-        <span
-          className="text-[9.5px] text-muted-foreground/80"
-          lang={locale}
-        >
-          {dateLabel}
-        </span>
-      </div>
-    </Link>
+        <div className="grid leading-tight">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-[13px] font-semibold tracking-tight text-foreground">Qreminder</span>
+            <span className="num-display text-[9px] font-medium text-muted-foreground/70">v2.0</span>
+          </div>
+          <span
+            className="text-[10px] text-muted-foreground/70"
+            lang={locale}
+          >
+            {dateLabel}
+          </span>
+        </div>
+      </Link>
+    </div>
   );
 }
 
@@ -200,12 +201,12 @@ function SidebarContent({ onNavigate }: SidebarContentProps) {
       </nav>
 
       {email ? (
-        <div className="border-t border-border px-3 pt-2.5 pb-1">
-          <div className="flex items-center gap-2 text-[10.5px] text-muted-foreground/80">
-            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[9px] font-semibold text-primary">
+        <div className="border-t border-border px-3 py-2.5">
+          <div className="flex items-center gap-2">
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/30 to-primary/10 text-[10px] font-semibold text-primary ring-1 ring-primary/20">
               {email.slice(0, 1).toUpperCase()}
             </div>
-            <span className="truncate" title={email}>{email}</span>
+            <span className="truncate text-[11px] font-medium text-muted-foreground" title={email}>{email}</span>
           </div>
         </div>
       ) : null}

@@ -8,22 +8,30 @@
     display: none;
   }
 
-  /* Surface treatments — used by elevated cards, dashboards, dialogs */
+  /* Surface treatments — Linear-style: hairline border with inner highlight ring,
+     so cards barely separate from the background but feel "drawn". */
   .surface-card {
     background: hsl(var(--card));
     border: 1px solid hsl(var(--border));
-    box-shadow: var(--app-shadow-xs);
+    box-shadow:
+      inset 0 1px 0 0 hsl(0 0% 100% / 0.025),
+      var(--app-shadow-xs);
     transition: box-shadow var(--motion-base) var(--motion-ease-out),
                 transform var(--motion-base) var(--motion-ease-out),
-                border-color var(--motion-base) var(--motion-ease-out);
+                border-color var(--motion-base) var(--motion-ease-out),
+                background-color var(--motion-base) var(--motion-ease-out);
   }
 
   .surface-elevated {
     background: hsl(var(--card));
     border: 1px solid hsl(var(--border));
-    box-shadow: var(--app-shadow-md);
+    box-shadow:
+      inset 0 1px 0 0 hsl(0 0% 100% / 0.04),
+      var(--app-shadow-md);
   }
 
+  /* Lift-on-hover — Linear's signature: 1px upward translate + border brightens
+     + inner ring intensifies. No big shadow growth. */
   .lift-on-hover {
     transition: box-shadow var(--motion-base) var(--motion-ease-out),
                 transform var(--motion-base) var(--motion-ease-out),
@@ -31,9 +39,11 @@
   }
 
   .lift-on-hover:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--app-shadow-lg);
-    border-color: hsl(var(--border) / 0.6);
+    transform: translateY(-1px);
+    border-color: hsl(var(--foreground) / 0.16);
+    box-shadow:
+      inset 0 1px 0 0 hsl(0 0% 100% / 0.05),
+      var(--app-shadow-md);
   }
 
   /* Glass effect for floating panels (header, modal, popovers) */
@@ -72,14 +82,34 @@
     z-index: 1;
   }
 
-  /* Display number: tabular figures with a touch of negative tracking — for big metric values */
+  /* Display numbers: monospace + tabular for currency, big metrics, counts */
   .num-display {
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-variant-numeric: tabular-nums;
-    font-feature-settings: "tnum" on, "lnum" on, "ss01" on;
+    font-feature-settings: "tnum" on, "zero" on, "ss01" on;
     letter-spacing: -0.02em;
   }
 
-  /* Focus ring tuned to design token */
+  /* Keyboard-shortcut chip — Linear's ⌘K aesthetic */
+  .kbd-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.125rem;
+    padding: 0 0.3rem;
+    border-radius: 4px;
+    background: hsl(var(--muted));
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--muted-foreground));
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 10px;
+    line-height: 1;
+    font-weight: 500;
+    letter-spacing: 0;
+  }
+
+  /* Linear-style focus ring tuned to design token */
   .focus-ring {
     outline: none;
   }
@@ -98,6 +128,12 @@
     );
     background-size: 200% 100%;
     animation: shimmer 1.8s linear infinite;
+  }
+
+  /* Dotted grid background — for empty states and hero areas */
+  .grid-bg {
+    background-image: radial-gradient(hsl(var(--foreground) / 0.05) 1px, transparent 1px);
+    background-size: 20px 20px;
   }
 
   .theme-gradient {
