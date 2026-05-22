@@ -350,8 +350,8 @@ export default function Home() {
             <AddSubscriptionDialog
               onAdd={handleAddSubscription}
               trigger={
-                <Button size="sm" className="gap-1.5">
-                  <Plus className="h-3.5 w-3.5" />
+                <Button className="gap-2 bg-primary text-primary-foreground shadow-sm hover:bg-primary-glow hover:shadow-[0_8px_24px_-6px_hsl(var(--primary)/0.4)] transition-all">
+                  <Plus className="h-4 w-4" />
                   {t("subscription.add")}
                 </Button>
               }

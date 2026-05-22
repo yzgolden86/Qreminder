@@ -1,5 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
+import { toast } from "@/components/ui/sonner";
+import { translate } from "@/i18n/messages";
+import { getApiLocale } from "@/i18n/api-locale";
 import {
   signupConfigResponseSchema,
   type SignupConfig,
@@ -27,6 +30,10 @@ export function useUpdateSignupConfig() {
       }).then((r) => r.config),
     onSuccess: (data) => {
       queryClient.setQueryData(QUERY_KEY, data);
+      toast.success(translate(getApiLocale(), "settings.saved"));
+    },
+    onError: () => {
+      toast.error(translate(getApiLocale(), "error.generic"));
     },
   });
 }

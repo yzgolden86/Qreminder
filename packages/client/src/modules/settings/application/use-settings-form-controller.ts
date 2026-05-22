@@ -258,6 +258,10 @@ export function useSettingsFormController(): SettingsFormController {
       if (prev.recipientEmail.trim()) return prev;
       return { ...prev, recipientEmail: email };
     });
+    setSavedSettings((prev) => {
+      if (prev.recipientEmail.trim()) return prev;
+      return { ...prev, recipientEmail: email };
+    });
   }, [accountEmail, hasInitializedFromRemote]);
 
   useEffect(() => {

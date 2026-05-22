@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "@/components/ui/sonner";
 import { useSignupConfig, useUpdateSignupConfig } from "@/hooks/use-signup-config";
 import { useI18n } from "@/i18n/I18nProvider";
 
