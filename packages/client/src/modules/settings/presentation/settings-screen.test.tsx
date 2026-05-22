@@ -148,22 +148,21 @@ function renderSettingsScreen(initialEntries = ["/settings"]) {
   );
 }
 
-describe("SettingsScreen SMTP email settings", () => {
+describe("SettingsScreen email settings", () => {
   beforeEach(() => {
     mocks.useSettingsFormController.mockReturnValue(createControllerState());
   });
 
-  it("renders SMTP fields instead of Resend fields for email notifications", () => {
+  it("renders recipient email field and deploy note for email notifications", () => {
     renderSettingsScreen();
 
-    expect(screen.queryByText(/Resend/i)).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("API Key")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("SMTP 服务器")).toHaveValue("smtp.example.com");
-    expect(screen.getByLabelText("SMTP 端口")).toHaveValue("587");
-    expect(screen.getByLabelText("SMTP 用户名")).toHaveValue("smtp-user");
-    expect(screen.getByLabelText("SMTP 密码")).toHaveValue("smtp-password");
-    expect(screen.getByLabelText("发件人")).toHaveValue("Qreminder <noreply@example.com>");
-    expect(screen.getByLabelText("回复地址")).toHaveValue("support@example.com");
+    expect(screen.queryByLabelText("SMTP 服务器")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("SMTP 端口")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("SMTP 用户名")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("SMTP 密码")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("发件人")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("回复地址")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("收件人邮箱")).toHaveValue("alice@example.com");
     expect(screen.getByRole("button", { name: "测试邮件通知" })).toBeInTheDocument();
   });
 

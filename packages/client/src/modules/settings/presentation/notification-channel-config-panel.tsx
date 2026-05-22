@@ -314,83 +314,8 @@ export function NotificationChannelConfigPanel({
       {channel === 'email' ? (
         <>
           <div className="grid gap-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <Label htmlFor="smtpHost">{t("settings.smtpHost")}</Label>
-                <Input
-                  id="smtpHost"
-                  placeholder="smtp.example.com"
-                  value={settings.smtpHost}
-                  onChange={(e) => updateSetting('smtpHost', e.target.value)}
-                  className="border-border bg-secondary"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="smtpPort">{t("settings.smtpPort")}</Label>
-                <Input
-                  id="smtpPort"
-                  inputMode="numeric"
-                  placeholder="587"
-                  value={settings.smtpPort}
-                  onChange={(e) => updateSetting('smtpPort', e.target.value)}
-                  className="border-border bg-secondary"
-                />
-              </div>
-            </div>
-            <CheckboxSettingRow
-              id="smtpSecure"
-              checked={settings.smtpSecure}
-              onCheckedChange={(checked) => updateSetting('smtpSecure', checked)}
-              label={t("settings.smtpSecure")}
-              description={t("settings.smtpSecureHelp")}
-            />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <Label htmlFor="smtpUser">{t("settings.smtpUser")}</Label>
-                <Input
-                  id="smtpUser"
-                  value={settings.smtpUser}
-                  onChange={(e) => updateSetting('smtpUser', e.target.value)}
-                  className="border-border bg-secondary"
-                  autoComplete="username"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="smtpPassword">{t("settings.smtpPassword")}</Label>
-                <Input
-                  id="smtpPassword"
-                  type="password"
-                  value={settings.smtpPassword}
-                  onChange={(e) => updateSetting('smtpPassword', e.target.value)}
-                  className="border-border bg-secondary"
-                  autoComplete="new-password"
-                />
-              </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <Label htmlFor="smtpFrom">{t("settings.smtpFrom")}</Label>
-                <Input
-                  id="smtpFrom"
-                  placeholder="Qreminder <noreply@example.com>"
-                  value={settings.smtpFrom}
-                  onChange={(e) => updateSetting('smtpFrom', e.target.value)}
-                  className="border-border bg-secondary"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="smtpReplyTo">{t("settings.smtpReplyTo")}</Label>
-                <Input
-                  id="smtpReplyTo"
-                  placeholder="support@example.com"
-                  value={settings.smtpReplyTo}
-                  onChange={(e) => updateSetting('smtpReplyTo', e.target.value)}
-                  className="border-border bg-secondary"
-                />
-              </div>
-            </div>
             <p className="text-xs text-muted-foreground">
-              {t("settings.smtpHelp")}
+              {t("settings.emailDeployNote")}
             </p>
             <CheckboxSettingRow
               id="notifyMultipleAddresses"

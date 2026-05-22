@@ -35,7 +35,7 @@ Self-hosted: your subscription data only lives in the instance you deploy. Nothi
 | --- | --- |
 | **Subscription record** | Name, logo, price, currency, billing cycle (weekly/monthly/quarterly/semi-annual/annual/custom days), status (trial/active/paused/cancelled), category, payment method (including **Free**), website, tags, notes |
 | **Multi-tier reminders** | Per-subscription `reminderOffsets`; same-day matches merged into one notification |
-| **Notification channels** | Telegram, Email (SMTP), WeCom Bot, Webhook, Bark, NotifyX — all 6 channels can be enabled simultaneously |
+| **Notification channels** | Telegram, Email (deployment-level Resend), WeCom Bot, Webhook, Bark, NotifyX — all 6 channels can be enabled simultaneously |
 | **Notification center** | Dedicated page combining upcoming batches + dispatch history, filterable by status, drillable into per-recipient results |
 | **Spending insights** | Normalize cycles to monthly cost; category share, payment-method share, billing-cycle distribution, renewal/monthly top 5 |
 | **Multi-currency** | Frankfurter or FloatRates; fallback rates when remote sources fail |
@@ -44,54 +44,9 @@ Self-hosted: your subscription data only lives in the instance you deploy. Nothi
 | **Bilingual** | Simplified Chinese / English, switchable in-app |
 | **Theming** | Five preset themes (Emerald / Ocean / Sunset / Lavender / Rose) with light/dark mode, plus custom-color support |
 
-## Notification setup guide
+## Notification setup
 
-Enable channels and fill in credentials under **Settings → Notifications**. Use the "Test" button to verify connectivity.
-
-### Telegram (recommended — easiest)
-
-1. Search [@BotFather](https://t.me/botfather) on Telegram, send `/newbot`, follow prompts to create a bot and get the **Bot Token**
-2. Add the bot to the group where you want notifications (or send it a direct message)
-3. Visit `https://api.telegram.org/bot<YourToken>/getUpdates` and find the `chat.id` field
-4. Enter Bot Token and Chat ID in settings, click Test
-
-### Email (SMTP)
-
-Enter credentials for any SMTP-compatible service:
-
-| Provider | SMTP Host | Port | Notes |
-| --- | --- | --- | --- |
-| **Resend** | `smtp.resend.com` | 465 (SSL) | Free tier: 100 emails/day, domain verification required |
-| **Gmail** | `smtp.gmail.com` | 587 (TLS) | Requires App Password |
-| **Outlook** | `smtp.office365.com` | 587 (TLS) | Use account credentials |
-| **QQ Mail** | `smtp.qq.com` | 465 (SSL) | Enable SMTP and get authorization code |
-| **163 Mail** | `smtp.163.com` | 465 (SSL) | Enable SMTP and get authorization code |
-
-Fill in: SMTP host, port, username, password, sender address, recipient address. Click Test.
-
-### WeCom Bot
-
-1. Add a "Group Bot" in a WeCom group chat to get the Webhook URL
-2. Paste the Webhook URL in settings, choose message format (text or markdown), click Test
-
-### Webhook (generic)
-
-For integrating with any HTTP-callback service (n8n, IFTTT, custom services):
-
-- Enter the target URL
-- Choose HTTP method (POST/GET)
-- Optional: custom Headers (JSON format) and Payload template
-
-### Bark (iOS push)
-
-1. Download [Bark](https://apps.apple.com/app/bark/id1403753865) from the App Store
-2. Open the app and copy your Device Key
-3. Enter server URL (default `https://api.day.app`) and Device Key in settings, click Test
-
-### NotifyX
-
-1. Register at [NotifyX](https://www.notifyx.cn/) and get your API Key
-2. Enter the API Key in settings, click Test
+Supports Telegram, Email, WeCom Bot, Webhook, Bark, and NotifyX — all 6 channels can be enabled simultaneously. See [docs/NOTIFICATION_CHANNELS.md](./docs/NOTIFICATION_CHANNELS.md) for detailed setup instructions.
 
 ## App structure
 
