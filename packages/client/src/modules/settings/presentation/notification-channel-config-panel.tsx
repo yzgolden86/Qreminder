@@ -1,4 +1,5 @@
-import { ExternalLink, Check } from 'lucide-react';
+import { useState } from 'react';
+import { ExternalLink, Check, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,6 +26,44 @@ import { CheckboxSettingRow, LoadingButtonContent, type UpdateSetting } from './
  * knownChannels、history result schema 和这里的测试按钮。
  */
 type Translate = (key: MessageKey, params?: Record<string, string | number>) => string;
+
+function SecretInput({
+  id,
+  placeholder,
+  value,
+  onChange,
+  className,
+}: {
+  id: string;
+  placeholder?: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  className?: string;
+}) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="relative">
+      <Input
+        id={id}
+        type={visible ? "text" : "password"}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        className={className}
+        autoComplete="off"
+      />
+      <button
+        type="button"
+        className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
+        onClick={() => setVisible(!visible)}
+        tabIndex={-1}
+        aria-label={visible ? "Hide" : "Show"}
+      >
+        {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
+  );
+}
 
 function NotificationTestButton({
   channel,
@@ -122,7 +161,7 @@ export function NotificationChannelConfigPanel({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="telegramBot">Bot Token</Label>
-              <Input
+              <SecretInput
                 id="telegramBot"
                 placeholder="xx:xxxxxxxxx-token"
                 value={settings.telegramBotToken}
@@ -156,7 +195,7 @@ export function NotificationChannelConfigPanel({
         <>
           <div className="grid gap-2">
             <Label htmlFor="notifyxKey">API Key</Label>
-            <Input
+            <SecretInput
               id="notifyxKey"
               placeholder="napi_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
               value={settings.notifyxApiKey}
@@ -250,7 +289,7 @@ export function NotificationChannelConfigPanel({
           <div className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="wechatUrl">{t("settings.wechatUrl")}</Label>
-              <Input
+              <SecretInput
                 id="wechatUrl"
                 placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxxxxxxx-xxxx"
                 value={settings.wechatWebhookUrl}
@@ -366,7 +405,7 @@ export function NotificationChannelConfigPanel({
             </div>
             <div className="grid gap-2">
               <Label htmlFor="barkKey">{t("settings.barkKey")}</Label>
-              <Input
+              <SecretInput
                 id="barkKey"
                 placeholder="xxxxxxxxxxxxxxxxxxxxxxxx"
                 value={settings.barkDeviceKey}
