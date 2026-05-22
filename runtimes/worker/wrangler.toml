@@ -20,7 +20,7 @@ crons = ["* * * * *"]
 [[d1_databases]]
 binding = "QREMINDER_DB"
 database_name = "qreminder"
-database_id = "babd00d0-79a6-420f-ba56-43b88598402d"
+database_id = "YOUR_DATABASE_ID"
 migrations_dir = "../../packages/server-ts/drizzle"
 
 [[r2_buckets]]

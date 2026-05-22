@@ -39,9 +39,8 @@ accountRouter.post("/change-credentials", requireSession, async (c) => {
       headers: c.req.raw.headers,
       body: { currentPassword, newPassword, revokeOtherSessions: true },
     });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "change_password_failed";
-    return c.json({ error: "change_password_failed", message }, 400);
+  } catch {
+    return c.json({ error: "invalid_password" }, 400);
   }
 
   await deps.db
@@ -78,9 +77,8 @@ accountRouter.put("/password", requireSession, async (c) => {
       headers: c.req.raw.headers,
       body: { currentPassword, newPassword, revokeOtherSessions: false },
     });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "change_password_failed";
-    return c.json({ error: "invalid_password", message }, 400);
+  } catch {
+    return c.json({ error: "invalid_password" }, 400);
   }
 
   return c.json({ ok: true });

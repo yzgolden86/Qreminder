@@ -7,12 +7,63 @@ export const notificationsRouter = new Hono<AppEnv>();
 
 notificationsRouter.use("*", requireSession);
 
+function isPrivateHost(hostname: string): boolean {
+  if (hostname === "localhost" || hostname === "[::1]") return true;
+  const parts = hostname.split(".");
+  if (parts.length !== 4 || parts.some((p) => !/^\d+$/.test(p))) return false;
+  const octets = parts.map(Number);
+  if (octets[0] === 10) return true;
+  if (octets[0] === 172 && octets[1]! >= 16 && octets[1]! <= 31) return true;
+  if (octets[0] === 192 && octets[1] === 168) return true;
+  if (octets[0] === 127) return true;
+  if (octets[0] === 169 && octets[1] === 254) return true;
+  if (octets[0] === 0) return true;
+  return false;
+}
+
+function validateExternalUrl(raw: string): { ok: true; url: string } | { ok: false; reason: string } {
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return { ok: false, reason: "Invalid URL" };
+  }
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    return { ok: false, reason: "Only http/https URLs are allowed" };
+  }
+  if (isPrivateHost(parsed.hostname)) {
+    return { ok: false, reason: "Requests to private/internal networks are not allowed" };
+  }
+  return { ok: true, url: parsed.toString() };
+}
+
 const testSchema = z.object({
   channel: z.enum(["telegram", "notifyx", "webhook", "wechat", "email", "bark"]),
   settings: z.record(z.string(), z.unknown()),
 });
 
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX = 5;
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(userId);
+  if (!entry || now >= entry.resetAt) {
+    rateLimitMap.set(userId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT_MAX) return false;
+  entry.count++;
+  return true;
+}
+
 notificationsRouter.post("/test", async (c) => {
+  const userId = (c.get("user") as { id: string }).id;
+  if (!checkRateLimit(userId)) {
+    return c.json({ error: "rate_limited", message: "Too many test requests, please wait a moment" }, 429);
+  }
+
   const body = await c.req.json().catch(() => null);
   const parsed = testSchema.safeParse(body);
   if (!parsed.success) {
@@ -51,8 +102,12 @@ notificationsRouter.post("/test", async (c) => {
         if (!deviceKey) {
           return c.json({ error: "missing_config", message: "Device Key is required" }, 400);
         }
-        const url = `${serverUrl.replace(/\/$/, "")}/${deviceKey}/Qreminder Test/If you see this, Bark is configured correctly.`;
-        const res = await fetch(url);
+        const barkTarget = `${serverUrl.replace(/\/$/, "")}/${deviceKey}/Qreminder Test/If you see this, Bark is configured correctly.`;
+        const barkCheck = validateExternalUrl(barkTarget);
+        if (!barkCheck.ok) {
+          return c.json({ error: "invalid_url", message: barkCheck.reason }, 400);
+        }
+        const res = await fetch(barkCheck.url);
         if (!res.ok) {
           return c.json({ error: "bark_error", message: `HTTP ${res.status}` }, 400);
         }
@@ -65,6 +120,10 @@ notificationsRouter.post("/test", async (c) => {
         if (!webhookUrl) {
           return c.json({ error: "missing_config", message: "Webhook URL is required" }, 400);
         }
+        const webhookCheck = validateExternalUrl(webhookUrl);
+        if (!webhookCheck.ok) {
+          return c.json({ error: "invalid_url", message: webhookCheck.reason }, 400);
+        }
         const headers: Record<string, string> = { "Content-Type": "application/json" };
         const rawHeaders = String(settings["webhookHeaders"] ?? "").trim();
         if (rawHeaders) {
@@ -73,7 +132,7 @@ notificationsRouter.post("/test", async (c) => {
           } catch { /* ignore invalid headers */ }
         }
         const payload = JSON.stringify({ event: "test", message: "Qreminder test notification" });
-        const res = await fetch(webhookUrl, {
+        const res = await fetch(webhookCheck.url, {
           method,
           headers,
           ...(method !== "GET" ? { body: payload } : {}),
@@ -89,11 +148,15 @@ notificationsRouter.post("/test", async (c) => {
         if (!webhookUrl) {
           return c.json({ error: "missing_config", message: "WeCom Webhook URL is required" }, 400);
         }
+        const wechatCheck = validateExternalUrl(webhookUrl);
+        if (!wechatCheck.ok) {
+          return c.json({ error: "invalid_url", message: wechatCheck.reason }, 400);
+        }
         const msgType = String(settings["wechatMessageType"] ?? "text");
         const content = msgType === "markdown"
           ? { msgtype: "markdown", markdown: { content: "**Qreminder** test notification\n> If you see this, WeCom is configured correctly." } }
           : { msgtype: "text", text: { content: "Qreminder test notification\nIf you see this, WeCom is configured correctly." } };
-        const res = await fetch(webhookUrl, {
+        const res = await fetch(wechatCheck.url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(content),
