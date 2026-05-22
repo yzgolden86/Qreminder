@@ -12,6 +12,7 @@ import { adminUsersRouter } from "./routes/admin-users.js";
 import { customConfigsRouter } from "./routes/custom-configs.js";
 import { accountRouter } from "./routes/account.js";
 import { signupConfigRouter } from "./routes/signup-config.js";
+import { notificationsRouter } from "./routes/notifications.js";
 
 export interface AppDeps {
   db: Database;
@@ -79,6 +80,7 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   app.route("/api/assets", assetsRouter);
   app.route("/api/app/admin/users", adminUsersRouter);
   app.route("/api/app/admin/signup-config", signupConfigRouter);
+  app.route("/api/app/notifications", notificationsRouter);
   app.route("/api/account", accountRouter);
 
   app.get("/api/app/health", (c) =>

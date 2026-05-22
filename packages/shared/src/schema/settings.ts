@@ -4,7 +4,7 @@ export const notificationChannelSchema = z.enum([
   "telegram",
   "notifyx",
   "webhook",
-  "wecom",
+  "wechat",
   "email",
   "bark",
 ]);

@@ -20,7 +20,7 @@ settingsRouter.patch("/", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
   const body = await c.req.json();
-  const parsed = settingsSchema.partial().safeParse(body);
+  const parsed = settingsSchema.partial().passthrough().safeParse(body);
   if (!parsed.success) {
     return c.json({ error: "validation_error", issues: parsed.error.issues }, 400);
   }

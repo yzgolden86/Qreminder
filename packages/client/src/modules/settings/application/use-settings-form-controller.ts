@@ -381,14 +381,12 @@ export function useSettingsFormController(): SettingsFormController {
 
   const syncSavedPreviewState = useCallback(
     (nextSettings: AppSettings) => {
-      setTheme(nextSettings.themeMode);
-      applyThemeVariant(nextSettings.themeVariant, nextSettings.themeCustomColor);
       writeThemeVariantToStorage(nextSettings.themeVariant);
       writeCustomThemeColorToStorage(nextSettings.themeCustomColor);
       writeAppearancePendingToStorage(false);
       setLocale(nextSettings.locale, { persist: false, markAsSaved: true });
     },
-    [setLocale, setTheme],
+    [setLocale],
   );
 
   const handleSaveChanges = useCallback(async () => {

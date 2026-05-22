@@ -58,6 +58,34 @@ accountRouter.post("/change-credentials", requireSession, async (c) => {
   return c.json({ ok: true });
 });
 
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(8),
+});
+
+accountRouter.put("/password", requireSession, async (c) => {
+  const auth = c.get("auth");
+
+  const body = await c.req.json().catch(() => null);
+  const parsed = changePasswordSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "invalid_body", issues: parsed.error.issues }, 400);
+  }
+  const { currentPassword, newPassword } = parsed.data;
+
+  try {
+    await auth.api.changePassword({
+      headers: c.req.raw.headers,
+      body: { currentPassword, newPassword, revokeOtherSessions: false },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "change_password_failed";
+    return c.json({ error: "invalid_password", message }, 400);
+  }
+
+  return c.json({ ok: true });
+});
+
 const changeEmailSchema = z.object({
   currentPassword: z.string().min(1),
   newEmail: z.string().email(),

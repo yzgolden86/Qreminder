@@ -83,7 +83,7 @@ export function usePasswordChange(): PasswordChangeController {
 
     setIsUpdatingPassword(true);
     try {
-      await apiFetch("/api/app/account/password", okResponseSchema, {
+      await apiFetch("/api/account/password", okResponseSchema, {
         method: "PUT",
         body: JSON.stringify({ currentPassword, newPassword }),
       });
