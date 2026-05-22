@@ -13,13 +13,16 @@ Qreminder is a self-hosted subscription manager. It puts the prices, renewal dat
   <img alt="MIT License" src="https://img.shields.io/badge/license-MIT-111827?style=flat-square">
 </p>
 
-> Screenshots are being refreshed to match the 2026-05 visual redesign. Images under `docs/screenshots/` show the previous layout and are illustrative only; the sections below describe the current UI and feature set.
+<p align="center">
+  <img src="docs/screenshots/qreminder-light.png" width="48%" alt="Light mode" />
+  <img src="docs/screenshots/qreminder-dark.png" width="48%" alt="Dark mode" />
+</p>
 
 ## What is it
 
 If you subscribe to lots of tools, Qreminder keeps the receipts:
 
-- **Who charges you when** — multi-tier reminders (e.g. `[7, 3, 1]` days), same-day hits coalesced into a single email
+- **Who charges you when** — multi-tier reminders (e.g. `[7, 3, 1]` days), same-day hits coalesced into a single notification
 - **How much you spend** — different cycles normalized to monthly cost, then broken down by category and payment method
 - **What's about to renew** — renewal calendar + trial-end glow + dashboard top-N renewal list
 - **Where reminders go** — dedicated notification center with per-recipient drill-down
@@ -31,15 +34,64 @@ Self-hosted: your subscription data only lives in the instance you deploy. Nothi
 | Area | Capabilities |
 | --- | --- |
 | **Subscription record** | Name, logo, price, currency, billing cycle (weekly/monthly/quarterly/semi-annual/annual/custom days), status (trial/active/paused/cancelled), category, payment method (including **Free**), website, tags, notes |
-| **Multi-tier reminders** | Per-subscription `reminderOffsets`; same-day matches merged into one email |
-| **Notification channels** | Workers uses Resend HTTP API; Node self-hosted supports SMTP, Telegram, Notifyx, Webhook, WeCom Bot, Bark |
+| **Multi-tier reminders** | Per-subscription `reminderOffsets`; same-day matches merged into one notification |
+| **Notification channels** | Telegram, Email (SMTP), WeCom Bot, Webhook, Bark, NotifyX — all 6 channels can be enabled simultaneously |
 | **Notification center** | Dedicated page combining upcoming batches + dispatch history, filterable by status, drillable into per-recipient results |
 | **Spending insights** | Normalize cycles to monthly cost; category share, payment-method share, billing-cycle distribution, renewal/monthly top 5 |
 | **Multi-currency** | Frankfurter or FloatRates; fallback rates when remote sources fail |
-| **Multi-user** | Better Auth email/password sign-in; admins can open signup under Settings → Registration, with quick-toggle checkboxes for 12 common providers (Gmail / Outlook / QQ / 163 / iCloud / Proton …) or manual allowlist entries |
+| **Multi-user** | Better Auth email/password sign-in; admins can open signup under Settings → Registration, with quick-toggle checkboxes for common providers or manual allowlist entries |
 | **Admin tools** | Sidebar "Users" entry lets admins create, delete, reset passwords, ban accounts |
 | **Bilingual** | Simplified Chinese / English, switchable in-app |
 | **Theming** | Five preset themes (Emerald / Ocean / Sunset / Lavender / Rose) with light/dark mode, plus custom-color support |
+
+## Notification setup guide
+
+Enable channels and fill in credentials under **Settings → Notifications**. Use the "Test" button to verify connectivity.
+
+### Telegram (recommended — easiest)
+
+1. Search [@BotFather](https://t.me/botfather) on Telegram, send `/newbot`, follow prompts to create a bot and get the **Bot Token**
+2. Add the bot to the group where you want notifications (or send it a direct message)
+3. Visit `https://api.telegram.org/bot<YourToken>/getUpdates` and find the `chat.id` field
+4. Enter Bot Token and Chat ID in settings, click Test
+
+### Email (SMTP)
+
+Enter credentials for any SMTP-compatible service:
+
+| Provider | SMTP Host | Port | Notes |
+| --- | --- | --- | --- |
+| **Resend** | `smtp.resend.com` | 465 (SSL) | Free tier: 100 emails/day, domain verification required |
+| **Gmail** | `smtp.gmail.com` | 587 (TLS) | Requires App Password |
+| **Outlook** | `smtp.office365.com` | 587 (TLS) | Use account credentials |
+| **QQ Mail** | `smtp.qq.com` | 465 (SSL) | Enable SMTP and get authorization code |
+| **163 Mail** | `smtp.163.com` | 465 (SSL) | Enable SMTP and get authorization code |
+
+Fill in: SMTP host, port, username, password, sender address, recipient address. Click Test.
+
+### WeCom Bot
+
+1. Add a "Group Bot" in a WeCom group chat to get the Webhook URL
+2. Paste the Webhook URL in settings, choose message format (text or markdown), click Test
+
+### Webhook (generic)
+
+For integrating with any HTTP-callback service (n8n, IFTTT, custom services):
+
+- Enter the target URL
+- Choose HTTP method (POST/GET)
+- Optional: custom Headers (JSON format) and Payload template
+
+### Bark (iOS push)
+
+1. Download [Bark](https://apps.apple.com/app/bark/id1403753865) from the App Store
+2. Open the app and copy your Device Key
+3. Enter server URL (default `https://api.day.app`) and Device Key in settings, click Test
+
+### NotifyX
+
+1. Register at [NotifyX](https://www.notifyx.cn/) and get your API Key
+2. Enter the API Key in settings, click Test
 
 ## App structure
 
@@ -60,20 +112,19 @@ Self-hosted: your subscription data only lives in the instance you deploy. Nothi
 | [packages/client](./packages/client/) | Vite + React 19 + Tailwind 4 + shadcn/Radix SPA. Unified design system: 5-step elevation scale, surface/lift utilities, Apple-style motion easing. Bilingual zh-CN / en |
 | [packages/server-ts](./packages/server-ts/) | TypeScript + Hono + Drizzle + Better Auth backend; one codebase, two runtimes |
 | [runtimes/worker](./runtimes/worker/) | Cloudflare Workers + D1 + R2 + Cron Triggers + Workers Assets — no VPS |
-| [runtimes/node](./runtimes/node/) | Node + better-sqlite3 + nodemailer + node-cron — your own VPS (experimental) |
+| [runtimes/node](./runtimes/node/) | Node + better-sqlite3 + nodemailer + node-cron — your own VPS |
 | [packages/shared](./packages/shared/) | zod schemas and domain helpers shared between client and server |
 | [tools/pb-importer](./tools/pb-importer/) | CLI that imports legacy Go + PocketBase data into the new schema |
-| [packages/server](./packages/server/) | Previous-generation Go + PocketBase backend, maintenance mode (see legacy section) |
 
 ## Cloudflare Workers deployment (recommended)
 
-You only need a Cloudflare account and a Resend account. The whole app runs on Cloudflare's free tier (D1 + R2 + Workers + Cron Triggers + Workers Assets).
+You only need a Cloudflare account. The whole app runs on Cloudflare's free tier (D1 + R2 + Workers + Cron Triggers + Workers Assets).
 
 ### Path A: fork + GitHub Actions (no local CLI required)
 
 For users who don't want a VPS or local tooling. Fork the repo and run everything from the GitHub web UI.
 
-1. In your fork: **Settings → Environments** → create an environment named `cloudflare`, add the 6 required secrets per [docs/CF_GH_ACTIONS_DEPLOY.md §1](./docs/CF_GH_ACTIONS_DEPLOY.md#1-配置-github-secrets--variables) (Cloudflare API token, account id, Better Auth secret, APP_URL, Resend API key + sender)
+1. In your fork: **Settings → Environments** → create an environment named `cloudflare`, add the required secrets per [docs/CF_GH_ACTIONS_DEPLOY.md §1](./docs/CF_GH_ACTIONS_DEPLOY.md#1-配置-github-secrets--variables)
 2. **Actions** → manually run **Cloudflare Bootstrap** (creates D1 + R2, auto-commits `database_id` back to `wrangler.toml`). When it finishes, **Wrangler Deploy** runs automatically and ships the worker
 
 See [docs/CF_GH_ACTIONS_DEPLOY.md](./docs/CF_GH_ACTIONS_DEPLOY.md) for the full walkthrough, first-login, custom domain, and troubleshooting.
@@ -85,7 +136,7 @@ pnpm install -g wrangler@latest
 wrangler login
 ```
 
-Then follow [docs/WORKER_DEPLOY.md](./docs/WORKER_DEPLOY.md) step by step: create D1 + R2 → set secrets → apply D1 migrations → build the client → `wrangler deploy` → log in as default admin. About 15 minutes total (excluding Resend domain verification propagation).
+Then follow [docs/WORKER_DEPLOY.md](./docs/WORKER_DEPLOY.md) step by step: create D1 + R2 → set secrets → apply D1 migrations → build the client → `wrangler deploy` → log in as default admin.
 
 ### First login
 
@@ -140,7 +191,6 @@ Pre-submit checks:
 pnpm -r typecheck
 pnpm --filter @qreminder/client test
 pnpm --filter @qreminder/client build
-pnpm --filter @qreminder/server test
 ```
 
 ## Data migration (v1 → v2)
@@ -155,7 +205,7 @@ node tools/pb-importer/dist/cli.js \
   --fs /data/assets
 ```
 
-The tool doesn't delete the source — failed runs are safe to retry. Full field mapping and rollback notes in [docs/v2-proposal.md §8](./docs/v2-proposal.md#8-数据迁移工具pb-importer).
+The tool doesn't delete the source — failed runs are safe to retry.
 
 ## Contributing
 
@@ -169,4 +219,4 @@ For larger features, please open an issue first to align on goals, use cases, an
 
 ## License
 
-Qreminder is open-sourced under the [MIT License](LICENSE). Copyright © 2026 yzgolden86.
+Qreminder is open-sourced under the [MIT License](LICENSE). Copyright © 2024-2026 yzgolden86.
