@@ -335,9 +335,17 @@ function SidebarContent({ collapsed, onToggleCollapse, onNavigate }: SidebarCont
   );
 }
 
+function useResponsiveCollapse() {
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.innerWidth < 1024;
+  });
+  return [collapsed, setCollapsed] as const;
+}
+
 export function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useResponsiveCollapse();
 
   return (
     <>
