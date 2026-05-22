@@ -17,7 +17,7 @@ function clearLegacyWebhookExample(value: string, legacyExample: string) {
 }
 
 export function normalizeSettings(value: unknown): AppSettings {
-  const parsed = settingsUpdateBodySchema.safeParse(value);
+  const parsed = settingsUpdateBodySchema.passthrough().safeParse(value);
   const defaults = { ...DEFAULT_SETTINGS, timezone: getSystemTimeZone("UTC") };
   if (!parsed.success) return defaults;
   const patch = Object.fromEntries(
