@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { DEFAULT_CUSTOM_CONFIG } from "@/types/config";
@@ -138,13 +139,16 @@ function RouteProbe() {
 }
 
 function renderSettingsScreen(initialEntries = ["/settings"]) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter initialEntries={initialEntries}>
-      <TooltipProvider delayDuration={0}>
-        <SettingsScreen />
-      </TooltipProvider>
-      <RouteProbe />
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={initialEntries}>
+        <TooltipProvider delayDuration={0}>
+          <SettingsScreen />
+        </TooltipProvider>
+        <RouteProbe />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 

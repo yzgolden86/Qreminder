@@ -206,6 +206,14 @@ export const zhCN = {
   "settings.about.copyrightText": "© 2024-2026 yzgolden86. 基于 MIT 许可证开源。",
   "settings.about.description": "Qreminder 是一款自托管的订阅管理与续费提醒工具。",
   "settings.about.sourceCode": "源代码",
+  "settings.ical.title": "日历订阅 (iCal)",
+  "settings.ical.description": "生成 iCal 链接，可在 iOS 日历、Google Calendar、Outlook 中订阅续费日期。",
+  "settings.ical.generateToken": "生成订阅链接",
+  "settings.ical.resetToken": "重置链接",
+  "settings.ical.resetConfirm": "重置后旧链接将立即失效，确定继续？",
+  "settings.ical.copyLink": "复制链接",
+  "settings.ical.copied": "已复制到剪贴板",
+  "settings.ical.hint": "将此链接添加到日历应用中，续费日期将自动同步。",
 } satisfies MessageMap;
 
 export const enUS = {
@@ -407,4 +415,12 @@ export const enUS = {
   "settings.about.copyrightText": "© 2024-2026 yzgolden86. Open-sourced under the MIT License.",
   "settings.about.description": "Qreminder is a self-hosted subscription management and renewal reminder tool.",
   "settings.about.sourceCode": "Source code",
+  "settings.ical.title": "Calendar Subscription (iCal)",
+  "settings.ical.description": "Generate an iCal link to sync renewal dates with iOS Calendar, Google Calendar, or Outlook.",
+  "settings.ical.generateToken": "Generate subscription link",
+  "settings.ical.resetToken": "Reset link",
+  "settings.ical.resetConfirm": "Resetting will immediately invalidate the old link. Continue?",
+  "settings.ical.copyLink": "Copy link",
+  "settings.ical.copied": "Copied to clipboard",
+  "settings.ical.hint": "Add this link to your calendar app to auto-sync renewal dates.",
 } satisfies Record<keyof typeof zhCN, MessageValue>;

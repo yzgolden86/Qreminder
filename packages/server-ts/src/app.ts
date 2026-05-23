@@ -13,6 +13,9 @@ import { customConfigsRouter } from "./routes/custom-configs.js";
 import { accountRouter } from "./routes/account.js";
 import { signupConfigRouter } from "./routes/signup-config.js";
 import { notificationsRouter } from "./routes/notifications.js";
+import { icalRouter } from "./routes/ical.js";
+import { exportRouter } from "./routes/export.js";
+import { importRouter } from "./routes/import.js";
 
 export interface AppDeps {
   db: Database;
@@ -82,6 +85,9 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   app.route("/api/app/admin/signup-config", signupConfigRouter);
   app.route("/api/app/notifications", notificationsRouter);
   app.route("/api/account", accountRouter);
+  app.route("/api/ical", icalRouter);
+  app.route("/api/export", exportRouter);
+  app.route("/api/import", importRouter);
 
   app.get("/api/app/health", (c) =>
     c.json({ status: "ok", runtime: deps.scheduler.kind }),

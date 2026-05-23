@@ -44,3 +44,31 @@ settingsRouter.patch("/", async (c) => {
     .where(eq(settings.id, existing.id));
   return c.json({ settings: merged });
 });
+
+settingsRouter.post("/ical/reset-token", async (c) => {
+  const db = c.get("deps").db;
+  const userId = c.get("user").id;
+  const now = new Date().toISOString();
+  const newToken = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+
+  const [existing] = await db.select().from(settings).where(eq(settings.user, userId));
+  if (!existing) {
+    const id = crypto.randomUUID();
+    await db.insert(settings).values({
+      id,
+      user: userId,
+      settings: { icalToken: newToken, icalEnabled: true },
+      createdAt: now,
+      updatedAt: now,
+    });
+    return c.json({ icalToken: newToken });
+  }
+
+  const current = (existing.settings ?? {}) as Record<string, unknown>;
+  const merged = { ...current, icalToken: newToken, icalEnabled: true };
+  await db
+    .update(settings)
+    .set({ settings: merged, updatedAt: now })
+    .where(eq(settings.id, existing.id));
+  return c.json({ icalToken: newToken });
+});

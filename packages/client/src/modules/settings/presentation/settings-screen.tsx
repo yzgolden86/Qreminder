@@ -40,6 +40,7 @@ import { NotificationChannelConfigPanel } from './notification-channel-config-pa
 import { NotificationChannelList } from './notification-channel-list';
 import { ExchangeRatesSection } from './exchange-rates-section';
 import { RegistrationManagementSection } from './registration-management-section';
+import { IcalSection } from './ical-section';
 import { CheckboxSettingRow, LoadingButtonContent } from './settings-shared-controls';
 
 function useUnsavedChangesGuard(enabled: boolean, message: string, onConfirmLeave: () => void) {
@@ -461,6 +462,9 @@ export function SettingsScreen() {
               </div>
             </div>
           </section>
+
+          {/* iCal 日历订阅 */}
+          <IcalSection settings={settings} />
 
           {/* 关于 */}
           <section className="surface-card rounded-xl p-6">
