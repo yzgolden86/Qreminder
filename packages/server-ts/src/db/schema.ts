@@ -158,3 +158,24 @@ export const notificationJobs = sqliteTable(
     ),
   }),
 );
+
+export const subscriptionPayments = sqliteTable(
+  "subscription_payments",
+  {
+    id: text("id").primaryKey(),
+    user: text("user").notNull().references(() => users.id),
+    subscriptionId: text("subscription_id").notNull().references(() => subscriptions.id, { onDelete: "cascade" }),
+    paidAt: text("paid_at").notNull(),
+    amount: real("amount").notNull(),
+    currency: text("currency").notNull().default("CNY"),
+    billingPeriod: text("billing_period"),
+    paymentMethod: text("payment_method"),
+    note: text("note").default(""),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => ({
+    userIdx: index("idx_payments_user").on(table.user),
+    subscriptionIdx: index("idx_payments_subscription").on(table.subscriptionId),
+  }),
+);
