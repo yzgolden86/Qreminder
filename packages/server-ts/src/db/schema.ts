@@ -179,3 +179,24 @@ export const subscriptionPayments = sqliteTable(
     subscriptionIdx: index("idx_payments_subscription").on(table.subscriptionId),
   }),
 );
+
+export const budgets = sqliteTable(
+  "budgets",
+  {
+    id: text("id").primaryKey(),
+    user: text("user").notNull().references(() => users.id),
+    scopeType: text("scope_type", {
+      enum: ["global", "category", "tag", "payment_method"],
+    }).notNull().default("global"),
+    scopeId: text("scope_id").default(""),
+    period: text("period", { enum: ["monthly", "yearly"] }).notNull().default("monthly"),
+    amount: real("amount").notNull(),
+    currency: text("currency").notNull().default("CNY"),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => ({
+    userIdx: index("idx_budgets_user").on(table.user),
+  }),
+);

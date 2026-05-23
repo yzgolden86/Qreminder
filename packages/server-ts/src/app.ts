@@ -17,6 +17,7 @@ import { icalRouter } from "./routes/ical.js";
 import { exportRouter } from "./routes/export.js";
 import { importRouter } from "./routes/import.js";
 import { paymentsRouter } from "./routes/payments.js";
+import { budgetsRouter } from "./routes/budgets.js";
 
 export interface AppDeps {
   db: Database;
@@ -90,6 +91,7 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   app.route("/api/export", exportRouter);
   app.route("/api/import", importRouter);
   app.route("/api/payments", paymentsRouter);
+  app.route("/api/budgets", budgetsRouter);
 
   app.get("/api/app/health", (c) =>
     c.json({ status: "ok", runtime: deps.scheduler.kind }),
