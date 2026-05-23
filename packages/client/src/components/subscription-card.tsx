@@ -120,9 +120,9 @@ export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDe
         style={{ background: categoryColor }}
       />
 
-      <div className="flex items-center gap-3 p-4 pb-2.5 pl-5">
+      <div className="flex items-center gap-2.5 p-3 pb-2 pl-4 sm:gap-3 sm:p-4 sm:pb-2.5 sm:pl-5">
         <div
-          className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-md text-base font-semibold ring-1 ring-border/60 transition-transform duration-200 group-hover:scale-[1.04]"
+          className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-md text-base font-semibold ring-1 ring-border/60 transition-transform duration-200 group-hover:scale-[1.04] sm:h-11 sm:w-11"
           style={logoBackgroundStyle}
         >
           {subscription.logo && !logoLoadFailed ? (
@@ -141,15 +141,15 @@ export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDe
           <TruncatedTooltipText
             as="h3"
             text={subscription.name}
-            className="min-w-0 text-[14px] font-semibold tracking-tight text-foreground"
+            className="min-w-0 text-[13px] font-semibold tracking-tight text-foreground sm:text-[14px]"
           />
-          <p className="mt-0.5 text-[11px] uppercase tracking-[0.06em] text-muted-foreground">
+          <p className="mt-0.5 text-[10px] uppercase tracking-[0.06em] text-muted-foreground sm:text-[11px]">
             {localizedLabel(CYCLE_LABELS[subscription.billingCycle], locale)}
           </p>
         </div>
 
         <div className="shrink-0 text-right">
-          <p className="num-display whitespace-nowrap text-[20px] font-semibold leading-none text-foreground">
+          <p className="num-display whitespace-nowrap text-[17px] font-semibold leading-none text-foreground sm:text-[20px]">
             {formatCurrency(subscription.price, subscription.currency)}
           </p>
         </div>
@@ -179,7 +179,7 @@ export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDe
         </DropdownMenu>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 px-5 pb-3">
+      <div className="flex flex-wrap items-center gap-2 px-4 pb-2.5 sm:px-5 sm:pb-3">
         <Badge
           variant="outline"
           className="max-w-full shrink-0 overflow-hidden whitespace-nowrap text-xs"
@@ -195,7 +195,7 @@ export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDe
         </Badge>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border/50 px-5 py-3 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border/50 px-4 py-2.5 text-[11px] text-muted-foreground sm:gap-x-4 sm:px-5 sm:py-3 sm:text-xs">
         <div className="flex items-center gap-1.5">
           <CalendarClock className="h-3.5 w-3.5" />
           <span>{t("subscription.card.startPrefix")} {formatDateOnly(subscription.startDate)}</span>
@@ -244,7 +244,7 @@ export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDe
       </div>
 
       {isTrialEndingSoon && subscription.trialEndDate && (
-        <div className="flex items-center gap-2 border-t border-warning/20 bg-warning/5 px-5 py-2.5 text-xs font-medium text-warning">
+        <div className="flex items-center gap-2 border-t border-warning/20 bg-warning/5 px-4 py-2.5 text-[11px] font-medium text-warning sm:px-5 sm:text-xs">
           {t("subscription.card.trialEnds", { date: formatDateOnly(subscription.trialEndDate, "monthDay") })}
         </div>
       )}

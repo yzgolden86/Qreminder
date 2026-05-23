@@ -218,7 +218,7 @@ export default function Home() {
 
   return (
     <>
-      <div className="mb-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-4 grid gap-3 sm:mb-6 sm:gap-5 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             title={t("dashboard.monthlySpend")}
             value={formatCurrency(totalMonthly, defaultCurrency)}
@@ -256,26 +256,26 @@ export default function Home() {
           />
         </div>
 
-        <div className="mb-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="surface-card lift-on-hover rounded-xl p-5">
+        <div className="mb-4 grid gap-3 sm:mb-6 sm:gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="surface-card lift-on-hover rounded-xl p-4 sm:p-5">
             <h3 className="mb-3 text-sm font-semibold text-foreground">
               {t("dashboard.spendingDistribution")}
             </h3>
             <SpendingChart subscriptions={subscriptions} />
           </div>
-          <div className="surface-card lift-on-hover rounded-xl p-5">
+          <div className="surface-card lift-on-hover rounded-xl p-4 sm:p-5">
             <h3 className="mb-3 text-sm font-semibold text-foreground">
               {t("dashboard.billingCycleDistribution")}
             </h3>
             <BillingCycleChart subscriptions={subscriptions} />
           </div>
-          <div className="surface-card lift-on-hover rounded-xl p-5">
+          <div className="surface-card lift-on-hover rounded-xl p-4 sm:p-5">
             <h3 className="mb-3 text-sm font-semibold text-foreground">
               {t("dashboard.renewalTop5")}
             </h3>
             <RenewalTop5Chart subscriptions={subscriptions} timeZone={timeZone} />
           </div>
-          <div className="surface-card lift-on-hover rounded-xl p-5">
+          <div className="surface-card lift-on-hover rounded-xl p-4 sm:p-5">
             <h3 className="mb-3 text-sm font-semibold text-foreground">
               {t("dashboard.monthlyTop5")}
             </h3>
@@ -283,11 +283,11 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="mb-6">
+        <div className="mb-4 sm:mb-6">
           <UpcomingRenewalsStrip subscriptions={subscriptions} timeZone={timeZone} />
         </div>
 
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-foreground">
               {t("subscriptions.title")}
@@ -298,7 +298,7 @@ export default function Home() {
                 ` ${t("subscriptions.filteredCount", { count: subscriptions.length })}`}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             {!batchMode ? (
               <Button
                 variant="outline"
@@ -307,7 +307,7 @@ export default function Home() {
                 className="gap-1.5"
               >
                 <CheckSquare className="h-3.5 w-3.5" />
-                {t("subscriptions.batchSelect")}
+                <span className="hidden sm:inline">{t("subscriptions.batchSelect")}</span>
               </Button>
             ) : (
               <Button
@@ -317,12 +317,12 @@ export default function Home() {
                 className="gap-1.5 text-muted-foreground"
               >
                 <X className="h-3.5 w-3.5" />
-                {t("subscriptions.batchCancel")}
+                <span className="hidden sm:inline">{t("subscriptions.batchCancel")}</span>
               </Button>
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="border-border">
+                <Button variant="outline" size="icon" className="border-border" aria-label={t("subscriptions.exportJson")}>
                   <Download className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -340,6 +340,7 @@ export default function Home() {
               size="icon"
               onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")}
               className="border-border"
+              aria-label={viewMode === "grid" ? "List view" : "Grid view"}
             >
               {viewMode === "grid" ? (
                 <ListIcon className="h-4 w-4" />
@@ -352,16 +353,16 @@ export default function Home() {
               trigger={
                 <Button className="gap-2 bg-primary text-primary-foreground shadow-sm hover:bg-primary-glow hover:shadow-[0_8px_24px_-6px_hsl(var(--primary)/0.4)] transition-all">
                   <Plus className="h-4 w-4" />
-                  {t("subscription.add")}
+                  <span className="hidden sm:inline">{t("subscription.add")}</span>
                 </Button>
               }
             />
           </div>
         </div>
 
-        <div className="mb-6 grid gap-4 rounded-xl surface-card p-5">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="relative flex-1 min-w-[200px]">
+        <div className="mb-6 grid gap-4 rounded-xl surface-card p-4 sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+            <div className="relative w-full sm:flex-1 sm:min-w-[200px]">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder={t("subscriptions.searchPlaceholder")}
@@ -371,88 +372,90 @@ export default function Home() {
               />
             </div>
 
-            <Select
-              value={categoryFilter}
-              onValueChange={(v) => setCategoryFilter(v as Category | "all")}
-            >
-              <SelectTrigger
-                className="w-[140px] border-border bg-secondary"
-                tooltipContent={categoryFilterLabel}
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-4">
+              <Select
+                value={categoryFilter}
+                onValueChange={(v) => setCategoryFilter(v as Category | "all")}
               >
-                <SelectValue placeholder={t("subscription.field.category")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("subscriptions.allCategories")}</SelectItem>
-                {config.categories.map((category) => (
-                  <SelectItem key={category.id} value={category.value}>
-                    {label(category.labels)}
+                <SelectTrigger
+                  className="w-full border-border bg-secondary sm:w-[140px]"
+                  tooltipContent={categoryFilterLabel}
+                >
+                  <SelectValue placeholder={t("subscription.field.category")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("subscriptions.allCategories")}</SelectItem>
+                  {config.categories.map((category) => (
+                    <SelectItem key={category.id} value={category.value}>
+                      {label(category.labels)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={statusFilter}
+                onValueChange={(v) => setStatusFilter(v as SubscriptionStatus | "all")}
+              >
+                <SelectTrigger
+                  className="w-full border-border bg-secondary sm:w-[140px]"
+                  tooltipContent={statusFilterLabel}
+                >
+                  <SelectValue placeholder={t("subscription.field.status")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("subscriptions.allStatuses")}</SelectItem>
+                  {config.statuses.map((status) => (
+                    <SelectItem key={status.id} value={status.value}>
+                      {label(status.labels)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={sortOption}
+                onValueChange={(v) => setSortOption(v as SubscriptionSortOption)}
+              >
+                <SelectTrigger
+                  aria-label={t("subscriptions.sort.label")}
+                  className="col-span-2 w-full border-border bg-secondary sm:col-span-1 sm:w-[190px]"
+                  tooltipContent={sortOptionLabel}
+                >
+                  <SelectValue placeholder={t("subscriptions.sort.label")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">{t("subscriptions.sort.default")}</SelectItem>
+                  <SelectItem value="renewal_asc">
+                    {t("subscriptions.sort.renewalAsc")}
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={statusFilter}
-              onValueChange={(v) => setStatusFilter(v as SubscriptionStatus | "all")}
-            >
-              <SelectTrigger
-                className="w-[140px] border-border bg-secondary"
-                tooltipContent={statusFilterLabel}
-              >
-                <SelectValue placeholder={t("subscription.field.status")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("subscriptions.allStatuses")}</SelectItem>
-                {config.statuses.map((status) => (
-                  <SelectItem key={status.id} value={status.value}>
-                    {label(status.labels)}
+                  <SelectItem value="renewal_desc">
+                    {t("subscriptions.sort.renewalDesc")}
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                  <SelectItem value="monthly_cost_desc">
+                    {t("subscriptions.sort.monthlyCostDesc")}
+                  </SelectItem>
+                  <SelectItem value="monthly_cost_asc">
+                    {t("subscriptions.sort.monthlyCostAsc")}
+                  </SelectItem>
+                  <SelectItem value="price_desc">{t("subscriptions.sort.priceDesc")}</SelectItem>
+                  <SelectItem value="price_asc">{t("subscriptions.sort.priceAsc")}</SelectItem>
+                  <SelectItem value="name_asc">{t("subscriptions.sort.nameAsc")}</SelectItem>
+                  <SelectItem value="name_desc">{t("subscriptions.sort.nameDesc")}</SelectItem>
+                </SelectContent>
+              </Select>
 
-            <Select
-              value={sortOption}
-              onValueChange={(v) => setSortOption(v as SubscriptionSortOption)}
-            >
-              <SelectTrigger
-                aria-label={t("subscriptions.sort.label")}
-                className="w-[190px] border-border bg-secondary"
-                tooltipContent={sortOptionLabel}
-              >
-                <SelectValue placeholder={t("subscriptions.sort.label")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="default">{t("subscriptions.sort.default")}</SelectItem>
-                <SelectItem value="renewal_asc">
-                  {t("subscriptions.sort.renewalAsc")}
-                </SelectItem>
-                <SelectItem value="renewal_desc">
-                  {t("subscriptions.sort.renewalDesc")}
-                </SelectItem>
-                <SelectItem value="monthly_cost_desc">
-                  {t("subscriptions.sort.monthlyCostDesc")}
-                </SelectItem>
-                <SelectItem value="monthly_cost_asc">
-                  {t("subscriptions.sort.monthlyCostAsc")}
-                </SelectItem>
-                <SelectItem value="price_desc">{t("subscriptions.sort.priceDesc")}</SelectItem>
-                <SelectItem value="price_asc">{t("subscriptions.sort.priceAsc")}</SelectItem>
-                <SelectItem value="name_asc">{t("subscriptions.sort.nameAsc")}</SelectItem>
-                <SelectItem value="name_desc">{t("subscriptions.sort.nameDesc")}</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {hasActiveControls && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearFilters}
-                className="text-muted-foreground"
-              >
-                {t("subscriptions.clearFilters")}
-              </Button>
-            )}
+              {hasActiveControls && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="col-span-2 text-muted-foreground sm:col-span-1"
+                >
+                  {t("subscriptions.clearFilters")}
+                </Button>
+              )}
+            </div>
           </div>
 
           {allTags.length > 0 && (
@@ -481,7 +484,7 @@ export default function Home() {
         </div>
 
         {filteredSubscriptions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card/40 py-20 px-6 text-center">
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card/40 px-6 py-12 text-center sm:py-20">
             <div className="relative mb-5">
               <div className="absolute inset-0 rounded-full bg-primary/15 blur-xl" aria-hidden />
               <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-secondary ring-1 ring-border">
@@ -511,7 +514,7 @@ export default function Home() {
         ) : (
           <div
             className={cn(
-              "grid items-stretch gap-4",
+              "grid items-stretch gap-3 sm:gap-4",
               viewMode === "grid" ? "sm:grid-cols-2 lg:grid-cols-3" : "grid-cols-1",
             )}
           >

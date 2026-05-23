@@ -278,14 +278,14 @@ export default function Cards() {
                   </div>
                 </DialogTitle>
               </DialogHeader>
-              <div className="mt-2 flex items-center justify-between">
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                 {!batchMode ? (
                   <Button variant="outline" size="sm" onClick={() => setBatchMode(true)} className="gap-1.5">
                     <CheckSquare className="h-3.5 w-3.5" />
                     {t("subscriptions.batchSelect")}
                   </Button>
                 ) : (
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="text-[13px] font-medium text-foreground">
                       {t("subscriptions.batchSelected", { count: selectedIds.size })}
                     </span>
@@ -297,11 +297,11 @@ export default function Cards() {
                       onClick={() => setBatchDeleteDialogOpen(true)}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
-                      {t("subscriptions.batchDelete")}
+                      <span className="hidden sm:inline">{t("subscriptions.batchDelete")}</span>
                     </Button>
                     <Button variant="ghost" size="sm" onClick={exitBatchMode} className="gap-1.5 text-muted-foreground">
                       <X className="h-3.5 w-3.5" />
-                      {t("subscriptions.batchCancel")}
+                      <span className="hidden sm:inline">{t("subscriptions.batchCancel")}</span>
                     </Button>
                   </div>
                 )}

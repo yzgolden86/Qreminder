@@ -152,14 +152,14 @@ export const SubscriptionCalendar = ({ subscriptions, onEditSubscription }: Subs
 
   return (
     <>
-      <div className="surface-card rounded-xl p-5">
+      <div className="surface-card rounded-xl p-3 sm:p-5">
         {/* Header */}
-        <div className="flex items-center justify-between mb-5">
+        <div className="mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <CalendarDays className="h-4 w-4 text-primary" />
             <h3 className="text-[15px] font-semibold tracking-tight text-foreground">{t("calendar.title")}</h3>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-2 sm:justify-end">
             <Button
               variant="ghost"
               size="sm"
@@ -338,15 +338,15 @@ export const SubscriptionCalendar = ({ subscriptions, onEditSubscription }: Subs
               <div
                 key={dateKey}
                 className={cn(
-                  "min-h-[80px] bg-card p-1.5 transition-colors",
+                  "min-h-[58px] bg-card p-1 transition-colors sm:min-h-[80px] sm:p-1.5",
                   !isCurrentMonth && "bg-muted/20"
                 )}
               >
                 {/* Day Number */}
-                <div className="flex justify-end mb-1">
+                <div className="flex justify-end mb-0.5 sm:mb-1">
                   <span
                     className={cn(
-                      "num-display text-[11px] w-5 h-5 flex items-center justify-center rounded-full",
+                      "num-display text-[10px] sm:text-[11px] w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded-full",
                       isDayToday && "bg-primary text-primary-foreground font-semibold",
                       !isDayToday && isCurrentMonth && "text-foreground",
                       !isDayToday && !isCurrentMonth && "text-muted-foreground/40"
@@ -365,7 +365,7 @@ export const SubscriptionCalendar = ({ subscriptions, onEditSubscription }: Subs
                           <button
                             onClick={() => handleSubscriptionClick(sub)}
                             className={cn(
-                              "w-full text-left text-[10px] px-1.5 py-0.5 rounded border truncate transition-colors",
+                              "w-full text-left text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 rounded border truncate transition-colors",
                               "bg-background hover:bg-secondary/60 border-border/60 text-foreground",
                               "cursor-pointer"
                             )}
@@ -383,9 +383,9 @@ export const SubscriptionCalendar = ({ subscriptions, onEditSubscription }: Subs
                       </Tooltip>
                     ))}
                     {daySubs.length > 2 && (
-                      <button 
+                      <button
                         onClick={() => handleShowDayList(day, daySubs)}
-                        className="w-full text-xs text-primary hover:text-primary-glow text-center cursor-pointer hover:underline"
+                        className="w-full text-[10px] sm:text-xs text-primary hover:text-primary-glow text-center cursor-pointer hover:underline"
                       >
                         {t("calendar.more", { count: daySubs.length - 2 })}
                       </button>
