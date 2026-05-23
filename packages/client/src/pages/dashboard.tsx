@@ -61,6 +61,7 @@ import { toast } from "@/components/ui/sonner";
 import { useExchangeRates } from "@/hooks/use-exchange-rates";
 import { useSubscriptions, useBatchDeleteSubscriptions, useBatchUpdateSubscriptions } from "@/hooks/use-subscriptions";
 import { useSettings } from "@/hooks/use-settings";
+import { useQuickRenew } from "@/hooks/use-payments";
 import { useDashboardStats } from "@/modules/subscriptions/application/use-dashboard-stats";
 import { useSubscriptionCrud } from "@/modules/subscriptions/application/use-subscription-crud";
 import { useSubscriptionExport } from "@/modules/subscriptions/application/use-subscription-export";
@@ -102,6 +103,7 @@ export default function Home() {
   const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
   const batchDelete = useBatchDeleteSubscriptions();
   const batchUpdate = useBatchUpdateSubscriptions();
+  const quickRenew = useQuickRenew();
 
   const { activeSubscriptions, totalMonthly, upcomingCount, trialCount } =
     useDashboardStats(subscriptions, defaultCurrency, convert, timeZone);
@@ -115,6 +117,13 @@ export default function Home() {
     handleSaveSubscription,
     handleEditDialogOpenChange,
   } = useSubscriptionCrud(subscriptions);
+
+  const handleQuickRenew = (id: string) => {
+    quickRenew.mutate(
+      { subscriptionId: id },
+      { onSuccess: () => toast.success(t("payments.quickRenewSuccess")) },
+    );
+  };
 
   const {
     searchQuery,
@@ -548,6 +557,7 @@ export default function Home() {
                   {...(!batchMode && {
                     onEdit: handleEditSubscription,
                     onDelete: handleDeleteSubscription,
+                    onRenew: handleQuickRenew,
                   })}
                 />
               </div>

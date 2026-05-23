@@ -48,10 +48,12 @@ interface SubscriptionCardProps {
   subscription: Subscription;
   /** 展示模式：grid（卡片）/ list（列表行）。 */
   viewMode?: 'grid' | 'list';
-  /** 点击“编辑”回调（传订阅 id）。 */
+  /** 点击”编辑”回调（传订阅 id）。 */
   onEdit?: (id: string) => void;
-  /** 点击“删除确认”回调（传订阅 id）。 */
+  /** 点击”删除确认”回调（传订阅 id）。 */
   onDelete?: (id: string) => void;
+  /** 点击”快速续费”回调（传订阅 id）。 */
+  onRenew?: (id: string) => void;
   /** 用户 IANA 时区，用于续费/试用提示窗口。 */
   timeZone: string;
 }
@@ -67,7 +69,7 @@ const statusStyles: Record<string, string> = {
 const DEFAULT_BADGE_COLOR = "hsl(var(--primary))";
 
 /** 订阅卡片。 */
-export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDelete, timeZone }: SubscriptionCardProps) {
+export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDelete, onRenew, timeZone }: SubscriptionCardProps) {
   const { config } = useCustomConfig();
   const { t, locale, label, formatCurrency, formatDateOnly } = useI18n();
   const categoryConfig = config.categories.find((c) => c.value === subscription.category);
@@ -169,6 +171,11 @@ export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDe
             <DropdownMenuItem onClick={() => onEdit?.(subscription.id)}>
               {t("common.edit")}
             </DropdownMenuItem>
+            {onRenew && (
+              <DropdownMenuItem onClick={() => onRenew(subscription.id)}>
+                {t("payments.quickRenew")}
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem
               onClick={() => setShowDeleteDialog(true)}
               className="text-destructive"
