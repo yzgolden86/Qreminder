@@ -60,6 +60,20 @@ Payload 模板支持以下占位符：
 1. 注册 [NotifyX](https://www.notifyx.cn/) 账号，获取 API Key
 2. 在设置页填入 API Key，点击测试
 
+### Server酱 Turbo（微信推送）
+
+通过 Server酱 Turbo 将通知推送到你的微信：
+
+1. 访问 [sct.ftqq.com](https://sct.ftqq.com/)，使用微信扫码登录
+2. 在「SendKey」页面复制你的 SendKey
+3. 在设置页填入 SendKey，点击测试
+
+安全说明：
+- SendKey 等同于推送凭证，请勿泄露
+- 消息经 Server酱 服务器中转到微信，Server酱 可读取消息内容
+- 推送内容仅包含订阅名称和金额，不含密码等高敏感信息
+- 前端使用密码输入框掩码显示，导出时自动剥离
+
 ---
 
 ## English
@@ -117,3 +131,17 @@ Payload template supports these placeholders:
 
 1. Register at [NotifyX](https://www.notifyx.cn/) and get your API Key
 2. Enter the API Key in settings, click Test
+
+### ServerChan Turbo (WeChat push)
+
+Push notifications to your WeChat via ServerChan Turbo:
+
+1. Visit [sct.ftqq.com](https://sct.ftqq.com/) and sign in with WeChat
+2. Copy your SendKey from the "SendKey" page
+3. Enter the SendKey in settings, click Test
+
+Security notes:
+- The SendKey is a push credential — do not share it
+- Messages are relayed through ServerChan's servers to WeChat
+- Push content only includes subscription name and amount, no passwords or sensitive credentials
+- The frontend masks the SendKey with a password input; exports automatically strip it

@@ -229,6 +229,16 @@ export const zhCN = {
   "backup.exportSuccess": "导出成功",
   "backup.importConfirm": "导入将添加新数据（不会覆盖已有数据），确定继续？",
   "backup.importSuccess": ({ imported }) => `导入成功，新增 ${imported} 条记录`,
+  "backup.webdavTitle": "WebDAV 云备份",
+  "backup.webdavHelp": "自动备份到 WebDAV 服务（坚果云、NextCloud 等）。",
+  "backup.webdavUrl": "WebDAV 地址",
+  "backup.webdavUsername": "用户名",
+  "backup.webdavPassword": "密码",
+  "backup.webdavPath": "备份路径",
+  "backup.webdavBackupNow": "立即备份",
+  "backup.webdavRestore": "从云端恢复",
+  "backup.webdavSuccess": "WebDAV 备份成功",
+  "backup.webdavRestoreSuccess": ({ imported }) => `从云端恢复成功，新增 ${imported} 条记录`,
 } satisfies MessageMap;
 
 export const enUS = {
@@ -453,4 +463,14 @@ export const enUS = {
   "backup.exportSuccess": "Export successful",
   "backup.importConfirm": "Import will add new data (won't overwrite existing). Continue?",
   "backup.importSuccess": ({ imported }) => `Imported ${imported} new records`,
+  "backup.webdavTitle": "WebDAV Cloud Backup",
+  "backup.webdavHelp": "Auto-backup to WebDAV services (Nutstore, NextCloud, etc.).",
+  "backup.webdavUrl": "WebDAV URL",
+  "backup.webdavUsername": "Username",
+  "backup.webdavPassword": "Password",
+  "backup.webdavPath": "Backup path",
+  "backup.webdavBackupNow": "Backup now",
+  "backup.webdavRestore": "Restore from cloud",
+  "backup.webdavSuccess": "WebDAV backup successful",
+  "backup.webdavRestoreSuccess": ({ imported }) => `Restored from cloud, ${imported} new records`,
 } satisfies Record<keyof typeof zhCN, MessageValue>;

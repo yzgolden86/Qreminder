@@ -263,6 +263,18 @@ export interface AppSettings {
   aiApiKey: string;
   /** AI 模型名称。 */
   aiModel: string;
+
+  // WebDAV
+  /** WebDAV 自动备份是否启用。 */
+  webdavEnabled: boolean;
+  /** WebDAV 服务器 URL。 */
+  webdavUrl: string;
+  /** WebDAV 用户名。 */
+  webdavUsername: string;
+  /** WebDAV 密码。 */
+  webdavPassword: string;
+  /** WebDAV 备份路径。 */
+  webdavPath: string;
 }
 
 export const CATEGORY_LABELS: Record<BuiltInCategory, LocalizedLabels> = {
@@ -498,4 +510,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   aiApiEndpoint: 'https://api.openai.com/v1',
   aiApiKey: '',
   aiModel: 'gpt-4o-mini',
+  webdavEnabled: false,
+  webdavUrl: '',
+  webdavUsername: '',
+  webdavPassword: '',
+  webdavPath: '/qreminder-backup/',
 };

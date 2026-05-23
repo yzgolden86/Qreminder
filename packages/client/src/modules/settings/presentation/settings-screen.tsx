@@ -42,6 +42,7 @@ import { ExchangeRatesSection } from './exchange-rates-section';
 import { RegistrationManagementSection } from './registration-management-section';
 import { IcalSection } from './ical-section';
 import { DataBackupSection } from './data-backup-section';
+import { AiSettingsSection } from './ai-settings-section';
 import { CheckboxSettingRow, LoadingButtonContent } from './settings-shared-controls';
 
 function useUnsavedChangesGuard(enabled: boolean, message: string, onConfirmLeave: () => void) {
@@ -469,6 +470,9 @@ export function SettingsScreen() {
 
           {/* 数据备份与迁移 */}
           <DataBackupSection />
+
+          {/* AI 助手 */}
+          <AiSettingsSection settings={settings} updateSetting={updateSetting} />
 
           {/* 关于 */}
           <section className="surface-card rounded-xl p-6">

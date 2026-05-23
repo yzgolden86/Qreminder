@@ -135,6 +135,12 @@ export const appSettingsSchema = z
     aiApiEndpoint: z.string().trim().max(512).describe("AI API 端点（OpenAI 兼容）。"),
     aiApiKey: z.string().trim().max(512).describe("AI API Key。"),
     aiModel: z.string().trim().max(128).describe("AI 模型名称。"),
+
+    webdavEnabled: z.boolean().describe("WebDAV 自动备份是否启用。"),
+    webdavUrl: z.string().trim().max(512).describe("WebDAV 服务器 URL。"),
+    webdavUsername: z.string().trim().max(256).describe("WebDAV 用户名。"),
+    webdavPassword: z.string().trim().max(512).describe("WebDAV 密码。"),
+    webdavPath: z.string().trim().max(512).describe("WebDAV 备份路径。"),
   })
   .strict() satisfies z.ZodType<AppSettings>;
 
