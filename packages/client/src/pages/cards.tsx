@@ -308,12 +308,20 @@ export default function Cards() {
               </div>
               <div className="mt-2 grid max-h-[60vh] gap-3 overflow-y-auto pr-1">
                 {activeGroup.subscriptions.map((sub) => (
-                  <div key={sub.id} className={cn("relative", batchMode && selectedIds.has(sub.id) && "ring-2 ring-primary rounded-lg")}>
+                  <div
+                    key={sub.id}
+                    className={cn("relative", batchMode && selectedIds.has(sub.id) && "ring-2 ring-primary rounded-lg")}
+                    onClick={batchMode ? () => toggleSelection(sub.id) : undefined}
+                  >
                     {batchMode && (
-                      <div className="absolute right-2.5 bottom-2.5 z-10">
+                      <div
+                        className="absolute right-2.5 bottom-2.5 z-10"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <Checkbox
                           checked={selectedIds.has(sub.id)}
                           onCheckedChange={() => toggleSelection(sub.id)}
+                          aria-label={`Select ${sub.name}`}
                           className="h-5 w-5 rounded-md border-2 border-primary/40 data-[state=checked]:bg-primary data-[state=checked]:border-primary shadow-sm"
                         />
                       </div>

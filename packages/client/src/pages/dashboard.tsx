@@ -529,7 +529,10 @@ export default function Home() {
                 onClick={batchMode ? () => toggleSelection(sub.id) : undefined}
               >
                 {batchMode && (
-                  <div className="absolute right-2.5 bottom-2.5 z-10">
+                  <div
+                    className="absolute right-2.5 bottom-2.5 z-10"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Checkbox
                       checked={selectedIds.has(sub.id)}
                       onCheckedChange={() => toggleSelection(sub.id)}
