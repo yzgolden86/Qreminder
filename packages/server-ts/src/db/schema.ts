@@ -200,3 +200,37 @@ export const budgets = sqliteTable(
     userIdx: index("idx_budgets_user").on(table.user),
   }),
 );
+
+export const subscriptionNotificationChannels = sqliteTable(
+  "subscription_notification_channels",
+  {
+    id: text("id").primaryKey(),
+    user: text("user").notNull().references(() => users.id),
+    subscriptionId: text("subscription_id").notNull().references(() => subscriptions.id, { onDelete: "cascade" }),
+    channel: text("channel").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => ({
+    subIdx: index("idx_sub_notif_channels_sub").on(table.subscriptionId),
+    userIdx: index("idx_sub_notif_channels_user").on(table.user),
+  }),
+);
+
+export const notificationTemplates = sqliteTable(
+  "notification_templates",
+  {
+    id: text("id").primaryKey(),
+    user: text("user").notNull().references(() => users.id),
+    scope: text("scope", {
+      enum: ["global", "channel", "subscription"],
+    }).notNull().default("global"),
+    scopeId: text("scope_id").default(""),
+    titleTemplate: text("title_template").notNull().default("Qreminder: {{subscription.name}} 续费提醒"),
+    bodyTemplate: text("body_template").notNull().default("订阅 {{subscription.name}} 将在 {{daysLeft}} 天后续费\n金额: {{subscription.currency}} {{subscription.amount}}"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => ({
+    userIdx: index("idx_notif_templates_user").on(table.user),
+  }),
+);

@@ -18,6 +18,7 @@ import { exportRouter } from "./routes/export.js";
 import { importRouter } from "./routes/import.js";
 import { paymentsRouter } from "./routes/payments.js";
 import { budgetsRouter } from "./routes/budgets.js";
+import { notificationStrategyRouter } from "./routes/notification-strategy.js";
 
 export interface AppDeps {
   db: Database;
@@ -92,6 +93,7 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   app.route("/api/import", importRouter);
   app.route("/api/payments", paymentsRouter);
   app.route("/api/budgets", budgetsRouter);
+  app.route("/api/notification-strategy", notificationStrategyRouter);
 
   app.get("/api/app/health", (c) =>
     c.json({ status: "ok", runtime: deps.scheduler.kind }),
