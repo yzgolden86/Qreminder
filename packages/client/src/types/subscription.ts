@@ -253,6 +253,16 @@ export interface AppSettings {
   // Server酱 Turbo
   /** Server酱 SendKey。 */
   serverchanSendKey: string;
+
+  // AI
+  /** AI 功能是否启用。 */
+  aiEnabled: boolean;
+  /** AI API 端点（OpenAI 兼容）。 */
+  aiApiEndpoint: string;
+  /** AI API Key。 */
+  aiApiKey: string;
+  /** AI 模型名称。 */
+  aiModel: string;
 }
 
 export const CATEGORY_LABELS: Record<BuiltInCategory, LocalizedLabels> = {
@@ -484,4 +494,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   barkDeviceKey: '',
   barkSilentPush: false,
   serverchanSendKey: '',
+  aiEnabled: false,
+  aiApiEndpoint: 'https://api.openai.com/v1',
+  aiApiKey: '',
+  aiModel: 'gpt-4o-mini',
 };

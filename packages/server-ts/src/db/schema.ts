@@ -234,3 +234,49 @@ export const notificationTemplates = sqliteTable(
     userIdx: index("idx_notif_templates_user").on(table.user),
   }),
 );
+
+export const workspaces = sqliteTable(
+  "workspaces",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    owner: text("owner").notNull().references(() => users.id),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+);
+
+export const workspaceMembers = sqliteTable(
+  "workspace_members",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull().references(() => users.id),
+    role: text("role", { enum: ["owner", "admin", "editor", "viewer"] }).notNull().default("viewer"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => ({
+    workspaceIdx: index("idx_ws_members_workspace").on(table.workspaceId),
+    userIdx: index("idx_ws_members_user").on(table.userId),
+  }),
+);
+
+export const auditLogs = sqliteTable(
+  "audit_logs",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull().references(() => users.id),
+    workspaceId: text("workspace_id"),
+    action: text("action").notNull(),
+    targetType: text("target_type").notNull(),
+    targetId: text("target_id"),
+    summary: text("summary").default(""),
+    metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>().default({}),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => ({
+    userIdx: index("idx_audit_logs_user").on(table.userId),
+    workspaceIdx: index("idx_audit_logs_workspace").on(table.workspaceId),
+    createdAtIdx: index("idx_audit_logs_created").on(table.createdAt),
+  }),
+);

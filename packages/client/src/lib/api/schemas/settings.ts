@@ -130,6 +130,11 @@ export const appSettingsSchema = z
     barkSilentPush: z.boolean().describe("Bark 是否静音推送。"),
 
     serverchanSendKey: z.string().trim().max(256).describe("Server酱 SendKey。"),
+
+    aiEnabled: z.boolean().describe("AI 功能是否启用。"),
+    aiApiEndpoint: z.string().trim().max(512).describe("AI API 端点（OpenAI 兼容）。"),
+    aiApiKey: z.string().trim().max(512).describe("AI API Key。"),
+    aiModel: z.string().trim().max(128).describe("AI 模型名称。"),
   })
   .strict() satisfies z.ZodType<AppSettings>;
 
