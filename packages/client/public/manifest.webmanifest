@@ -1,0 +1,42 @@
+{
+  "name": "Qreminder",
+  "short_name": "Qreminder",
+  "description": "自托管订阅提醒与支出管理",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#0B1119",
+  "theme_color": "#0B1119",
+  "categories": ["productivity", "finance"],
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "订阅日历",
+      "short_name": "日历",
+      "url": "/calendar"
+    },
+    {
+      "name": "通知中心",
+      "short_name": "通知",
+      "url": "/notifications"
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "@/components/sidebar";
+import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 
 export function MainLayout() {
   return (
@@ -10,6 +11,7 @@ export function MainLayout() {
           <Outlet />
         </div>
       </main>
+      <PwaInstallPrompt />
     </div>
   );
 }

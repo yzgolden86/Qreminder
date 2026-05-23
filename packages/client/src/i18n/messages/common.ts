@@ -81,6 +81,12 @@ export const zhCN = {
   "time.evening": "傍晚",
   "time.night": "晚上",
   "time.notificationAria": ({ time }) => `通知时间，当前 ${time}`,
+  "pwa.installTitle": "把 Qreminder 添加到桌面",
+  "pwa.installDescriptionAndroid": "安装到主屏幕，获得近似 App 的体验。",
+  "pwa.installDescriptionIos": "在 Safari 中点击分享按钮，选择「添加到主屏幕」。",
+  "pwa.installAction": "立即安装",
+  "pwa.installLater": "稍后再说",
+  "pwa.installSuccess": "已添加到桌面",
 } satisfies MessageMap;
 
 export const enUS = {
@@ -158,4 +164,10 @@ export const enUS = {
   "time.evening": "Evening",
   "time.night": "Night",
   "time.notificationAria": ({ time }) => `Notification time, current ${time}`,
+  "pwa.installTitle": "Add Qreminder to your home screen",
+  "pwa.installDescriptionAndroid": "Install for an app-like experience.",
+  "pwa.installDescriptionIos": "In Safari, tap Share, then Add to Home Screen.",
+  "pwa.installAction": "Install now",
+  "pwa.installLater": "Maybe later",
+  "pwa.installSuccess": "Added to home screen",
 } satisfies Record<keyof typeof zhCN, MessageValue>;
