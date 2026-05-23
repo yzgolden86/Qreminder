@@ -128,6 +128,8 @@ export const appSettingsSchema = z
     barkServerUrl: optionalHttpsUrlSchema.describe("Bark 服务器地址。"),
     barkDeviceKey: z.string().trim().max(256).describe("Bark 设备 Key。"),
     barkSilentPush: z.boolean().describe("Bark 是否静音推送。"),
+
+    serverchanSendKey: z.string().trim().max(256).describe("Server酱 SendKey。"),
   })
   .strict() satisfies z.ZodType<AppSettings>;
 

@@ -38,7 +38,7 @@ function validateExternalUrl(raw: string): { ok: true; url: string } | { ok: fal
 }
 
 const testSchema = z.object({
-  channel: z.enum(["telegram", "notifyx", "webhook", "wechat", "email", "bark"]),
+  channel: z.enum(["telegram", "notifyx", "webhook", "wechat", "email", "bark", "serverchan"]),
   settings: z.record(z.string(), z.unknown()),
 });
 
@@ -195,6 +195,32 @@ notificationsRouter.post("/test", async (c) => {
           subject: "Qreminder · Test notification",
           text: "If you see this email, your email notification channel is configured correctly.",
         });
+        break;
+      }
+
+      case "serverchan": {
+        const sendKey = String(settings["serverchanSendKey"] ?? "").trim();
+        if (!sendKey) {
+          return c.json({ error: "missing_config", message: "SendKey is required" }, 400);
+        }
+        const res = await fetch(`https://sctapi.ftqq.com/${sendKey}.send`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: "Qreminder Test",
+            desp: "If you see this message, ServerChan is configured correctly.",
+          }),
+        });
+        if (!res.ok) {
+          return c.json({ error: "serverchan_error", message: `HTTP ${res.status}` }, 400);
+        }
+        const data = await res.json().catch(() => ({})) as Record<string, unknown>;
+        if (data["code"] !== 0 && data["errno"] !== 0) {
+          return c.json({
+            error: "serverchan_error",
+            message: String(data["message"] ?? data["errmsg"] ?? "Unknown error"),
+          }, 400);
+        }
         break;
       }
     }

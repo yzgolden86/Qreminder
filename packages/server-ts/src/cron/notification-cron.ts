@@ -14,6 +14,7 @@ import {
 } from "../db/schema.js";
 import type { Database } from "../db/types.js";
 import type { MailerAdapter } from "../adapters/mailer.js";
+import { dispatchToChannels, type ChannelMessage } from "./channel-dispatcher.js";
 
 export interface NotificationCronOptions {
   now?: Date;
@@ -183,35 +184,42 @@ export async function runNotificationCron(
       updatedAt: opts.now.toISOString(),
     };
 
-    if (settings.enabledChannels.includes("email")) {
-      try {
-        await deps.mailer.send({
-          to: [userRow.email],
-          subject: `Qreminder · ${hits.length} reminder${hits.length === 1 ? "" : "s"}`,
-          text: hits
-            .map((h) => `${h.subscriptionName}: ${h.daysUntil} days (${h.kind})`)
-            .join("\n"),
-        });
-      } catch (err) {
-        await upsertJob(deps.db, userRow.id, {
-          ...jobPayload,
-          status: "failed",
-          lastError: err instanceof Error ? err.message : String(err),
-        });
-        results.push({
-          userId: userRow.id,
-          action: "failed",
-          reason: "mailer_error",
-          hits,
-        });
-        continue;
-      }
+    const channelMessage: ChannelMessage = {
+      title: `Qreminder · ${hits.length} reminder${hits.length === 1 ? "" : "s"}`,
+      body: hits
+        .map((h) => `${h.subscriptionName}: ${h.daysUntil} days (${h.kind})`)
+        .join("\n"),
+    };
+
+    const channelSettings = (settings as unknown as Record<string, unknown>);
+    const dispatch = await dispatchToChannels(
+      { mailer: deps.mailer },
+      settings.enabledChannels,
+      channelSettings,
+      userRow.email,
+      channelMessage,
+    );
+
+    if (!dispatch.anySuccess && dispatch.results.length > 0) {
+      const errors = dispatch.results
+        .filter((r) => !r.success)
+        .map((r) => `${r.channel}: ${r.error}`)
+        .join("; ");
+      await upsertJob(deps.db, userRow.id, {
+        ...jobPayload,
+        status: "failed",
+        lastError: errors,
+        result: { hits, channelResults: dispatch.results },
+      });
+      results.push({ userId: userRow.id, action: "failed", reason: "all_channels_failed", hits });
+      continue;
     }
 
     await upsertJob(deps.db, userRow.id, {
       ...jobPayload,
       status: "sent",
       lastError: "",
+      result: { hits, channelResults: dispatch.results },
     });
     results.push({ userId: userRow.id, action: "sent", hits });
   }

@@ -128,11 +128,14 @@ export const zhCN = {
   "settings.channel.emailTodo": "填写 SMTP 与收件人邮箱",
   "settings.channel.barkReady": "设备 Key 已填写",
   "settings.channel.barkTodo": "填写服务器地址和设备 Key",
+  "settings.channel.serverchanReady": "SendKey 已填写",
+  "settings.channel.serverchanTodo": "填写 Server酱 SendKey",
   "settings.help.telegram": "创建 Telegram 机器人",
   "settings.help.webhook": "Webhook 说明",
   "settings.help.wechat": "企业微信机器人文档",
   "settings.help.bark": "Bark iOS 应用",
   "settings.help.notifyx": "Notifyx 说明",
+  "settings.help.serverchan": "Server酱 Turbo 文档",
   "settings.telegramChatPlaceholder": "例如：123456789（可用 @userinfobot 获取）",
   "settings.notifyxHelp": "从 Notifyx 平台获取的 API Key",
   "settings.webhookMethod": "请求方法",
@@ -169,6 +172,7 @@ export const zhCN = {
   "settings.barkKeyHelp": "从 Bark iOS 应用中获取的设备 Key",
   "settings.barkSilent": "静音推送",
   "settings.barkSilentHelp": "启用该选项后推送通知将不会发出声音",
+  "settings.serverchanHelp": "从 sct.ftqq.com 获取的 SendKey，用于推送消息到微信",
   "settings.testChannel": ({ channel }) => {
     const label = String(channel);
     if (label.endsWith("通知")) return `测试${/^[A-Za-z0-9]/.test(label) ? " " : ""}${label}`;
@@ -326,11 +330,14 @@ export const enUS = {
   "settings.channel.emailTodo": "Fill in SMTP and recipient email",
   "settings.channel.barkReady": "Device Key filled",
   "settings.channel.barkTodo": "Fill in server URL and Device Key",
+  "settings.channel.serverchanReady": "SendKey filled",
+  "settings.channel.serverchanTodo": "Fill in ServerChan SendKey",
   "settings.help.telegram": "Create Telegram bot",
   "settings.help.webhook": "Webhook overview",
   "settings.help.wechat": "WeCom bot docs",
   "settings.help.bark": "Bark iOS app",
   "settings.help.notifyx": "Notifyx help",
+  "settings.help.serverchan": "ServerChan Turbo docs",
   "settings.telegramChatPlaceholder": "e.g. 123456789 (available from @userinfobot)",
   "settings.notifyxHelp": "API Key from the Notifyx platform",
   "settings.webhookMethod": "Request method",
@@ -367,6 +374,7 @@ export const enUS = {
   "settings.barkKeyHelp": "Device Key from the Bark iOS app",
   "settings.barkSilent": "Silent push",
   "settings.barkSilentHelp": "When enabled, push notifications will not play a sound.",
+  "settings.serverchanHelp": "SendKey from sct.ftqq.com, used to push messages to WeChat",
   "settings.testChannel": ({ channel }) => {
     const label = String(channel);
     return /\bnotifications?$/i.test(label) ? `Test ${label}` : `Test ${label} notification`;

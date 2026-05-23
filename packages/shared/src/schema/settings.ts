@@ -7,6 +7,7 @@ export const notificationChannelSchema = z.enum([
   "wechat",
   "email",
   "bark",
+  "serverchan",
 ]);
 export type NotificationChannel = z.infer<typeof notificationChannelSchema>;
 
