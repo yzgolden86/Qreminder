@@ -4,6 +4,7 @@ import Dashboard from "@/pages/dashboard";
 import Calendar from "@/pages/calendar";
 import Settings from "@/pages/settings";
 import AdminUsers from "@/pages/admin/users";
+import Diagnostics from "@/pages/admin/diagnostics";
 import Login from "@/pages/login";
 import ForgotPassword from "@/pages/forgot-password";
 import ResetPassword from "@/pages/reset-password";
@@ -25,6 +26,7 @@ export default function App() {
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/admin/users" element={<AdminUsers />} />
+        <Route path="/admin/diagnostics" element={<Diagnostics />} />
       </Route>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />

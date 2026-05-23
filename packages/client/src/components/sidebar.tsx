@@ -22,7 +22,7 @@ import { useI18n } from "@/i18n/I18nProvider";
 import { useAccountIdentity } from "@/modules/settings/application/use-account-email";
 import type { MessageKey } from "@/i18n/messages";
 
-type NavIconKey = "dashboard" | "calendar" | "cards" | "notifications" | "admin" | "settings";
+type NavIconKey = "dashboard" | "calendar" | "cards" | "notifications" | "admin" | "diagnostics" | "settings";
 
 interface NavItem {
   path: string;
@@ -41,6 +41,7 @@ const primaryNav: NavItem[] = [
 
 const systemNav: NavItem[] = [
   { path: "/admin/users", labelKey: "nav.adminUsers", icon: "admin", adminOnly: true },
+  { path: "/admin/diagnostics", labelKey: "nav.diagnostics", icon: "diagnostics", adminOnly: true },
   { path: "/settings", labelKey: "nav.settings", icon: "settings" },
 ];
 
@@ -118,6 +119,8 @@ function renderNavIcon(icon: NavIconKey, isActive: boolean, className: string) {
     case "notifications":
       return <NavIconNotifications className={className} isActive={isActive} />;
     case "admin":
+      return <NavIconAdmin className={className} isActive={isActive} />;
+    case "diagnostics":
       return <NavIconAdmin className={className} isActive={isActive} />;
     case "settings":
       return <NavIconSettings className={className} isActive={isActive} />;
