@@ -18,6 +18,7 @@
     "@qreminder/shared": "workspace:*",
     "better-auth": "^1.6.11",
     "drizzle-orm": "^0.36.0",
+    "fflate": "^0.8.3",
     "hono": "^4.6.0",
     "zod": "^4.4.3"
   },

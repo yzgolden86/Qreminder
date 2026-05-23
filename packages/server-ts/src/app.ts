@@ -19,6 +19,9 @@ import { importRouter } from "./routes/import.js";
 import { paymentsRouter } from "./routes/payments.js";
 import { budgetsRouter } from "./routes/budgets.js";
 import { notificationStrategyRouter } from "./routes/notification-strategy.js";
+import { backupRouter } from "./routes/backup.js";
+import { csvImportRouter } from "./routes/csv-import.js";
+import { diagnosticsRouter } from "./routes/diagnostics.js";
 
 export interface AppDeps {
   db: Database;
@@ -94,6 +97,9 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   app.route("/api/payments", paymentsRouter);
   app.route("/api/budgets", budgetsRouter);
   app.route("/api/notification-strategy", notificationStrategyRouter);
+  app.route("/api/backup", backupRouter);
+  app.route("/api/import", csvImportRouter);
+  app.route("/api/app/admin/diagnostics", diagnosticsRouter);
 
   app.get("/api/app/health", (c) =>
     c.json({ status: "ok", runtime: deps.scheduler.kind }),
