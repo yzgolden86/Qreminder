@@ -469,7 +469,7 @@ export function SettingsScreen() {
           <IcalSection settings={settings} />
 
           {/* 数据备份与迁移 */}
-          <DataBackupSection />
+          <DataBackupSection settings={settings} updateSetting={updateSetting} />
 
           {/* AI 助手 */}
           <AiSettingsSection settings={settings} updateSetting={updateSetting} />

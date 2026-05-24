@@ -1,11 +1,15 @@
-import { Bot, ExternalLink } from "lucide-react";
+import { useState } from "react";
+import { Bot, ExternalLink, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { toast } from "@/components/ui/sonner";
 import { useI18n } from "@/i18n/I18nProvider";
 import type { AppSettings } from "@/types/subscription";
 import type { UpdateSetting } from "./settings-shared-controls";
+import { LoadingButtonContent } from "./settings-shared-controls";
 
 interface AiSettingsSectionProps {
   settings: AppSettings;
@@ -38,6 +42,48 @@ function SecretInput({
 
 export function AiSettingsSection({ settings, updateSetting }: AiSettingsSectionProps) {
   const { t } = useI18n();
+  const [models, setModels] = useState<string[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
+
+  const handleFetchModels = async () => {
+    if (!settings.aiApiEndpoint || !settings.aiApiKey) {
+      toast.error(t("ai.fetchModelsRequireCreds"));
+      return;
+    }
+    setLoadingModels(true);
+    try {
+      const res = await fetch("/api/ai/models", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          endpoint: settings.aiApiEndpoint,
+          apiKey: settings.aiApiKey,
+        }),
+      });
+      const data = await res.json() as { models?: string[]; message?: string };
+      if (!res.ok) {
+        throw new Error(data.message ?? `HTTP ${res.status}`);
+      }
+      const list = data.models ?? [];
+      setModels(list);
+      if (list.length === 0) {
+        toast.warning(t("ai.fetchModelsEmpty"));
+      } else {
+        toast.success(t("ai.fetchModelsSuccess", { count: list.length }));
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to fetch models");
+    } finally {
+      setLoadingModels(false);
+    }
+  };
+
+  const modelOptions = models.length > 0
+    ? models.map((id) => ({ value: id, label: id }))
+    : settings.aiModel
+      ? [{ value: settings.aiModel, label: settings.aiModel }]
+      : [];
 
   return (
     <section className="surface-card rounded-xl p-6">
@@ -66,7 +112,7 @@ export function AiSettingsSection({ settings, updateSetting }: AiSettingsSection
 
           <div className="grid gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="aiApiEndpoint">API Endpoint</Label>
+              <Label htmlFor="aiApiEndpoint">{t("ai.endpoint")}</Label>
               <Input
                 id="aiApiEndpoint"
                 placeholder="https://api.openai.com/v1"
@@ -74,13 +120,11 @@ export function AiSettingsSection({ settings, updateSetting }: AiSettingsSection
                 onChange={(e) => updateSetting("aiApiEndpoint", e.target.value)}
                 className="border-border bg-secondary"
               />
-              <p className="text-[11px] text-muted-foreground">
-                支持 OpenAI 兼容 API（OpenAI、Claude via proxy、本地模型等）
-              </p>
+              <p className="text-[11px] text-muted-foreground">{t("ai.endpointHelp")}</p>
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="aiApiKey">API Key</Label>
+              <Label htmlFor="aiApiKey">{t("ai.apiKey")}</Label>
               <SecretInput
                 id="aiApiKey"
                 placeholder="sk-..."
@@ -90,17 +134,42 @@ export function AiSettingsSection({ settings, updateSetting }: AiSettingsSection
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="aiModel">Model</Label>
-              <Input
-                id="aiModel"
-                placeholder="gpt-4o-mini"
-                value={settings.aiModel}
-                onChange={(e) => updateSetting("aiModel", e.target.value)}
-                className="border-border bg-secondary"
-              />
-              <p className="text-[11px] text-muted-foreground">
-                推荐: gpt-4o-mini (性价比), gpt-4o (准确度), claude-sonnet-4-6 (via proxy)
-              </p>
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="aiModel">{t("ai.model")}</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleFetchModels}
+                  disabled={loadingModels || !settings.aiApiEndpoint || !settings.aiApiKey}
+                  className="h-7 gap-1.5"
+                >
+                  <LoadingButtonContent loading={loadingModels} loadingLabel={t("ai.fetchingModels")}>
+                    <RefreshCw className="h-3 w-3" />
+                    {t("ai.fetchModels")}
+                  </LoadingButtonContent>
+                </Button>
+              </div>
+              {modelOptions.length > 0 ? (
+                <SearchableSelect
+                  value={settings.aiModel}
+                  onValueChange={(value) => updateSetting("aiModel", value)}
+                  options={modelOptions}
+                  placeholder={t("ai.modelPlaceholder")}
+                  searchPlaceholder={t("ai.modelSearch")}
+                  emptyMessage={t("ai.modelEmpty")}
+                  className="w-full border-border bg-secondary"
+                />
+              ) : (
+                <Input
+                  id="aiModel"
+                  placeholder="gpt-4o-mini"
+                  value={settings.aiModel}
+                  onChange={(e) => updateSetting("aiModel", e.target.value)}
+                  className="border-border bg-secondary"
+                />
+              )}
+              <p className="text-[11px] text-muted-foreground">{t("ai.modelHelp")}</p>
             </div>
           </div>
 
@@ -112,7 +181,7 @@ export function AiSettingsSection({ settings, updateSetting }: AiSettingsSection
               className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
             >
               <ExternalLink className="h-3 w-3" />
-              获取 OpenAI API Key
+              {t("ai.getApiKey")}
             </a>
           </div>
         </>

@@ -32,6 +32,13 @@
 
 > 默认只读权限会导致 Bootstrap 在 `git push` 时报 `could not read Username for 'https://github.com': terminal prompts disabled`。Workflow 里虽然写了 `permissions: contents: write`，但仓库级开关优先级更高。
 
+> **不想给 Actions 写权限？** 跳过 Bootstrap 走"手动写 database_id"路径：
+> 1. 本地装 wrangler（`pnpm install -g wrangler@latest && wrangler login`）或直接登 Cloudflare 控制台
+> 2. 创建 D1：`wrangler d1 create qreminder`，复制输出的 `database_id`
+> 3. 创建 R2：`wrangler r2 bucket create qreminder-assets`
+> 4. 直接在 GitHub 网页编辑 `runtimes/worker/wrangler.toml`，把 `database_id = "REPLACE_ME_AFTER_wrangler_d1_create"` 改成实际的 UUID，commit 到 main
+> 5. 跳过 Bootstrap，直接 Run **Wrangler Deploy**（只要读权限即可）
+
 ### 1.2 必填 Secrets（Environment secrets）
 
 | Secret 名 | 值 |

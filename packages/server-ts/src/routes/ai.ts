@@ -3,6 +3,7 @@
  *
  * POST /api/ai/extract — 从文本提取订阅信息
  * POST /api/ai/summary — 生成月度消费总结
+ * POST /api/ai/models — 列出当前 endpoint 可用模型（实时调用，不缓存）
  */
 import { Hono } from "hono";
 import { eq } from "drizzle-orm";
@@ -166,6 +167,63 @@ Keep it concise (under 300 words), friendly, and actionable. Use bullet points.`
     return c.json({ summary: result });
   } catch (err) {
     const message = err instanceof Error ? err.message : "AI summary failed";
+    return c.json({ error: "ai_error", message }, 500);
+  }
+});
+
+const modelsRequestSchema = z.object({
+  endpoint: z.string().trim().min(1).max(512).optional(),
+  apiKey: z.string().trim().min(1).max(512).optional(),
+});
+
+aiRouter.post("/models", async (c) => {
+  const db = c.get("deps").db;
+  const userId = c.get("user").id;
+
+  const [settingsRow] = await db.select().from(settings).where(eq(settings.user, userId));
+  const userSettings = (settingsRow?.settings ?? {}) as Record<string, unknown>;
+  const stored = getAiConfig(userSettings);
+
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = modelsRequestSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "validation_error", issues: parsed.error.issues }, 400);
+  }
+
+  const endpoint = (parsed.data.endpoint ?? stored.endpoint).replace(/\/$/, "");
+  const apiKey = parsed.data.apiKey ?? stored.apiKey;
+
+  if (!endpoint || !apiKey) {
+    return c.json({ error: "missing_credentials", message: "endpoint and apiKey are required" }, 400);
+  }
+
+  try {
+    const res = await fetch(`${endpoint}/models`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Accept": "application/json",
+      },
+    });
+
+    if (!res.ok) {
+      const err = await res.text().catch(() => "");
+      return c.json({
+        error: "provider_error",
+        message: `HTTP ${res.status} ${err.slice(0, 200)}`,
+      }, 502);
+    }
+
+    const data = await res.json() as { data?: Array<{ id?: string }> } | Array<{ id?: string }>;
+    const list = Array.isArray(data) ? data : (data.data ?? []);
+    const ids = list
+      .map((item) => typeof item?.id === "string" ? item.id : null)
+      .filter((id): id is string => id !== null && id.length > 0)
+      .sort();
+
+    return c.json({ models: ids });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to fetch models";
     return c.json({ error: "ai_error", message }, 500);
   }
 });
