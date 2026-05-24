@@ -22,7 +22,7 @@ import { useI18n } from "@/i18n/I18nProvider";
 import { useAccountIdentity } from "@/modules/settings/application/use-account-email";
 import type { MessageKey } from "@/i18n/messages";
 
-type NavIconKey = "dashboard" | "calendar" | "cards" | "notifications" | "payments" | "budgets" | "workspaces" | "admin" | "auditLogs" | "diagnostics" | "settings";
+type NavIconKey = "dashboard" | "calendar" | "cards" | "notifications" | "payments" | "budgets" | "workspaces" | "annualReport" | "admin" | "auditLogs" | "diagnostics" | "settings";
 
 interface NavItem {
   path: string;
@@ -40,6 +40,7 @@ const primaryNav: NavItem[] = [
   { path: "/budgets", labelKey: "nav.budgets", icon: "budgets" },
   { path: "/notifications", labelKey: "nav.notifications", icon: "notifications" },
   { path: "/workspaces", labelKey: "nav.workspaces", icon: "workspaces" },
+  { path: "/annual-report", labelKey: "nav.annualReport", icon: "annualReport" },
 ];
 
 const systemNav: NavItem[] = [
@@ -168,6 +169,8 @@ function renderNavIcon(icon: NavIconKey, isActive: boolean, className: string) {
       return <NavIconBudgets className={className} isActive={isActive} />;
     case "workspaces":
       return <NavIconWorkspaces className={className} isActive={isActive} />;
+    case "annualReport":
+      return <NavIconAuditLogs className={className} isActive={isActive} />;
     case "admin":
       return <NavIconAdmin className={className} isActive={isActive} />;
     case "auditLogs":

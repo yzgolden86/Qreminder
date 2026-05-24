@@ -43,6 +43,7 @@ import { RegistrationManagementSection } from './registration-management-section
 import { IcalSection } from './ical-section';
 import { DataBackupSection } from './data-backup-section';
 import { AiSettingsSection } from './ai-settings-section';
+import { VaultSettingsSection } from './vault-settings-section';
 import { NotificationStrategySection } from './notification-strategy-section';
 import { CheckboxSettingRow, LoadingButtonContent } from './settings-shared-controls';
 
@@ -474,6 +475,9 @@ export function SettingsScreen() {
 
           {/* 数据备份与迁移 */}
           <DataBackupSection settings={settings} updateSetting={updateSetting} />
+
+          {/* 敏感字段加密（客户端 AES-GCM）*/}
+          <VaultSettingsSection />
 
           {/* AI 助手 */}
           <AiSettingsSection settings={settings} updateSetting={updateSetting} />

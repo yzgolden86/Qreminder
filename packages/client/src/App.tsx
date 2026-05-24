@@ -19,6 +19,7 @@ import Notifications from "@/pages/notifications";
 import Payments from "@/pages/payments";
 import Budgets from "@/pages/budgets";
 import Workspaces from "@/pages/workspaces";
+import AnnualReport from "@/pages/annual-report";
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
         <Route path="/payments" element={<Payments />} />
         <Route path="/budgets" element={<Budgets />} />
         <Route path="/workspaces" element={<Workspaces />} />
+        <Route path="/annual-report" element={<AnnualReport />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/admin/users" element={<AdminUsers />} />
         <Route path="/admin/diagnostics" element={<Diagnostics />} />

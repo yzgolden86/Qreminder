@@ -26,6 +26,7 @@ import { aiRouter } from "./routes/ai.js";
 import { workspacesRouter } from "./routes/workspaces.js";
 import { auditLogsRouter } from "./routes/audit-logs.js";
 import { webdavRouter } from "./routes/webdav.js";
+import { annualReportRouter } from "./routes/annual-report.js";
 
 export interface AppDeps {
   db: Database;
@@ -108,6 +109,7 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   app.route("/api/workspaces", workspacesRouter);
   app.route("/api/app/admin/audit-logs", auditLogsRouter);
   app.route("/api/backup", webdavRouter);
+  app.route("/api/payments/annual-report", annualReportRouter);
 
   app.get("/api/app/health", (c) =>
     c.json({ status: "ok", runtime: deps.scheduler.kind }),

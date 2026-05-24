@@ -9,6 +9,7 @@ import { UpcomingRenewalsStrip } from "@/components/upcoming-renewals-strip";
 import { BudgetUsageWidget } from "@/components/budget-usage-widget";
 import { RealSpendingWidget } from "@/components/real-spending-widget";
 import { MonthlyCompletionWidget } from "@/components/monthly-completion-widget";
+import { InactiveSubscriptionsPanel } from "@/components/inactive-subscriptions-panel";
 import { AddSubscriptionDialog } from "@/components/add-subscription-dialog";
 import { EditSubscriptionDialog } from "@/components/edit-subscription-dialog";
 import { AiExtractDialog } from "@/components/ai-extract-dialog";
@@ -332,6 +333,8 @@ export default function Home() {
         <BudgetUsageWidget />
 
         <MonthlyCompletionWidget />
+
+        <InactiveSubscriptionsPanel />
 
         <RealSpendingWidget estimatedMonthly={totalMonthly} />
 

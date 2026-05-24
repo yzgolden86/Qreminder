@@ -19,6 +19,7 @@ import { CustomConfigProvider } from "@/contexts/CustomConfigContext";
 import { AuthSync } from "@/components/auth-sync";
 import { AppearanceSync } from "@/components/appearance-sync";
 import { I18nProvider } from "@/i18n/I18nProvider";
+import { VaultProvider } from "@/lib/vault-context";
 
 /** 应用级 Provider 组合（请将所有页面都包在里面）。 */
 export default function Providers({ children }: { children: React.ReactNode }) {
@@ -35,10 +36,12 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           <AppearanceSync />
           <CustomConfigProvider>
-            <TooltipProvider>
-              <Sonner />
-              {children}
-            </TooltipProvider>
+            <VaultProvider>
+              <TooltipProvider>
+                <Sonner />
+                {children}
+              </TooltipProvider>
+            </VaultProvider>
           </CustomConfigProvider>
         </ThemeProvider>
       </I18nProvider>
