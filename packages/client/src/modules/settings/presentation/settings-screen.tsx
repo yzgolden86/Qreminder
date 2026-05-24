@@ -43,6 +43,7 @@ import { RegistrationManagementSection } from './registration-management-section
 import { IcalSection } from './ical-section';
 import { DataBackupSection } from './data-backup-section';
 import { AiSettingsSection } from './ai-settings-section';
+import { NotificationStrategySection } from './notification-strategy-section';
 import { CheckboxSettingRow, LoadingButtonContent } from './settings-shared-controls';
 
 function useUnsavedChangesGuard(enabled: boolean, message: string, onConfirmLeave: () => void) {
@@ -467,6 +468,9 @@ export function SettingsScreen() {
 
           {/* iCal 日历订阅 */}
           <IcalSection settings={settings} />
+
+          {/* 通知策略 */}
+          <NotificationStrategySection />
 
           {/* 数据备份与迁移 */}
           <DataBackupSection settings={settings} updateSetting={updateSetting} />

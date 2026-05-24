@@ -5,6 +5,7 @@ import Calendar from "@/pages/calendar";
 import Settings from "@/pages/settings";
 import AdminUsers from "@/pages/admin/users";
 import Diagnostics from "@/pages/admin/diagnostics";
+import AuditLogs from "@/pages/admin/audit-logs";
 import Login from "@/pages/login";
 import ForgotPassword from "@/pages/forgot-password";
 import ResetPassword from "@/pages/reset-password";
@@ -15,6 +16,9 @@ import Privacy from "@/pages/privacy";
 import Terms from "@/pages/terms";
 import Cards from "@/pages/cards";
 import Notifications from "@/pages/notifications";
+import Payments from "@/pages/payments";
+import Budgets from "@/pages/budgets";
+import Workspaces from "@/pages/workspaces";
 
 export default function App() {
   return (
@@ -24,9 +28,13 @@ export default function App() {
         <Route path="/calendar" element={<Calendar />} />
         <Route path="/cards" element={<Cards />} />
         <Route path="/notifications" element={<Notifications />} />
+        <Route path="/payments" element={<Payments />} />
+        <Route path="/budgets" element={<Budgets />} />
+        <Route path="/workspaces" element={<Workspaces />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/admin/users" element={<AdminUsers />} />
         <Route path="/admin/diagnostics" element={<Diagnostics />} />
+        <Route path="/admin/audit-logs" element={<AuditLogs />} />
       </Route>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />

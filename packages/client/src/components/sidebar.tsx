@@ -22,7 +22,7 @@ import { useI18n } from "@/i18n/I18nProvider";
 import { useAccountIdentity } from "@/modules/settings/application/use-account-email";
 import type { MessageKey } from "@/i18n/messages";
 
-type NavIconKey = "dashboard" | "calendar" | "cards" | "notifications" | "admin" | "diagnostics" | "settings";
+type NavIconKey = "dashboard" | "calendar" | "cards" | "notifications" | "payments" | "budgets" | "workspaces" | "admin" | "auditLogs" | "diagnostics" | "settings";
 
 interface NavItem {
   path: string;
@@ -36,12 +36,16 @@ const primaryNav: NavItem[] = [
   { path: "/", labelKey: "nav.subscriptions", icon: "dashboard", end: true },
   { path: "/calendar", labelKey: "nav.calendar", icon: "calendar" },
   { path: "/cards", labelKey: "nav.cards", icon: "cards" },
+  { path: "/payments", labelKey: "nav.payments", icon: "payments" },
+  { path: "/budgets", labelKey: "nav.budgets", icon: "budgets" },
   { path: "/notifications", labelKey: "nav.notifications", icon: "notifications" },
+  { path: "/workspaces", labelKey: "nav.workspaces", icon: "workspaces" },
 ];
 
 const systemNav: NavItem[] = [
   { path: "/admin/users", labelKey: "nav.adminUsers", icon: "admin", adminOnly: true },
   { path: "/admin/diagnostics", labelKey: "nav.diagnostics", icon: "diagnostics", adminOnly: true },
+  { path: "/admin/audit-logs", labelKey: "nav.auditLogs", icon: "auditLogs", adminOnly: true },
   { path: "/settings", labelKey: "nav.settings", icon: "settings" },
 ];
 
@@ -108,6 +112,46 @@ function NavIconSettings({ className, isActive }: { className?: string; isActive
   );
 }
 
+function NavIconPayments({ className, isActive }: { className?: string; isActive?: boolean }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" className={className}>
+      <rect x="2" y="5" width="16" height="11" rx="2" fill={isActive ? "hsl(var(--primary))" : "currentColor"} opacity={isActive ? 0.18 : 0.1} stroke={isActive ? "hsl(var(--primary))" : "currentColor"} strokeWidth="1.5" />
+      <path d="M5 9.5h3M5 12h6M13 12h2" stroke={isActive ? "hsl(var(--primary))" : "currentColor"} strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="14.5" cy="9.5" r="1.5" fill={isActive ? "hsl(var(--primary))" : "currentColor"} />
+    </svg>
+  );
+}
+
+function NavIconBudgets({ className, isActive }: { className?: string; isActive?: boolean }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" className={className}>
+      <circle cx="10" cy="10" r="7" fill={isActive ? "hsl(var(--primary))" : "currentColor"} opacity={isActive ? 0.15 : 0.08} stroke={isActive ? "hsl(var(--primary))" : "currentColor"} strokeWidth="1.5" />
+      <circle cx="10" cy="10" r="3" fill={isActive ? "hsl(var(--primary))" : "currentColor"} opacity={isActive ? 0.5 : 0.3} />
+      <path d="M10 3v3M10 14v3M3 10h3M14 10h3" stroke={isActive ? "hsl(var(--primary))" : "currentColor"} strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function NavIconWorkspaces({ className, isActive }: { className?: string; isActive?: boolean }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" className={className}>
+      <circle cx="7" cy="7" r="3" fill={isActive ? "hsl(var(--primary))" : "currentColor"} opacity={isActive ? 0.7 : 0.4} />
+      <circle cx="13" cy="7" r="2.5" fill={isActive ? "hsl(var(--primary))" : "currentColor"} opacity={isActive ? 0.5 : 0.3} />
+      <path d="M2 17c0-2.761 2.239-5 5-5s5 2.239 5 5" stroke={isActive ? "hsl(var(--primary))" : "currentColor"} strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M11 14c1-1 2-1.5 3.5-1.5 2 0 3.5 1.5 3.5 3.5" stroke={isActive ? "hsl(var(--primary))" : "currentColor"} strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function NavIconAuditLogs({ className, isActive }: { className?: string; isActive?: boolean }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" className={className}>
+      <rect x="3" y="2" width="14" height="16" rx="2" fill={isActive ? "hsl(var(--primary))" : "currentColor"} opacity={isActive ? 0.15 : 0.08} stroke={isActive ? "hsl(var(--primary))" : "currentColor"} strokeWidth="1.5" />
+      <path d="M6 6h8M6 10h8M6 14h5" stroke={isActive ? "hsl(var(--primary))" : "currentColor"} strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function renderNavIcon(icon: NavIconKey, isActive: boolean, className: string) {
   switch (icon) {
     case "dashboard":
@@ -118,8 +162,16 @@ function renderNavIcon(icon: NavIconKey, isActive: boolean, className: string) {
       return <NavIconCards className={className} isActive={isActive} />;
     case "notifications":
       return <NavIconNotifications className={className} isActive={isActive} />;
+    case "payments":
+      return <NavIconPayments className={className} isActive={isActive} />;
+    case "budgets":
+      return <NavIconBudgets className={className} isActive={isActive} />;
+    case "workspaces":
+      return <NavIconWorkspaces className={className} isActive={isActive} />;
     case "admin":
       return <NavIconAdmin className={className} isActive={isActive} />;
+    case "auditLogs":
+      return <NavIconAuditLogs className={className} isActive={isActive} />;
     case "diagnostics":
       return <NavIconAdmin className={className} isActive={isActive} />;
     case "settings":

@@ -54,6 +54,8 @@ interface SubscriptionCardProps {
   onDelete?: (id: string) => void;
   /** 点击”快速续费”回调（传订阅 id）。 */
   onRenew?: (id: string) => void;
+  /** 点击”配置通知渠道”回调（传订阅 id）。 */
+  onConfigureChannels?: (id: string) => void;
   /** 用户 IANA 时区，用于续费/试用提示窗口。 */
   timeZone: string;
 }
@@ -69,7 +71,7 @@ const statusStyles: Record<string, string> = {
 const DEFAULT_BADGE_COLOR = "hsl(var(--primary))";
 
 /** 订阅卡片。 */
-export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDelete, onRenew, timeZone }: SubscriptionCardProps) {
+export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDelete, onRenew, onConfigureChannels, timeZone }: SubscriptionCardProps) {
   const { config } = useCustomConfig();
   const { t, locale, label, formatCurrency, formatDateOnly } = useI18n();
   const categoryConfig = config.categories.find((c) => c.value === subscription.category);
@@ -174,6 +176,11 @@ export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDe
             {onRenew && (
               <DropdownMenuItem onClick={() => onRenew(subscription.id)}>
                 {t("payments.quickRenew")}
+              </DropdownMenuItem>
+            )}
+            {onConfigureChannels && (
+              <DropdownMenuItem onClick={() => onConfigureChannels(subscription.id)}>
+                {t("notificationStrategy.configureChannels")}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem

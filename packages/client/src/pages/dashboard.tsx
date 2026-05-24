@@ -7,8 +7,12 @@ import { MonthlyTop5Chart } from "@/components/monthly-top5-chart";
 import { RenewalTop5Chart } from "@/components/renewal-top5-chart";
 import { UpcomingRenewalsStrip } from "@/components/upcoming-renewals-strip";
 import { BudgetUsageWidget } from "@/components/budget-usage-widget";
+import { RealSpendingWidget } from "@/components/real-spending-widget";
 import { AddSubscriptionDialog } from "@/components/add-subscription-dialog";
 import { EditSubscriptionDialog } from "@/components/edit-subscription-dialog";
+import { AiExtractDialog } from "@/components/ai-extract-dialog";
+import { AiSummaryWidget } from "@/components/ai-summary-widget";
+import { SubscriptionChannelsDialog } from "@/components/subscription-channels-dialog";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -102,6 +106,7 @@ export default function Home() {
   const [batchMode, setBatchMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
+  const [channelsDialogSubId, setChannelsDialogSubId] = useState<string | null>(null);
   const batchDelete = useBatchDeleteSubscriptions();
   const batchUpdate = useBatchUpdateSubscriptions();
   const quickRenew = useQuickRenew();
@@ -295,6 +300,10 @@ export default function Home() {
 
         <BudgetUsageWidget />
 
+        <RealSpendingWidget estimatedMonthly={totalMonthly} />
+
+        <AiSummaryWidget />
+
         <div className="mb-4 sm:mb-6">
           <UpcomingRenewalsStrip subscriptions={subscriptions} timeZone={timeZone} />
         </div>
@@ -369,6 +378,7 @@ export default function Home() {
                 </Button>
               }
             />
+            <AiExtractDialog onAdd={handleAddSubscription} />
           </div>
         </div>
 
@@ -561,6 +571,7 @@ export default function Home() {
                     onEdit: handleEditSubscription,
                     onDelete: handleDeleteSubscription,
                     onRenew: handleQuickRenew,
+                    onConfigureChannels: setChannelsDialogSubId,
                   })}
                 />
               </div>
@@ -653,6 +664,17 @@ export default function Home() {
         open={editDialogOpen}
         onOpenChange={handleEditDialogOpenChange}
         onSave={handleSaveSubscription}
+      />
+
+      <SubscriptionChannelsDialog
+        subscriptionId={channelsDialogSubId}
+        subscriptionName={
+          channelsDialogSubId
+            ? subscriptions.find((s) => s.id === channelsDialogSubId)?.name
+            : undefined
+        }
+        open={channelsDialogSubId !== null}
+        onOpenChange={(open) => !open && setChannelsDialogSubId(null)}
       />
     </>
   );
