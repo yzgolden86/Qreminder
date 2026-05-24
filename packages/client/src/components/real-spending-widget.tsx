@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { CreditCard, TrendingUp, ArrowRight } from "lucide-react";
+import { CreditCard, TrendingUp, ArrowRight, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/i18n/I18nProvider";
 import { usePaymentStats } from "@/hooks/use-payments";
@@ -22,7 +22,10 @@ export function RealSpendingWidget({ estimatedMonthly }: RealSpendingWidgetProps
 
   const actualMonth = stats?.monthlySpent ?? 0;
   const actualYear = stats?.yearlySpent ?? 0;
-  const totalCount = stats?.totalPayments ?? 0;
+  const monthlyCount = stats?.monthlyCount ?? 0;
+  const monthlyByCurrency = stats?.monthlyByCurrency ?? {};
+  const currencies = Object.keys(monthlyByCurrency);
+  const hasMixedCurrency = currencies.length > 1;
 
   const monthlyValue = view === "actual" ? actualMonth : estimatedMonthly;
   const variance = actualMonth - estimatedMonthly;
@@ -73,7 +76,13 @@ export function RealSpendingWidget({ estimatedMonthly }: RealSpendingWidgetProps
           <div className="text-xl font-bold text-foreground">
             {formatCurrency(monthlyValue, defaultCurrency)}
           </div>
-          {view === "actual" && estimatedMonthly > 0 && (
+          {view === "actual" && hasMixedCurrency && (
+            <div className="mt-1 flex items-start gap-1 text-[10px] text-warning">
+              <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" aria-hidden />
+              <span>{t("realSpending.mixedCurrencyWarning")}</span>
+            </div>
+          )}
+          {view === "actual" && !hasMixedCurrency && estimatedMonthly > 0 && (
             <div className={cn(
               "mt-1 text-[10px] font-medium",
               variance > 0 ? "text-destructive" : "text-success",
@@ -99,9 +108,9 @@ export function RealSpendingWidget({ estimatedMonthly }: RealSpendingWidgetProps
 
         <div className="rounded-lg border border-border/60 bg-secondary/30 p-3 flex items-center justify-between">
           <div>
-            <div className="mb-1 text-[11px] text-muted-foreground">{t("realSpending.totalRecords")}</div>
-            <div className="text-xl font-bold text-foreground">{totalCount}</div>
-            <div className="mt-1 text-[10px] text-muted-foreground">{t("realSpending.allTimePayments")}</div>
+            <div className="mb-1 text-[11px] text-muted-foreground">{t("realSpending.monthRecords")}</div>
+            <div className="text-xl font-bold text-foreground">{monthlyCount}</div>
+            <div className="mt-1 text-[10px] text-muted-foreground">{t("realSpending.thisMonthPayments")}</div>
           </div>
           <Button asChild variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
             <Link to="/payments" aria-label={t("realSpending.viewAll")}>
@@ -111,7 +120,25 @@ export function RealSpendingWidget({ estimatedMonthly }: RealSpendingWidgetProps
         </div>
       </div>
 
-      {view === "actual" && totalCount === 0 && (
+      {view === "actual" && hasMixedCurrency && (
+        <div className="mt-3 rounded-md border border-warning/30 bg-warning/5 p-2.5">
+          <p className="mb-1.5 text-[11px] font-medium text-warning">
+            {t("realSpending.byCurrencyBreakdown")}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {currencies.map((cur) => (
+              <span
+                key={cur}
+                className="rounded-md bg-card px-2 py-0.5 text-[11px] text-foreground"
+              >
+                {formatCurrency(monthlyByCurrency[cur] ?? 0, cur)}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {view === "actual" && monthlyCount === 0 && (
         <p className="mt-3 text-[11px] text-muted-foreground">
           {t("realSpending.noPaymentsHint")}{" "}
           <Link to="/payments" className="text-primary hover:underline">

@@ -188,7 +188,11 @@ paymentsRouter.post("/renew/:subscriptionId", async (c) => {
   return c.json({ paymentId, nextBillingDate }, 201);
 });
 
-// GET /payments/stats — spending statistics
+// GET /payments/stats?month=YYYY-MM — spending statistics
+// Why: bare iteration over paidAt strings is timezone-independent (paidAt is stored
+// as user-local YYYY-MM-DD). We expose monthlyCount/yearlyCount + per-currency
+// breakdowns so the UI can show how many payments contribute to the sum and so
+// mixed-currency portfolios aren't summed into a misleading single number.
 paymentsRouter.get("/stats", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
@@ -198,17 +202,37 @@ paymentsRouter.get("/stats", async (c) => {
     .from(subscriptionPayments)
     .where(eq(subscriptionPayments.user, userId));
 
-  const now = new Date();
-  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const currentYear = String(now.getFullYear());
+  // Allow the client to override the "current month" so the widget matches the
+  // user's local clock even when the server runs in a different timezone.
+  const requestedMonth = c.req.query("month");
+  const fallback = new Date();
+  const currentMonth = /^\d{4}-\d{2}$/.test(requestedMonth ?? "")
+    ? requestedMonth!
+    : `${fallback.getFullYear()}-${String(fallback.getMonth() + 1).padStart(2, "0")}`;
+  const currentYear = currentMonth.slice(0, 4);
 
   let monthlySpent = 0;
   let yearlySpent = 0;
+  let monthlyCount = 0;
+  let yearlyCount = 0;
+  const monthlyByCurrency = new Map<string, number>();
+  const yearlyByCurrency = new Map<string, number>();
   const byCategory = new Map<string, number>();
 
   for (const p of allPayments) {
-    if (p.paidAt.startsWith(currentMonth)) monthlySpent += p.amount;
-    if (p.paidAt.startsWith(currentYear)) yearlySpent += p.amount;
+    // paidAt is normalized to YYYY-MM-DD on insert, but defensively slice to
+    // tolerate legacy rows stored as ISO datetimes.
+    const day = p.paidAt.slice(0, 10);
+    if (day.startsWith(currentMonth)) {
+      monthlySpent += p.amount;
+      monthlyCount += 1;
+      monthlyByCurrency.set(p.currency, (monthlyByCurrency.get(p.currency) ?? 0) + p.amount);
+    }
+    if (day.startsWith(currentYear)) {
+      yearlySpent += p.amount;
+      yearlyCount += 1;
+      yearlyByCurrency.set(p.currency, (yearlyByCurrency.get(p.currency) ?? 0) + p.amount);
+    }
   }
 
   const subIds = [...new Set(allPayments.map((p) => p.subscriptionId))];
@@ -216,7 +240,7 @@ paymentsRouter.get("/stats", async (c) => {
     const subs = await db.select().from(subscriptions).where(eq(subscriptions.user, userId));
     const subMap = new Map(subs.map((s) => [s.id, s]));
     for (const p of allPayments) {
-      if (!p.paidAt.startsWith(currentYear)) continue;
+      if (!p.paidAt.slice(0, 10).startsWith(currentYear)) continue;
       const sub = subMap.get(p.subscriptionId);
       const cat = sub?.category ?? "other";
       byCategory.set(cat, (byCategory.get(cat) ?? 0) + p.amount);
@@ -227,7 +251,12 @@ paymentsRouter.get("/stats", async (c) => {
     totalPayments: allPayments.length,
     monthlySpent,
     yearlySpent,
+    monthlyCount,
+    yearlyCount,
+    monthlyByCurrency: Object.fromEntries(monthlyByCurrency),
+    yearlyByCurrency: Object.fromEntries(yearlyByCurrency),
     byCategory: Object.fromEntries(byCategory),
+    currentMonth,
   });
 });
 

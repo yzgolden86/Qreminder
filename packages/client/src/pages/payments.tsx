@@ -87,13 +87,23 @@ export default function PaymentsPage() {
         <p className="mt-1 text-[13px] text-muted-foreground">{t("payments.subtitle")}</p>
       </div>
 
-      <div className="mb-6 grid gap-3 sm:gap-5 sm:grid-cols-3">
+      <div className="mb-6 grid gap-3 sm:gap-5 sm:grid-cols-4">
         <StatCard
           title={t("payments.monthSpent")}
           value={formatCurrency(stats?.monthlySpent ?? 0, defaultCurrency)}
-          subtitle={t("payments.realActual")}
+          subtitle={
+            stats && Object.keys(stats.monthlyByCurrency).length > 1
+              ? t("payments.mixedCurrencyHint")
+              : t("payments.realActual")
+          }
           icon={<CreditCard className="h-6 w-6" />}
           variant="primary"
+        />
+        <StatCard
+          title={t("payments.monthCount")}
+          value={stats?.monthlyCount ?? 0}
+          subtitle={t("payments.thisMonthPayments")}
+          icon={<Calendar className="h-6 w-6" />}
         />
         <StatCard
           title={t("payments.yearSpent")}

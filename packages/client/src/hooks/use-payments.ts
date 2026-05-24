@@ -26,7 +26,12 @@ const statsResponseSchema = z.object({
   totalPayments: z.number(),
   monthlySpent: z.number(),
   yearlySpent: z.number(),
+  monthlyCount: z.number().optional().default(0),
+  yearlyCount: z.number().optional().default(0),
+  monthlyByCurrency: z.record(z.string(), z.number()).optional().default({}),
+  yearlyByCurrency: z.record(z.string(), z.number()).optional().default({}),
   byCategory: z.record(z.string(), z.number()),
+  currentMonth: z.string().optional(),
 });
 
 export type PaymentStats = z.infer<typeof statsResponseSchema>;
@@ -50,9 +55,13 @@ export function usePayments(subscriptionId?: string) {
 }
 
 export function usePaymentStats() {
+  // Pass the client-local YYYY-MM so the "current month" matches the user's
+  // wall clock even when the server runs in a different timezone (UTC vs UTC+8).
+  const now = new Date();
+  const localMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   return useQuery({
-    queryKey: ["payments", "stats"],
-    queryFn: () => apiFetch("/api/payments/stats", statsResponseSchema),
+    queryKey: ["payments", "stats", localMonth],
+    queryFn: () => apiFetch(`/api/payments/stats?month=${localMonth}`, statsResponseSchema),
   });
 }
 
