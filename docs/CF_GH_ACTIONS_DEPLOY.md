@@ -26,6 +26,12 @@
 
 先到 **Settings → Environments → New environment**，名字填 `cloudflare`（小写，必须一致；两个 workflow 都用了 `environment: cloudflare`）。后续 secrets / vars 都加到这个 environment 下。
 
+### 1.1.1 打开仓库 Workflow 写权限（重要）
+
+到 **Settings → Actions → General → Workflow permissions**，勾选 **"Read and write permissions"**，并勾选 **"Allow GitHub Actions to create and approve pull requests"**。
+
+> 默认只读权限会导致 Bootstrap 在 `git push` 时报 `could not read Username for 'https://github.com': terminal prompts disabled`。Workflow 里虽然写了 `permissions: contents: write`，但仓库级开关优先级更高。
+
 ### 1.2 必填 Secrets（Environment secrets）
 
 | Secret 名 | 值 |
@@ -157,6 +163,7 @@ pnpm --filter @qreminder/server db:generate
 | --- | --- |
 | Bootstrap workflow 在 `Patch wrangler.toml` 步骤报 `database_id field not found` | `runtimes/worker/wrangler.toml` 被改坏，恢复成仓库默认的 `REPLACE_ME_AFTER_wrangler_d1_create` 占位再重跑 |
 | Bootstrap 跑完没有 commit 回来 | API token 权限不够（需要包含 D1:Edit / R2:Edit）；或 `permissions: contents: write` 被仓库 setting 禁用，看 Actions → 仓库 Settings → Actions → Workflow permissions 改成 Read and write |
+| Bootstrap 报 `could not read Username for 'https://github.com': terminal prompts disabled` | 仓库 Settings → Actions → General → Workflow permissions 设成了 "Read repository contents permission"。改成 "Read and write permissions" 后重跑。若仍失败：手动编辑 `runtimes/worker/wrangler.toml` 把 `database_id` 填进去，commit + push，跳过 bootstrap 直接 Run Wrangler Deploy |
 | Deploy 卡在 `Validate required secrets` | 6 个必填 secret 漏了一个，按 1.2 的表对一遍 |
 | Deploy 成功但访问 401 反复跳登录 | `APP_URL` 与浏览器实际访问域不一致；或 `TRUSTED_ORIGINS` 没包含访问域 |
 | 注册接口返回 `signup_disabled` | `SIGNUP_ENABLED` Variable 还是 `false`，改完一定要重跑 Wrangler Deploy 才生效 |

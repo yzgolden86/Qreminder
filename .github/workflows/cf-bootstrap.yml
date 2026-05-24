@@ -29,6 +29,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6.0.2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true
+          fetch-depth: 0
 
       - name: Set up Node
         uses: actions/setup-node@v5.0.0
@@ -104,15 +108,26 @@ jobs:
 
       - name: Commit and push wrangler.toml
         if: steps.patch.outputs.changed == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git add runtimes/worker/wrangler.toml
           git commit -m "chore(worker): set D1 database_id from cf-bootstrap"
-          git push origin HEAD:${{ github.ref_name }}
+          # Rebase against latest remote to handle race conditions
+          git pull --rebase origin "${{ github.ref_name }}" || true
+          if ! git push origin "HEAD:${{ github.ref_name }}"; then
+            echo "::error::git push failed. Most likely cause: repository Settings → Actions → General → Workflow permissions is set to 'Read repository contents permission'."
+            echo "::error::Fix: change it to 'Read and write permissions', then re-run this workflow."
+            echo "::error::Or commit the change manually: edit runtimes/worker/wrangler.toml and set database_id = \"${{ steps.d1.outputs.database_id }}\""
+            exit 1
+          fi
 
       - name: Summary
+        if: always()
         run: |
           echo "### Cloudflare bootstrap done" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
@@ -120,4 +135,12 @@ jobs:
           echo "- R2: \`${{ inputs.r2_bucket }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- wrangler.toml patched: \`${{ steps.patch.outputs.changed }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "${{ steps.d1.outputs.database_id }}" ]; then
+            echo "If the push step failed, manually edit \`runtimes/worker/wrangler.toml\` and set:" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "\`\`\`toml" >> "$GITHUB_STEP_SUMMARY"
+            echo "database_id = \"${{ steps.d1.outputs.database_id }}\"" >> "$GITHUB_STEP_SUMMARY"
+            echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+          fi
           echo "Next: run the **Wrangler Deploy** workflow." >> "$GITHUB_STEP_SUMMARY"
