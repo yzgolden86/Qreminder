@@ -293,3 +293,108 @@ function calculateNextBillingDate(
 
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
+
+// POST /payments/sync-from-subscriptions
+// Why: users add subscriptions in the management page expecting them to show up
+// in payment history. Subscriptions are "plans" and payments are "events", so
+// they don't auto-link — this endpoint lets users backfill the payment events
+// implied by each subscription's startDate + billingCycle, skipping any
+// (subscriptionId, paidAt) tuple already on record.
+const syncSchema = z.object({
+  scope: z.enum(["month", "year", "all"]).default("month"),
+  subscriptionIds: z.array(z.string()).optional(),
+  todayOverride: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+
+paymentsRouter.post("/sync-from-subscriptions", async (c) => {
+  const db = c.get("deps").db;
+  const userId = c.get("user").id;
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = syncSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "validation_error", issues: parsed.error.issues }, 400);
+  }
+
+  // Use the client-supplied "today" so the upper bound matches the user's
+  // local clock rather than the server's UTC time.
+  const today = parsed.data.todayOverride ?? new Date().toISOString().slice(0, 10);
+  const scope = parsed.data.scope;
+
+  let scopeStart: string;
+  if (scope === "month") {
+    scopeStart = `${today.slice(0, 7)}-01`;
+  } else if (scope === "year") {
+    scopeStart = `${today.slice(0, 4)}-01-01`;
+  } else {
+    scopeStart = "0000-01-01";
+  }
+
+  const baseConditions = [eq(subscriptions.user, userId)];
+  const allSubs = await db.select().from(subscriptions).where(and(...baseConditions));
+  const filtered = allSubs.filter((s) => {
+    if (s.status !== "active" && s.status !== "trial") return false;
+    if (parsed.data.subscriptionIds && parsed.data.subscriptionIds.length > 0) {
+      return parsed.data.subscriptionIds.includes(s.id);
+    }
+    return true;
+  });
+
+  // Pre-fetch all of this user's payments once and bucket by subscriptionId so
+  // the dedup check is O(1) per candidate instead of N round-trips to D1.
+  const existingPayments = await db
+    .select()
+    .from(subscriptionPayments)
+    .where(eq(subscriptionPayments.user, userId));
+  const existingByKey = new Set(existingPayments.map((p) => `${p.subscriptionId}|${p.paidAt.slice(0, 10)}`));
+
+  const now = new Date().toISOString();
+  let inserted = 0;
+  let skipped = 0;
+  const insertedSummary: Array<{ subscriptionId: string; paidAt: string }> = [];
+
+  for (const sub of filtered) {
+    // Walk forward from startDate by billingCycle, collecting every implied
+    // payment date that falls inside [scopeStart, today]. Cap the loop so a
+    // misconfigured subscription (startDate in 1900) can't OOM us.
+    let cursor = sub.startDate;
+    const guard = 5000;
+    let steps = 0;
+    while (cursor <= today && steps < guard) {
+      steps += 1;
+      if (cursor >= scopeStart) {
+        const key = `${sub.id}|${cursor}`;
+        if (existingByKey.has(key)) {
+          skipped += 1;
+        } else {
+          const id = crypto.randomUUID();
+          await db.insert(subscriptionPayments).values({
+            id,
+            user: userId,
+            subscriptionId: sub.id,
+            paidAt: cursor,
+            amount: sub.price,
+            currency: sub.currency,
+            billingPeriod: sub.billingCycle,
+            paymentMethod: sub.paymentMethod ?? "",
+            note: "auto-synced from subscription",
+            createdAt: now,
+            updatedAt: now,
+          });
+          existingByKey.add(key);
+          inserted += 1;
+          insertedSummary.push({ subscriptionId: sub.id, paidAt: cursor });
+        }
+      }
+      const next = calculateNextBillingDate(cursor, sub.billingCycle, sub.customDays);
+      if (next <= cursor) break; // safety: never advance backward / stall
+      cursor = next;
+    }
+  }
+
+  return c.json({
+    inserted,
+    skipped,
+    subscriptionsConsidered: filtered.length,
+    inserts: insertedSummary,
+  });
+});

@@ -118,3 +118,31 @@ export function useQuickRenew() {
     },
   });
 }
+
+const syncResponseSchema = z.object({
+  inserted: z.number(),
+  skipped: z.number(),
+  subscriptionsConsidered: z.number(),
+  inserts: z.array(z.object({ subscriptionId: z.string(), paidAt: z.string() })).optional(),
+});
+
+export type SyncFromSubscriptionsResult = z.infer<typeof syncResponseSchema>;
+
+export function useSyncFromSubscriptions() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { scope: "month" | "year" | "all"; subscriptionIds?: string[] }) => {
+      // Send client-local "today" so the upper bound matches the user's wall
+      // clock rather than the server's UTC time.
+      const now = new Date();
+      const todayOverride = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      return apiFetch("/api/payments/sync-from-subscriptions", syncResponseSchema, {
+        method: "POST",
+        body: JSON.stringify({ ...data, todayOverride }),
+      });
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["payments"] });
+    },
+  });
+}

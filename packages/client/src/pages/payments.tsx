@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Calendar, Plus, Trash2, Pencil, Filter, TrendingUp, CreditCard } from "lucide-react";
+import { Calendar, Plus, Trash2, Pencil, Filter, TrendingUp, CreditCard, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +35,7 @@ import {
   usePaymentStats,
   useCreatePayment,
   useDeletePayment,
+  useSyncFromSubscriptions,
   type Payment,
 } from "@/hooks/use-payments";
 import { useSubscriptions } from "@/hooks/use-subscriptions";
@@ -48,6 +49,7 @@ export default function PaymentsPage() {
 
   const [filterSubId, setFilterSubId] = useState<string>("all");
   const [addOpen, setAddOpen] = useState(false);
+  const [syncOpen, setSyncOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const subscriptionsQuery = useSubscriptions();
@@ -65,6 +67,7 @@ export default function PaymentsPage() {
 
   const createPayment = useCreatePayment();
   const deletePayment = useDeletePayment();
+  const syncFromSubs = useSyncFromSubscriptions();
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -136,13 +139,23 @@ export default function PaymentsPage() {
             </SelectContent>
           </Select>
         </div>
-        <Button
-          onClick={() => setAddOpen(true)}
-          className="gap-2 bg-primary text-primary-foreground hover:bg-primary-glow"
-        >
-          <Plus className="h-4 w-4" />
-          {t("payments.addPayment")}
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Button
+            variant="outline"
+            onClick={() => setSyncOpen(true)}
+            className="gap-2"
+          >
+            <RefreshCw className="h-4 w-4" />
+            {t("payments.syncFromSubs")}
+          </Button>
+          <Button
+            onClick={() => setAddOpen(true)}
+            className="gap-2 bg-primary text-primary-foreground hover:bg-primary-glow"
+          >
+            <Plus className="h-4 w-4" />
+            {t("payments.addPayment")}
+          </Button>
+        </div>
       </div>
 
       {paymentsQuery.isPending ? (
@@ -222,6 +235,24 @@ export default function PaymentsPage() {
           }
         }}
         defaultCurrency={defaultCurrency}
+      />
+
+      <SyncFromSubsDialog
+        open={syncOpen}
+        onOpenChange={setSyncOpen}
+        activeCount={subscriptions.filter((s) => s.status === "active" || s.status === "trial").length}
+        isPending={syncFromSubs.isPending}
+        onConfirm={async (scope) => {
+          try {
+            const res = await syncFromSubs.mutateAsync({ scope });
+            toast.success(
+              t("payments.syncResult", { inserted: res.inserted, skipped: res.skipped }),
+            );
+            setSyncOpen(false);
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : t("error.generic"));
+          }
+        }}
       />
 
       <AlertDialog open={deleteId !== null} onOpenChange={(open) => !open && setDeleteId(null)}>
@@ -397,6 +428,73 @@ function AddPaymentDialog({
             className="bg-primary text-primary-foreground hover:bg-primary-glow"
           >
             {submitting ? t("common.saving") : t("common.save")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface SyncFromSubsDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  activeCount: number;
+  isPending: boolean;
+  onConfirm: (scope: "month" | "year" | "all") => void | Promise<void>;
+}
+
+function SyncFromSubsDialog({
+  open,
+  onOpenChange,
+  activeCount,
+  isPending,
+  onConfirm,
+}: SyncFromSubsDialogProps) {
+  const { t } = useI18n();
+  const [scope, setScope] = useState<"month" | "year" | "all">("month");
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[480px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <RefreshCw className="h-4 w-4 text-primary" />
+            {t("payments.syncFromSubs")}
+          </DialogTitle>
+          <DialogDescription>{t("payments.syncDescription")}</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-2">
+          <div className="rounded-md border border-border bg-secondary/30 p-3 text-[12px] text-muted-foreground">
+            {t("payments.syncActiveCount", { count: activeCount })}
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="sync-scope">{t("payments.syncScope")}</Label>
+            <Select value={scope} onValueChange={(v) => setScope(v as "month" | "year" | "all")}>
+              <SelectTrigger id="sync-scope" className="border-border bg-secondary">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="month">{t("payments.syncScopeMonth")}</SelectItem>
+                <SelectItem value="year">{t("payments.syncScopeYear")}</SelectItem>
+                <SelectItem value="all">{t("payments.syncScopeAll")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="rounded-md border border-warning/30 bg-warning/5 p-3 text-[11px] text-warning">
+            {t("payments.syncDedupHint")}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
+            {t("common.cancel")}
+          </Button>
+          <Button
+            onClick={() => onConfirm(scope)}
+            disabled={isPending || activeCount === 0}
+            className="gap-2 bg-primary text-primary-foreground hover:bg-primary-glow"
+          >
+            <RefreshCw className={`h-4 w-4 ${isPending ? "animate-spin" : ""}`} />
+            {isPending ? t("payments.syncing") : t("payments.syncConfirm")}
           </Button>
         </DialogFooter>
       </DialogContent>
