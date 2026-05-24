@@ -8,6 +8,7 @@ import { RenewalTop5Chart } from "@/components/renewal-top5-chart";
 import { UpcomingRenewalsStrip } from "@/components/upcoming-renewals-strip";
 import { BudgetUsageWidget } from "@/components/budget-usage-widget";
 import { RealSpendingWidget } from "@/components/real-spending-widget";
+import { MonthlyCompletionWidget } from "@/components/monthly-completion-widget";
 import { AddSubscriptionDialog } from "@/components/add-subscription-dialog";
 import { EditSubscriptionDialog } from "@/components/edit-subscription-dialog";
 import { AiExtractDialog } from "@/components/ai-extract-dialog";
@@ -67,6 +68,7 @@ import { useExchangeRates } from "@/hooks/use-exchange-rates";
 import { useSubscriptions, useBatchDeleteSubscriptions, useBatchUpdateSubscriptions } from "@/hooks/use-subscriptions";
 import { useSettings } from "@/hooks/use-settings";
 import { useQuickRenew } from "@/hooks/use-payments";
+import { useSnoozeSubscription, useTrackUsage } from "@/hooks/use-subscriptions";
 import { useDashboardStats } from "@/modules/subscriptions/application/use-dashboard-stats";
 import { useSubscriptionCrud } from "@/modules/subscriptions/application/use-subscription-crud";
 import { useSubscriptionExport } from "@/modules/subscriptions/application/use-subscription-export";
@@ -110,6 +112,8 @@ export default function Home() {
   const batchDelete = useBatchDeleteSubscriptions();
   const batchUpdate = useBatchUpdateSubscriptions();
   const quickRenew = useQuickRenew();
+  const snoozeSubscription = useSnoozeSubscription();
+  const trackUsage = useTrackUsage();
 
   const { activeSubscriptions, totalMonthly, upcomingCount, trialCount } =
     useDashboardStats(subscriptions, defaultCurrency, convert, timeZone);
@@ -129,6 +133,33 @@ export default function Home() {
       { subscriptionId: id },
       { onSuccess: () => toast.success(t("payments.quickRenewSuccess")) },
     );
+  };
+
+  const handleSnooze = (id: string) => {
+    const sub = subscriptions.find((s) => s.id === id);
+    const isSnoozed = Boolean(sub?.snoozedUntil);
+    // Click while already snoozed = clear (days=0). Otherwise snooze 7 days.
+    // A dedicated dialog with day picker is a Phase 2 follow-up.
+    snoozeSubscription.mutate(
+      { id, days: isSnoozed ? 0 : 7 },
+      {
+        onSuccess: (res) => {
+          if (res.snoozedUntil) {
+            toast.success(t("subscription.snoozeUntil", { date: res.snoozedUntil }));
+          } else {
+            toast.success(t("subscription.snoozeCleared"));
+          }
+        },
+        onError: (err) => toast.error(err instanceof Error ? err.message : t("error.generic")),
+      },
+    );
+  };
+
+  const handleTrackUsage = (id: string) => {
+    trackUsage.mutate(id, {
+      onSuccess: () => toast.success(t("subscription.usageTracked")),
+      onError: (err) => toast.error(err instanceof Error ? err.message : t("error.generic")),
+    });
   };
 
   const {
@@ -299,6 +330,8 @@ export default function Home() {
         </div>
 
         <BudgetUsageWidget />
+
+        <MonthlyCompletionWidget />
 
         <RealSpendingWidget estimatedMonthly={totalMonthly} />
 
@@ -572,6 +605,8 @@ export default function Home() {
                     onDelete: handleDeleteSubscription,
                     onRenew: handleQuickRenew,
                     onConfigureChannels: setChannelsDialogSubId,
+                    onSnooze: handleSnooze,
+                    onTrackUsage: handleTrackUsage,
                   })}
                 />
               </div>

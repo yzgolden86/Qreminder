@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Calendar, Plus, Trash2, Pencil, Filter, TrendingUp, CreditCard, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,7 @@ import {
   usePayments,
   usePaymentStats,
   useCreatePayment,
+  useUpdatePayment,
   useDeletePayment,
   useSyncFromSubscriptions,
   type Payment,
@@ -52,6 +53,7 @@ export default function PaymentsPage() {
   const [filterSubId, setFilterSubId] = useState<string>("all");
   const [addOpen, setAddOpen] = useState(false);
   const [syncOpen, setSyncOpen] = useState(false);
+  const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const subscriptionsQuery = useSubscriptions();
@@ -85,6 +87,7 @@ export default function PaymentsPage() {
   }, [stats?.monthlyByCurrency, stats?.yearlyByCurrency, convert, defaultCurrency]);
 
   const createPayment = useCreatePayment();
+  const updatePayment = useUpdatePayment();
   const deletePayment = useDeletePayment();
   const syncFromSubs = useSyncFromSubscriptions();
 
@@ -236,6 +239,15 @@ export default function PaymentsPage() {
                           <Button
                             variant="ghost"
                             size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                            onClick={() => setEditingPayment(payment)}
+                            aria-label={t("common.edit")}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             className="h-7 w-7 text-destructive hover:bg-destructive/10"
                             onClick={() => setDeleteId(payment.id)}
                             aria-label={t("common.delete")}
@@ -281,6 +293,21 @@ export default function PaymentsPage() {
               t("payments.syncResult", { inserted: res.inserted, skipped: res.skipped }),
             );
             setSyncOpen(false);
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : t("error.generic"));
+          }
+        }}
+      />
+
+      <EditPaymentDialog
+        payment={editingPayment}
+        onOpenChange={(open) => { if (!open) setEditingPayment(null); }}
+        onSubmit={async (data) => {
+          if (!editingPayment) return;
+          try {
+            await updatePayment.mutateAsync({ id: editingPayment.id, data });
+            toast.success(t("payments.updateSuccess"));
+            setEditingPayment(null);
           } catch (err) {
             toast.error(err instanceof Error ? err.message : t("error.generic"));
           }
@@ -527,6 +554,142 @@ function SyncFromSubsDialog({
           >
             <RefreshCw className={`h-4 w-4 ${isPending ? "animate-spin" : ""}`} />
             {isPending ? t("payments.syncing") : t("payments.syncConfirm")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface EditPaymentDialogProps {
+  payment: Payment | null;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (data: {
+    paidAt?: string;
+    amount?: number;
+    currency?: string;
+    paymentMethod?: string;
+    note?: string;
+  }) => void | Promise<void>;
+}
+
+function EditPaymentDialog({ payment, onOpenChange, onSubmit }: EditPaymentDialogProps) {
+  const { t } = useI18n();
+  const [paidAt, setPaidAt] = useState("");
+  const [amount, setAmount] = useState("");
+  const [currency, setCurrency] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("");
+  const [note, setNote] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  // Re-sync local form state whenever a different payment is opened.
+  // Without this, opening payment B after editing A would keep A's values.
+  useEffect(() => {
+    if (!payment) return;
+    setPaidAt(payment.paidAt.slice(0, 10));
+    setAmount(String(payment.amount));
+    setCurrency(payment.currency);
+    setPaymentMethod(payment.paymentMethod ?? "");
+    setNote(payment.note ?? "");
+  }, [payment]);
+
+  const handleSubmit = async () => {
+    const parsedAmount = Number.parseFloat(amount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount < 0) return;
+    setSubmitting(true);
+    try {
+      const data: {
+        paidAt?: string;
+        amount?: number;
+        currency?: string;
+        paymentMethod?: string;
+        note?: string;
+      } = {
+        paidAt,
+        amount: parsedAmount,
+        paymentMethod,
+        note,
+      };
+      const trimmedCurrency = currency.trim().toUpperCase();
+      if (trimmedCurrency) data.currency = trimmedCurrency;
+      await onSubmit(data);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={payment !== null} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[480px]">
+        <DialogHeader>
+          <DialogTitle>{t("payments.editTitle")}</DialogTitle>
+          <DialogDescription>{t("payments.editDescription")}</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-2">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-payment-amount">{t("payments.colAmount")}</Label>
+              <Input
+                id="edit-payment-amount"
+                type="number"
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="border-border bg-secondary"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-payment-currency">{t("payments.colCurrency")}</Label>
+              <Input
+                id="edit-payment-currency"
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+                maxLength={10}
+                className="border-border bg-secondary"
+              />
+            </div>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="edit-payment-date">{t("payments.colDate")}</Label>
+            <Input
+              id="edit-payment-date"
+              type="date"
+              value={paidAt}
+              onChange={(e) => setPaidAt(e.target.value)}
+              className="border-border bg-secondary"
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="edit-payment-method">{t("payments.colMethod")}</Label>
+            <Input
+              id="edit-payment-method"
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+              placeholder={t("payments.methodPlaceholder")}
+              className="border-border bg-secondary"
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="edit-payment-note">{t("payments.colNote")}</Label>
+            <Input
+              id="edit-payment-note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder={t("payments.notePlaceholder")}
+              className="border-border bg-secondary"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
+            {t("common.cancel")}
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={!amount || submitting}
+            className="bg-primary text-primary-foreground hover:bg-primary-glow"
+          >
+            {submitting ? t("common.saving") : t("common.save")}
           </Button>
         </DialogFooter>
       </DialogContent>

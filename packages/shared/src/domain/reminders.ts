@@ -29,6 +29,10 @@ export function matchReminderHits({
   const hits: NotificationHit[] = [];
   for (const sub of subscriptions) {
     if (sub.status === "cancelled" || sub.status === "paused") continue;
+    // Snooze: skip the subscription entirely while snoozedUntil is in the future
+    // (or today). Comparing YYYY-MM-DD strings lexicographically is correct here
+    // since both values are zero-padded.
+    if (sub.snoozedUntil && sub.snoozedUntil >= todayLocal) continue;
     const renewalDays = diffDaysISO(sub.nextBillingDate, todayLocal);
     if (sub.reminderOffsets.includes(renewalDays)) {
       hits.push({

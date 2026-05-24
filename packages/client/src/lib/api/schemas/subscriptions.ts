@@ -138,6 +138,8 @@ export const apiSubscriptionSchema = z.object({
     .array(z.number().int().nonnegative())
     .max(16)
     .describe("提前多少天提醒的档位数组。"),
+  snoozedUntil: z.string().optional().describe("通知暂停至该日期（可选，YYYY-MM-DD）。"),
+  lastUsedAt: z.string().optional().describe("用户最后一次打卡使用的日期（可选，YYYY-MM-DD）。"),
   createdAt: z.string().optional().describe("创建时间（ISO 字符串，可选）。"),
   updatedAt: z.string().optional().describe("更新时间（ISO 字符串，可选）。"),
 }).strict();

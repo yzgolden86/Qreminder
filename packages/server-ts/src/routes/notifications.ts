@@ -1,11 +1,53 @@
 import { Hono } from "hono";
 import { z } from "zod";
+import { and, desc, eq } from "drizzle-orm";
+import { notificationJobs } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
 import type { AppEnv } from "../app.js";
 
 export const notificationsRouter = new Hono<AppEnv>();
 
 notificationsRouter.use("*", requireSession);
+
+// GET /notifications/recent-failures?days=7 — surface failed notification jobs
+// so the UI can show a badge / drill-down list. We return summarized rows
+// (no internal job state like cron's scheduledInstantUtc), enough for the
+// header badge + a "what failed and why" list.
+notificationsRouter.get("/recent-failures", async (c) => {
+  const db = c.get("deps").db;
+  const userId = (c.get("user") as { id: string }).id;
+  const daysParam = Number.parseInt(c.req.query("days") ?? "7", 10);
+  const days = Number.isFinite(daysParam) && daysParam > 0 && daysParam <= 90 ? daysParam : 7;
+  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const cutoffDate = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, "0")}-${String(cutoff.getDate()).padStart(2, "0")}`;
+
+  const rows = await db
+    .select()
+    .from(notificationJobs)
+    .where(
+      and(
+        eq(notificationJobs.user, userId),
+        eq(notificationJobs.status, "failed"),
+      ),
+    )
+    .orderBy(desc(notificationJobs.scheduledLocalDate));
+
+  // Filter by cutoff after the SQL query because notificationJobs has no
+  // index on scheduledLocalDate and the result set is small per user.
+  const recent = rows.filter((r) => r.scheduledLocalDate >= cutoffDate);
+
+  return c.json({
+    count: recent.length,
+    failures: recent.slice(0, 50).map((r) => ({
+      id: r.id,
+      scheduledLocalDate: r.scheduledLocalDate,
+      scheduledLocalTime: r.scheduledLocalTime,
+      timeZone: r.timeZone,
+      attempts: r.attempts,
+      lastError: r.lastError,
+    })),
+  });
+});
 
 function isPrivateHost(hostname: string): boolean {
   if (hostname === "localhost" || hostname === "[::1]") return true;

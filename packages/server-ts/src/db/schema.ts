@@ -77,6 +77,15 @@ export const subscriptions = sqliteTable(
     extra: text("extra", { mode: "json" }).$type<Record<string, unknown>>().notNull().default({}),
     reminderDays: integer("reminderDays").notNull().default(3),
     reminderOffsets: text("reminderOffsets", { mode: "json" }).$type<number[]>().notNull().default([3]),
+    // snoozedUntil is a YYYY-MM-DD date; when set and >= today (in user TZ),
+    // notification-cron skips this subscription's reminders entirely until it
+    // passes. Set via POST /subscriptions/:id/snooze. Cleared automatically by
+    // the next sub update or manually via the same endpoint with days=0.
+    snoozedUntil: text("snoozedUntil"),
+    // lastUsedAt is a YYYY-MM-DD date set by the user (or "track usage" button)
+    // to mark when they last actually used the subscription. Drives the
+    // "inactive subscriptions" dashboard panel (Phase 2.1).
+    lastUsedAt: text("lastUsedAt"),
     createdAt: text("createdAt").notNull(),
     updatedAt: text("updatedAt").notNull(),
   },

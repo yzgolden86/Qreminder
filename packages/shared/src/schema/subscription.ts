@@ -48,6 +48,9 @@ export const subscriptionSchema = z.object({
   tags: z.array(z.string()).max(20),
   extra: z.record(z.string(), z.unknown()).optional(),
   reminderOffsets: reminderOffsetsSchema,
+  // Optional/nullable so existing callers and the DB's NULL default both validate.
+  snoozedUntil: dateOnlySchema.nullable().optional(),
+  lastUsedAt: dateOnlySchema.nullable().optional(),
 });
 
 export type Subscription = z.infer<typeof subscriptionSchema>;

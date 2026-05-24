@@ -22,6 +22,7 @@ import { writeAppearancePendingToStorage } from '@/lib/theme-storage';
 import { authClient } from '@/lib/auth-client';
 import { useEffect } from 'react';
 import { AddSubscriptionDialog } from '@/components/add-subscription-dialog';
+import { NotificationFailureBell } from '@/components/notification-failure-bell';
 import { useI18n } from '@/i18n/I18nProvider';
 import type { MessageKey } from '@/i18n/messages';
 
@@ -164,6 +165,7 @@ export function Header({ onAddSubscription }: HeaderProps) {
         </div>
 
         <div className="flex items-center gap-2">
+          <NotificationFailureBell />
           <Button
             variant="ghost"
             size="icon"

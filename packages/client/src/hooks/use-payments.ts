@@ -89,6 +89,32 @@ export function useCreatePayment() {
   });
 }
 
+export function useUpdatePayment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: {
+        paidAt?: string;
+        amount?: number;
+        currency?: string;
+        paymentMethod?: string;
+        note?: string;
+      };
+    }) =>
+      apiFetch(`/api/payments/${id}`, okResponseSchema, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["payments"] });
+    },
+  });
+}
+
 export function useDeletePayment() {
   const qc = useQueryClient();
   return useMutation({

@@ -6,6 +6,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
 import { assertDateOnly } from "@/lib/time/date-only";
 import { apiFetch } from "@/lib/api-client";
 import {
@@ -51,7 +52,7 @@ function normalizeSubscriptionRecord(row: unknown): unknown {
   if (typeof row["customDays"] === "number") normalized["customDays"] = row["customDays"];
   if (Array.isArray(row["tags"])) normalized["tags"] = row["tags"];
 
-  for (const key of ["logo", "paymentMethod", "trialEndDate", "website", "notes"] as const) {
+  for (const key of ["logo", "paymentMethod", "trialEndDate", "website", "notes", "snoozedUntil", "lastUsedAt"] as const) {
     const value = optionalNonEmptyString(row[key]);
     if (value !== undefined) normalized[key] = value;
   }
@@ -82,6 +83,8 @@ function fromApiSubscription(row: ApiSubscription | unknown): Subscription {
     notes: parsedRow.notes,
     tags: parsedRow.tags ?? [],
     reminderOffsets: parsedRow.reminderOffsets,
+    snoozedUntil: parsedRow.snoozedUntil ? assertDateOnly(parsedRow.snoozedUntil) : undefined,
+    lastUsedAt: parsedRow.lastUsedAt ? assertDateOnly(parsedRow.lastUsedAt) : undefined,
   };
   if (parsedRow.billingCycle === "custom") {
     return {
@@ -216,6 +219,41 @@ export function useBatchUpdateSubscriptions() {
             },
           ),
         ),
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
+    },
+  });
+}
+
+const snoozeResponseSchema = z.object({ snoozedUntil: z.string().nullable() });
+const trackUsageResponseSchema = z.object({ lastUsedAt: z.string() });
+
+export function useSnoozeSubscription() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, days }: { id: string; days: number }) => {
+      return apiFetch(
+        `/api/subscriptions/${encodeURIComponent(id)}/snooze`,
+        snoozeResponseSchema,
+        { method: "POST", body: JSON.stringify({ days }) },
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
+    },
+  });
+}
+
+export function useTrackUsage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      return apiFetch(
+        `/api/subscriptions/${encodeURIComponent(id)}/track-usage`,
+        trackUsageResponseSchema,
+        { method: "POST" },
       );
     },
     onSuccess: () => {

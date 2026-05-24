@@ -93,6 +93,8 @@ function rowToSubscription(row: typeof subscriptionsTable.$inferSelect): Subscri
     tags: row.tags,
     extra: row.extra,
     reminderOffsets: row.reminderOffsets,
+    snoozedUntil: row.snoozedUntil ?? null,
+    lastUsedAt: row.lastUsedAt ?? null,
   };
 }
 
@@ -184,11 +186,41 @@ export async function runNotificationCron(
       updatedAt: opts.now.toISOString(),
     };
 
+    // Split renewal vs trial hits so the message can distinguish them.
+    // Trial-ending reminders are higher urgency than renewal: a trial user
+    // hasn't paid yet, and if they don't cancel they'll be charged unexpectedly.
+    const renewalHits = hits.filter((h) => h.kind === "renewal");
+    const trialHits = hits.filter((h) => h.kind === "trial");
+
+    const titleParts: string[] = [];
+    if (trialHits.length > 0) {
+      titleParts.push(`${trialHits.length} trial ending`);
+    }
+    if (renewalHits.length > 0) {
+      titleParts.push(`${renewalHits.length} renewal${renewalHits.length === 1 ? "" : "s"}`);
+    }
+    const bodyParts: string[] = [];
+    if (trialHits.length > 0) {
+      bodyParts.push(
+        "⚠️ Trial ending soon (will start charging if not cancelled):",
+        ...trialHits.map(
+          (h) => `  • ${h.subscriptionName} — ${h.daysUntil === 0 ? "today" : `in ${h.daysUntil} day${h.daysUntil === 1 ? "" : "s"}`}`,
+        ),
+      );
+    }
+    if (renewalHits.length > 0) {
+      if (bodyParts.length > 0) bodyParts.push("");
+      bodyParts.push(
+        "Upcoming renewals:",
+        ...renewalHits.map(
+          (h) => `  • ${h.subscriptionName} — ${h.daysUntil === 0 ? "today" : `in ${h.daysUntil} day${h.daysUntil === 1 ? "" : "s"}`}`,
+        ),
+      );
+    }
+
     const channelMessage: ChannelMessage = {
-      title: `Qreminder · ${hits.length} reminder${hits.length === 1 ? "" : "s"}`,
-      body: hits
-        .map((h) => `${h.subscriptionName}: ${h.daysUntil} days (${h.kind})`)
-        .join("\n"),
+      title: `Qreminder · ${titleParts.join(", ") || `${hits.length} reminders`}`,
+      body: bodyParts.length > 0 ? bodyParts.join("\n") : "No reminders",
     };
 
     const channelSettings = (settings as unknown as Record<string, unknown>);

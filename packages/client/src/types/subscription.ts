@@ -123,6 +123,10 @@ interface SubscriptionBase {
   tags: string[];
   /** 提前多少天提醒的档位（整数数组，>=0，每项独立触发）。 */
   reminderOffsets: number[];
+  /** 暂停通知至（含）该日期；用于"稍后提醒"。null/未设置 = 未暂停。 */
+  snoozedUntil?: DateOnly | undefined;
+  /** 用户最后一次"打卡使用"的日期；用于识别闲置订阅。 */
+  lastUsedAt?: DateOnly | undefined;
 }
 
 export interface CustomCycleSubscription extends SubscriptionBase {
