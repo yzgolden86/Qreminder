@@ -72,6 +72,7 @@ paymentsRouter.post("/", async (c) => {
     id,
     user: userId,
     subscriptionId: parsed.data.subscriptionId,
+    subscriptionName: sub.name,
     paidAt: parsed.data.paidAt,
     amount: parsed.data.amount,
     currency: parsed.data.currency,
@@ -169,6 +170,7 @@ paymentsRouter.post("/renew/:subscriptionId", async (c) => {
     id: paymentId,
     user: userId,
     subscriptionId: subId,
+    subscriptionName: sub.name,
     paidAt,
     amount,
     currency,
@@ -235,13 +237,15 @@ paymentsRouter.get("/stats", async (c) => {
     }
   }
 
-  const subIds = [...new Set(allPayments.map((p) => p.subscriptionId))];
+  const subIds = [...new Set(allPayments.map((p) => p.subscriptionId).filter((id): id is string => id !== null))];
   if (subIds.length > 0) {
     const subs = await db.select().from(subscriptions).where(eq(subscriptions.user, userId));
     const subMap = new Map(subs.map((s) => [s.id, s]));
     for (const p of allPayments) {
       if (!p.paidAt.slice(0, 10).startsWith(currentYear)) continue;
-      const sub = subMap.get(p.subscriptionId);
+      // Orphaned payments (subscriptionId = null after subscription deletion)
+      // fall into the "other" bucket so they still contribute to the year total.
+      const sub = p.subscriptionId ? subMap.get(p.subscriptionId) : undefined;
       const cat = sub?.category ?? "other";
       byCategory.set(cat, (byCategory.get(cat) ?? 0) + p.amount);
     }
@@ -341,11 +345,17 @@ paymentsRouter.post("/sync-from-subscriptions", async (c) => {
 
   // Pre-fetch all of this user's payments once and bucket by subscriptionId so
   // the dedup check is O(1) per candidate instead of N round-trips to D1.
+  // Orphaned payments (subscriptionId = null) can never collide with a sync
+  // insert (which always has a real subscriptionId), so we skip them in the key.
   const existingPayments = await db
     .select()
     .from(subscriptionPayments)
     .where(eq(subscriptionPayments.user, userId));
-  const existingByKey = new Set(existingPayments.map((p) => `${p.subscriptionId}|${p.paidAt.slice(0, 10)}`));
+  const existingByKey = new Set(
+    existingPayments
+      .filter((p): p is typeof p & { subscriptionId: string } => p.subscriptionId !== null)
+      .map((p) => `${p.subscriptionId}|${p.paidAt.slice(0, 10)}`),
+  );
 
   const now = new Date().toISOString();
   let inserted = 0;
@@ -371,6 +381,7 @@ paymentsRouter.post("/sync-from-subscriptions", async (c) => {
             id,
             user: userId,
             subscriptionId: sub.id,
+            subscriptionName: sub.name,
             paidAt: cursor,
             amount: sub.price,
             currency: sub.currency,

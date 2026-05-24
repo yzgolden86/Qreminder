@@ -213,6 +213,7 @@ export const zhCN = {
   "payments.monthCount": "本月笔数",
   "payments.thisMonthPayments": "笔本月支付",
   "payments.mixedCurrencyHint": "含多个币种，详见下方",
+  "payments.convertedHint": "已按汇率折算到默认币种",
   "payments.realActual": "基于真实付款记录",
   "payments.recordCount": "笔",
   "payments.syncFromSubs": "从订阅同步",
@@ -228,6 +229,7 @@ export const zhCN = {
   "payments.syncing": "同步中...",
   "payments.syncResult": (params: Record<string, string | number>) =>
     `已新增 ${params["inserted"]} 条，跳过重复 ${params["skipped"]} 条`,
+  "payments.subscriptionDeleted": "订阅已删除",
   "payments.stats.monthlySpent": "本月实际支出",
   "payments.stats.yearlySpent": "本年实际支出",
   "payments.stats.totalRecords": "支付记录总数",
@@ -246,6 +248,8 @@ export const zhCN = {
   "realSpending.thisMonthPayments": "笔本月支付",
   "realSpending.mixedCurrencyWarning": "含多个币种",
   "realSpending.byCurrencyBreakdown": "本月分币种明细",
+  "realSpending.convertedFrom": (params: Record<string, string | number>) =>
+    `已折算 ${params["count"]} 种币种`,
   "realSpending.viewAll": "查看全部",
   "realSpending.noPaymentsHint": "还没有支付记录。",
   "realSpending.recordPayment": "记录第一笔支付",
@@ -599,6 +603,7 @@ export const enUS = {
   "payments.monthCount": "This month count",
   "payments.thisMonthPayments": "payments this month",
   "payments.mixedCurrencyHint": "Multiple currencies — see breakdown below",
+  "payments.convertedHint": "Converted to default currency",
   "payments.realActual": "Based on real payments",
   "payments.recordCount": "records",
   "payments.syncFromSubs": "Sync from subscriptions",
@@ -614,6 +619,7 @@ export const enUS = {
   "payments.syncing": "Syncing...",
   "payments.syncResult": (params: Record<string, string | number>) =>
     `Added ${params["inserted"]}, skipped ${params["skipped"]} duplicates`,
+  "payments.subscriptionDeleted": "subscription deleted",
   "payments.stats.monthlySpent": "This month actual",
   "payments.stats.yearlySpent": "This year actual",
   "payments.stats.totalRecords": "Total records",
@@ -632,6 +638,8 @@ export const enUS = {
   "realSpending.thisMonthPayments": "payments this month",
   "realSpending.mixedCurrencyWarning": "Multiple currencies",
   "realSpending.byCurrencyBreakdown": "Monthly by currency",
+  "realSpending.convertedFrom": (params: Record<string, string | number>) =>
+    `Converted from ${params["count"]} currencies`,
   "realSpending.viewAll": "View all",
   "realSpending.noPaymentsHint": "No payment records yet.",
   "realSpending.recordPayment": "Log your first payment",

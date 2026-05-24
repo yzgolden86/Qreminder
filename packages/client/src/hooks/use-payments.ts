@@ -5,7 +5,10 @@ import { apiFetch } from "@/lib/api-client";
 const paymentSchema = z.object({
   id: z.string(),
   user: z.string(),
-  subscriptionId: z.string().or(z.literal("")).transform((v) => v || ""),
+  // subscriptionId is nullable now: deleting a subscription detaches its
+  // historical payments instead of cascading the row out of the ledger.
+  subscriptionId: z.string().nullable().or(z.literal("")).transform((v) => v || null),
+  subscriptionName: z.string().nullable().optional().transform((v) => v ?? ""),
   paidAt: z.string(),
   amount: z.number(),
   currency: z.string(),

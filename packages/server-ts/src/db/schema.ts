@@ -164,7 +164,13 @@ export const subscriptionPayments = sqliteTable(
   {
     id: text("id").primaryKey(),
     user: text("user").notNull().references(() => users.id),
-    subscriptionId: text("subscription_id").notNull().references(() => subscriptions.id, { onDelete: "cascade" }),
+    // subscriptionId is nullable + set null on delete: deleting a subscription
+    // must not erase the financial ledger. Past payments are a historical fact;
+    // they get orphaned (subscriptionId = null) but keep their amount/date.
+    subscriptionId: text("subscription_id").references(() => subscriptions.id, { onDelete: "set null" }),
+    // Cache the subscription's name at payment time so orphaned rows are still
+    // human-readable in the payments list after the original subscription is deleted.
+    subscriptionName: text("subscription_name").default(""),
     paidAt: text("paid_at").notNull(),
     amount: real("amount").notNull(),
     currency: text("currency").notNull().default("CNY"),

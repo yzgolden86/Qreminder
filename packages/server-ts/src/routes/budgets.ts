@@ -134,6 +134,9 @@ budgetsRouter.get("/usage", async (c) => {
         if (!inPeriod) return false;
 
         if (budget.scopeType === "global") return true;
+        // Orphaned payments (subscriptionId = null) can't match
+        // category/tag/payment_method scopes — they only land in global.
+        if (!p.subscriptionId) return false;
         const sub = subMap.get(p.subscriptionId);
         if (!sub) return false;
 

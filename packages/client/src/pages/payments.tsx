@@ -40,11 +40,13 @@ import {
 } from "@/hooks/use-payments";
 import { useSubscriptions } from "@/hooks/use-subscriptions";
 import { useSettings } from "@/hooks/use-settings";
+import { useExchangeRates } from "@/hooks/use-exchange-rates";
 import { useI18n } from "@/i18n/I18nProvider";
 
 export default function PaymentsPage() {
   const { t, formatCurrency } = useI18n();
   const { data: settings } = useSettings();
+  const { convert } = useExchangeRates();
   const defaultCurrency = settings?.defaultCurrency ?? "CNY";
 
   const [filterSubId, setFilterSubId] = useState<string>("all");
@@ -64,6 +66,23 @@ export default function PaymentsPage() {
 
   const statsQuery = usePaymentStats();
   const stats = statsQuery.data;
+
+  // Convert per-currency totals to user's default currency. The raw
+  // monthlySpent/yearlySpent fields from /stats sum across currencies
+  // without conversion and are only correct for single-currency users.
+  const { actualMonth, actualYear } = useMemo(() => {
+    const monthly = stats?.monthlyByCurrency ?? {};
+    const yearly = stats?.yearlyByCurrency ?? {};
+    const sumConverted = (buckets: Record<string, number>) =>
+      Object.entries(buckets).reduce(
+        (sum, [cur, amount]) => sum + convert(amount, cur, defaultCurrency),
+        0,
+      );
+    return {
+      actualMonth: sumConverted(monthly),
+      actualYear: sumConverted(yearly),
+    };
+  }, [stats?.monthlyByCurrency, stats?.yearlyByCurrency, convert, defaultCurrency]);
 
   const createPayment = useCreatePayment();
   const deletePayment = useDeletePayment();
@@ -93,10 +112,10 @@ export default function PaymentsPage() {
       <div className="mb-6 grid gap-3 sm:gap-5 sm:grid-cols-4">
         <StatCard
           title={t("payments.monthSpent")}
-          value={formatCurrency(stats?.monthlySpent ?? 0, defaultCurrency)}
+          value={formatCurrency(actualMonth, defaultCurrency)}
           subtitle={
             stats && Object.keys(stats.monthlyByCurrency).length > 1
-              ? t("payments.mixedCurrencyHint")
+              ? t("payments.convertedHint")
               : t("payments.realActual")
           }
           icon={<CreditCard className="h-6 w-6" />}
@@ -110,7 +129,7 @@ export default function PaymentsPage() {
         />
         <StatCard
           title={t("payments.yearSpent")}
-          value={formatCurrency(stats?.yearlySpent ?? 0, defaultCurrency)}
+          value={formatCurrency(actualYear, defaultCurrency)}
           subtitle={t("payments.realActual")}
           icon={<TrendingUp className="h-6 w-6" />}
         />
@@ -183,11 +202,24 @@ export default function PaymentsPage() {
               </thead>
               <tbody className="divide-y divide-border">
                 {payments.map((payment) => {
-                  const sub = subMap.get(payment.subscriptionId);
+                  const sub = payment.subscriptionId ? subMap.get(payment.subscriptionId) : undefined;
+                  // Render priority: live subscription name → cached name on the
+                  // payment row (set at insert time so orphaned rows stay readable
+                  // after their subscription is deleted) → em-dash placeholder.
+                  const displayName = sub?.name || payment.subscriptionName || "";
                   return (
                     <tr key={payment.id} className="hover:bg-secondary/30">
                       <td className="px-4 py-3 font-medium text-foreground">
-                        {sub?.name ?? <span className="text-muted-foreground">—</span>}
+                        {displayName ? (
+                          <span className={sub ? "" : "text-muted-foreground italic"}>
+                            {displayName}
+                            {!sub && displayName && (
+                              <span className="ml-1 text-[10px] text-muted-foreground">({t("payments.subscriptionDeleted")})</span>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-right font-semibold text-foreground">
                         {formatCurrency(payment.amount, payment.currency)}

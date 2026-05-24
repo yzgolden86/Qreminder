@@ -50,6 +50,13 @@
       "when": 1779556005898,
       "tag": "0006_faulty_young_avengers",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1779620144532,
+      "tag": "0007_preserve_payments_on_subscription_delete",
+      "breakpoints": true
     }
   ]
 }

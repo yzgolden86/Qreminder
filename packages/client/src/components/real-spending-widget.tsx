@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CreditCard, TrendingUp, ArrowRight, AlertTriangle } from "lucide-react";
+import { CreditCard, TrendingUp, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/i18n/I18nProvider";
 import { usePaymentStats } from "@/hooks/use-payments";
 import { useSettings } from "@/hooks/use-settings";
+import { useExchangeRates } from "@/hooks/use-exchange-rates";
 import { cn } from "@/lib/utils";
 
 interface RealSpendingWidgetProps {
@@ -16,12 +17,29 @@ export function RealSpendingWidget({ estimatedMonthly }: RealSpendingWidgetProps
   const { data: settings } = useSettings();
   const defaultCurrency = settings?.defaultCurrency ?? "CNY";
   const { data: stats, isLoading } = usePaymentStats();
+  const { convert } = useExchangeRates();
   const [view, setView] = useState<"actual" | "estimated">("actual");
+
+  // Convert per-currency buckets to the user's default currency before summing.
+  // The server-side monthlySpent field naïvely adds raw amounts across currencies;
+  // we ignore it and recompute here so the displayed number is meaningful for
+  // mixed-currency portfolios.
+  const { actualMonth, actualYear } = useMemo(() => {
+    const monthly = stats?.monthlyByCurrency ?? {};
+    const yearly = stats?.yearlyByCurrency ?? {};
+    const sumConverted = (buckets: Record<string, number>) =>
+      Object.entries(buckets).reduce(
+        (sum, [cur, amount]) => sum + convert(amount, cur, defaultCurrency),
+        0,
+      );
+    return {
+      actualMonth: sumConverted(monthly),
+      actualYear: sumConverted(yearly),
+    };
+  }, [stats?.monthlyByCurrency, stats?.yearlyByCurrency, convert, defaultCurrency]);
 
   if (isLoading) return null;
 
-  const actualMonth = stats?.monthlySpent ?? 0;
-  const actualYear = stats?.yearlySpent ?? 0;
   const monthlyCount = stats?.monthlyCount ?? 0;
   const monthlyByCurrency = stats?.monthlyByCurrency ?? {};
   const currencies = Object.keys(monthlyByCurrency);
@@ -77,12 +95,11 @@ export function RealSpendingWidget({ estimatedMonthly }: RealSpendingWidgetProps
             {formatCurrency(monthlyValue, defaultCurrency)}
           </div>
           {view === "actual" && hasMixedCurrency && (
-            <div className="mt-1 flex items-start gap-1 text-[10px] text-warning">
-              <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" aria-hidden />
-              <span>{t("realSpending.mixedCurrencyWarning")}</span>
+            <div className="mt-1 text-[10px] text-muted-foreground">
+              {t("realSpending.convertedFrom", { count: currencies.length })}
             </div>
           )}
-          {view === "actual" && !hasMixedCurrency && estimatedMonthly > 0 && (
+          {view === "actual" && estimatedMonthly > 0 && (
             <div className={cn(
               "mt-1 text-[10px] font-medium",
               variance > 0 ? "text-destructive" : "text-success",
@@ -121,8 +138,8 @@ export function RealSpendingWidget({ estimatedMonthly }: RealSpendingWidgetProps
       </div>
 
       {view === "actual" && hasMixedCurrency && (
-        <div className="mt-3 rounded-md border border-warning/30 bg-warning/5 p-2.5">
-          <p className="mb-1.5 text-[11px] font-medium text-warning">
+        <div className="mt-3 rounded-md border border-border/60 bg-secondary/20 p-2.5">
+          <p className="mb-1.5 text-[11px] font-medium text-muted-foreground">
             {t("realSpending.byCurrencyBreakdown")}
           </p>
           <div className="flex flex-wrap gap-2">
@@ -130,6 +147,11 @@ export function RealSpendingWidget({ estimatedMonthly }: RealSpendingWidgetProps
               <span
                 key={cur}
                 className="rounded-md bg-card px-2 py-0.5 text-[11px] text-foreground"
+                title={
+                  cur !== defaultCurrency
+                    ? `≈ ${formatCurrency(convert(monthlyByCurrency[cur] ?? 0, cur, defaultCurrency), defaultCurrency)}`
+                    : undefined
+                }
               >
                 {formatCurrency(monthlyByCurrency[cur] ?? 0, cur)}
               </span>

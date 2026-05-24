@@ -46,6 +46,9 @@ export async function checkBudgetAlerts(
       if (!inPeriod) return false;
 
       if (budget.scopeType === "global") return true;
+      // Orphaned payments (subscriptionId = null after subscription deletion)
+      // can't match category/tag/payment_method scopes — they only land in global.
+      if (!p.subscriptionId) return false;
       const sub = subMap.get(p.subscriptionId);
       if (!sub) return false;
 
