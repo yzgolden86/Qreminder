@@ -1,5 +1,5 @@
 import { drizzle } from "drizzle-orm/d1";
-import { createApp, runNotificationCron } from "@qreminder/server";
+import { createApp, runNotificationCron, runAuditRetention, runAutoBackup } from "@qreminder/server";
 import * as schema from "@qreminder/server";
 import type {
   AppDeps,
@@ -9,6 +9,7 @@ import type {
   Database as QreminderDb,
 } from "@qreminder/server";
 import { createR2Storage } from "./r2-storage.js";
+import { createR2BackupStore } from "./r2-backup-store.js";
 import { createResendAdapter } from "./resend-adapter.js";
 
 export interface WorkerEnv {
@@ -20,6 +21,8 @@ export interface WorkerEnv {
   BETTER_AUTH_SECRET: string;
   APP_URL: string;
   TRUSTED_ORIGINS?: string;
+  AUDIT_RETENTION_DAYS?: string;
+  BACKUP_RETENTION_DAYS?: string;
 }
 
 const scheduler: SchedulerAdapter = { kind: "cf-cron-trigger" };
@@ -90,7 +93,7 @@ export default {
     }
     return assetResponse;
   },
-  async scheduled(_event: ScheduledEvent, env: WorkerEnv, ctx: ExecutionContext) {
+  async scheduled(event: ScheduledEvent, env: WorkerEnv, ctx: ExecutionContext) {
     const { db, mailer } = buildEnv(env);
     ctx.waitUntil(
       runNotificationCron({ db, mailer })
@@ -103,5 +106,34 @@ export default {
         })
         .catch((err) => console.error("[notification-cron] run failed:", err)),
     );
+
+    // Daily housekeeping at 03:00 UTC — cron fires every minute, so gate by clock.
+    const fireAt = new Date(event.scheduledTime);
+    if (fireAt.getUTCHours() === 3 && fireAt.getUTCMinutes() === 0) {
+      const retentionDays = Number(env.AUDIT_RETENTION_DAYS ?? "180");
+      ctx.waitUntil(
+        runAuditRetention(db, { retentionDays })
+          .then((result) => {
+            if (result.deletedCount > 0) {
+              console.log(
+                `[audit-retention] deleted=${result.deletedCount} cutoff=${result.cutoffDate}`,
+              );
+            }
+          })
+          .catch((err) => console.error("[audit-retention] run failed:", err)),
+      );
+
+      const backupRetention = Number(env.BACKUP_RETENTION_DAYS ?? "30");
+      const backupStore = createR2BackupStore(env.QREMINDER_ASSETS);
+      ctx.waitUntil(
+        runAutoBackup(db, backupStore, { retentionDays: backupRetention })
+          .then((result) => {
+            console.log(
+              `[auto-backup] key=${result.key} bytes=${result.sizeBytes} rotated=${result.deletedOldBackups}`,
+            );
+          })
+          .catch((err) => console.error("[auto-backup] run failed:", err)),
+      );
+    }
   },
 };

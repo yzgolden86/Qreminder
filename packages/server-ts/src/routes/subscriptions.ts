@@ -1,7 +1,7 @@
 import { Hono } from "hono";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { z } from "zod";
-import { subscriptions } from "../db/schema.js";
+import { subscriptions, subscriptionPriceHistory } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
 import { subscriptionDraftSchema } from "@qreminder/shared";
 import type { AppEnv } from "../app.js";
@@ -142,16 +142,54 @@ subscriptionsRouter.patch("/:id", async (c) => {
     updates.reminderDays = parsed.data.reminderOffsets[0] ?? 3;
   }
   const [existing] = await db
-    .select({ id: subscriptions.id })
+    .select()
     .from(subscriptions)
     .where(and(eq(subscriptions.id, id), eq(subscriptions.user, userId)));
   if (!existing) return c.json({ error: "not_found" }, 404);
+
+  // Log price/currency change before applying the update. Only insert when
+  // something actually changed — avoids noisy history rows for renames.
+  const newPrice = parsed.data.price ?? existing.price;
+  const newCurrency = parsed.data.currency ?? existing.currency;
+  if (newPrice !== existing.price || newCurrency !== existing.currency) {
+    await db.insert(subscriptionPriceHistory).values({
+      id: crypto.randomUUID(),
+      user: userId,
+      subscriptionId: id,
+      oldPrice: existing.price,
+      newPrice,
+      oldCurrency: existing.currency,
+      newCurrency,
+      changedAt: new Date().toISOString(),
+    });
+  }
+
   await db.update(subscriptions).set(updates).where(eq(subscriptions.id, id));
   const [updated] = await db
     .select()
     .from(subscriptions)
     .where(eq(subscriptions.id, id));
   return c.json({ subscription: toDto(updated!) });
+});
+
+subscriptionsRouter.get("/:id/price-history", async (c) => {
+  const db = c.get("deps").db;
+  const userId = c.get("user").id;
+  const id = c.req.param("id");
+
+  const [existing] = await db
+    .select({ id: subscriptions.id })
+    .from(subscriptions)
+    .where(and(eq(subscriptions.id, id), eq(subscriptions.user, userId)));
+  if (!existing) return c.json({ error: "not_found" }, 404);
+
+  const history = await db
+    .select()
+    .from(subscriptionPriceHistory)
+    .where(eq(subscriptionPriceHistory.subscriptionId, id))
+    .orderBy(desc(subscriptionPriceHistory.changedAt));
+
+  return c.json({ history });
 });
 
 subscriptionsRouter.delete("/:id", async (c) => {

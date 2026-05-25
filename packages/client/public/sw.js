@@ -2,12 +2,14 @@
  * 策略：
  * - HTML 导航请求：network-first，失败回退到 /offline.html
  * - 同源静态资源（JS/CSS/字体/图片）：stale-while-revalidate
- * - /api/*、Better Auth /_/* 路径：直接走网络，不缓存（含登录态/订阅数据）
+ * - GET /api/* 读取：network-first，失败时返回最近缓存（带 sw-from-cache 标记）
+ * - 鉴权 (/_/* 及 /api/auth/*) 与非 GET 请求：直接走网络，不缓存
  * - 跨源请求：直接走网络
  */
-const CACHE_VERSION = "qreminder-v1";
+const CACHE_VERSION = "qreminder-v2";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
+const API_CACHE = `${CACHE_VERSION}-api`;
 
 const PRECACHE_URLS = [
   "/offline.html",
@@ -38,8 +40,16 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-function isApiOrAuth(url) {
-  return url.pathname.startsWith("/api/") || url.pathname.startsWith("/_/");
+function isAuthEndpoint(url) {
+  return (
+    url.pathname.startsWith("/_/") ||
+    url.pathname.startsWith("/api/auth/") ||
+    url.pathname.startsWith("/api/admin/")
+  );
+}
+
+function isApiPath(url) {
+  return url.pathname.startsWith("/api/");
 }
 
 function isStaticAsset(url) {
@@ -50,13 +60,20 @@ function isStaticAsset(url) {
 
 self.addEventListener("fetch", (event) => {
   const { request } = event;
-  if (request.method !== "GET") return;
-
   const url = new URL(request.url);
 
   if (url.origin !== self.location.origin) return;
 
-  if (isApiOrAuth(url)) return;
+  // Non-GET (mutations): never cache; let auth + write paths reach origin.
+  if (request.method !== "GET") return;
+
+  // Auth + admin endpoints: pass-through to avoid stale session/permission data.
+  if (isAuthEndpoint(url)) return;
+
+  if (isApiPath(url)) {
+    event.respondWith(apiNetworkFirst(request));
+    return;
+  }
 
   if (request.mode === "navigate") {
     event.respondWith(handleNavigation(request));
@@ -70,8 +87,7 @@ self.addEventListener("fetch", (event) => {
 
 async function handleNavigation(request) {
   try {
-    const response = await fetch(request);
-    return response;
+    return await fetch(request);
   } catch {
     const cache = await caches.open(STATIC_CACHE);
     const cached = await cache.match("/offline.html");
@@ -93,6 +109,36 @@ async function staleWhileRevalidate(request) {
     })
     .catch(() => null);
   return cached ?? (await networkPromise) ?? Response.error();
+}
+
+// Network-first for API GETs: prefer fresh data, fall back to cached snapshot
+// when offline. The "sw-from-cache" header lets the client surface a stale
+// banner without changing JSON shapes.
+async function apiNetworkFirst(request) {
+  const cache = await caches.open(API_CACHE);
+  try {
+    const response = await fetch(request);
+    if (response && response.status === 200) {
+      cache.put(request, response.clone()).catch(() => {});
+    }
+    return response;
+  } catch {
+    const cached = await cache.match(request);
+    if (cached) {
+      const headers = new Headers(cached.headers);
+      headers.set("sw-from-cache", "1");
+      return new Response(cached.body, {
+        status: cached.status,
+        statusText: cached.statusText,
+        headers,
+      });
+    }
+    return new Response(JSON.stringify({ error: "offline" }), {
+      status: 503,
+      statusText: "Offline",
+      headers: { "content-type": "application/json", "sw-offline": "1" },
+    });
+  }
 }
 
 self.addEventListener("message", (event) => {

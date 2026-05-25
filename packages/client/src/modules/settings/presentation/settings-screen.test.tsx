@@ -4,6 +4,7 @@ import { MemoryRouter, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { VaultProvider } from "@/lib/vault-context";
 import { DEFAULT_CUSTOM_CONFIG } from "@/types/config";
 import {
   DEFAULT_SETTINGS,
@@ -143,10 +144,12 @@ function renderSettingsScreen(initialEntries = ["/settings"]) {
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={initialEntries}>
-        <TooltipProvider delayDuration={0}>
-          <SettingsScreen />
-        </TooltipProvider>
-        <RouteProbe />
+        <VaultProvider>
+          <TooltipProvider delayDuration={0}>
+            <SettingsScreen />
+          </TooltipProvider>
+          <RouteProbe />
+        </VaultProvider>
       </MemoryRouter>
     </QueryClientProvider>,
   );

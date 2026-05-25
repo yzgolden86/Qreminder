@@ -8,3 +8,11 @@ export type {
   NotificationCronResult,
   NotificationCronUserResult,
 } from "./cron/notification-cron.js";
+export { runAuditRetention } from "./cron/audit-retention.js";
+export type { AuditRetentionOptions, AuditRetentionResult } from "./cron/audit-retention.js";
+export { runAutoBackup } from "./cron/auto-backup.js";
+export type {
+  AutoBackupOptions,
+  AutoBackupResult,
+  BackupStore,
+} from "./cron/auto-backup.js";

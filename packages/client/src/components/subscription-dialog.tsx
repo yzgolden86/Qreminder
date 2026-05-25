@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { SubscriptionFormFields, type SubscriptionFormErrors } from "@/components/subscription-form-fields";
+import { PriceHistoryPanel } from "@/components/price-history-panel";
 import type { UploadStatus as LogoUploadStatus } from "@/components/logo-picker";
 import { calculateNextBillingDate } from "@/lib/subscription-billing";
 import {
@@ -318,6 +319,14 @@ export function SubscriptionDialog(props: SubscriptionDialogProps) {
               errors={formErrors}
               onClearFieldError={clearFieldError}
             />
+            {props.mode === "edit" && props.subscription?.id && (
+              <div className="grid gap-2 border-t border-border pt-4">
+                <h3 className="text-[12px] font-semibold text-muted-foreground">
+                  {t("priceHistory.title")}
+                </h3>
+                <PriceHistoryPanel subscriptionId={props.subscription.id} />
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-3 border-t border-border bg-card p-6 pt-4 sm:flex-row sm:justify-end">

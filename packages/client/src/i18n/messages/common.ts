@@ -97,6 +97,7 @@ export const zhCN = {
   "pwa.installAction": "立即安装",
   "pwa.installLater": "稍后再说",
   "pwa.installSuccess": "已添加到桌面",
+  "pwa.offlineBanner": "当前处于离线状态，显示的是上次同步的数据",
 } satisfies MessageMap;
 
 export const enUS = {
@@ -190,4 +191,5 @@ export const enUS = {
   "pwa.installAction": "Install now",
   "pwa.installLater": "Maybe later",
   "pwa.installSuccess": "Added to home screen",
+  "pwa.offlineBanner": "You're offline - showing the last synced data",
 } satisfies Record<keyof typeof zhCN, MessageValue>;

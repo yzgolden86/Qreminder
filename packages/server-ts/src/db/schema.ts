@@ -295,3 +295,26 @@ export const auditLogs = sqliteTable(
     createdAtIdx: index("idx_audit_logs_created").on(table.createdAt),
   }),
 );
+
+// Records every price/currency change of a subscription so the user can see
+// historical pricing. Written by the subscription PATCH handler when price or
+// currency actually changes. ON DELETE CASCADE: history dies with the sub.
+export const subscriptionPriceHistory = sqliteTable(
+  "subscription_price_history",
+  {
+    id: text("id").primaryKey(),
+    user: text("user").notNull().references(() => users.id),
+    subscriptionId: text("subscription_id")
+      .notNull()
+      .references(() => subscriptions.id, { onDelete: "cascade" }),
+    oldPrice: real("old_price").notNull(),
+    newPrice: real("new_price").notNull(),
+    oldCurrency: text("old_currency").notNull(),
+    newCurrency: text("new_currency").notNull(),
+    changedAt: text("changed_at").notNull(),
+  },
+  (table) => ({
+    subIdx: index("idx_price_history_sub").on(table.subscriptionId),
+    userIdx: index("idx_price_history_user").on(table.user),
+  }),
+);

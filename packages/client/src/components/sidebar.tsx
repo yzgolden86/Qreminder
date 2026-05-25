@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link, { NavLink } from "@/components/router-link";
 import { useRouter } from "@/lib/router";
 import {
@@ -404,6 +404,24 @@ function useResponsiveCollapse() {
 export function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useResponsiveCollapse();
+  const drawerRef = useRef<HTMLDivElement | null>(null);
+
+  // Lock body scroll + listen for Escape while the mobile drawer is open.
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileOpen(false);
+    };
+    window.addEventListener("keydown", handleKey);
+    // Focus drawer so screen readers/keyboard users land inside.
+    drawerRef.current?.focus();
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", handleKey);
+    };
+  }, [mobileOpen]);
 
   return (
     <>
@@ -428,30 +446,49 @@ export function Sidebar() {
           size="icon"
           onClick={() => setMobileOpen(true)}
           className="h-9 w-9"
+          aria-label="Open menu"
+          aria-expanded={mobileOpen}
         >
           <Menu className="h-5 w-5" />
         </Button>
       </div>
 
-      {mobileOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <div
-            className="absolute inset-0 bg-black/50"
+      <div
+        className={cn(
+          "fixed inset-0 z-50 md:hidden",
+          mobileOpen ? "pointer-events-auto" : "pointer-events-none",
+        )}
+        aria-hidden={!mobileOpen}
+      >
+        <div
+          className={cn(
+            "absolute inset-0 bg-black/50 transition-opacity duration-200",
+            mobileOpen ? "opacity-100" : "opacity-0",
+          )}
+          onClick={() => setMobileOpen(false)}
+        />
+        <div
+          ref={drawerRef}
+          tabIndex={-1}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation"
+          className={cn(
+            "absolute left-0 top-0 h-full w-[240px] bg-card shadow-xl outline-none transition-transform duration-200 ease-out",
+            mobileOpen ? "translate-x-0" : "-translate-x-full",
+          )}
+        >
+          <button
+            type="button"
             onClick={() => setMobileOpen(false)}
-          />
-          <div className="absolute left-0 top-0 h-full w-[240px] bg-card shadow-xl">
-            <button
-              type="button"
-              onClick={() => setMobileOpen(false)}
-              className="absolute right-3 top-3 z-10 rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
-              aria-label="Close menu"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            <SidebarContent collapsed={false} onNavigate={() => setMobileOpen(false)} />
-          </div>
+            className="absolute right-3 top-3 z-10 rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
+            aria-label="Close menu"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <SidebarContent collapsed={false} onNavigate={() => setMobileOpen(false)} />
         </div>
-      )}
+      </div>
     </>
   );
 }
