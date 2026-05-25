@@ -269,7 +269,11 @@ notificationsRouter.post("/test", async (c) => {
 
     return c.json({ ok: true });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return c.json({ error: "send_failed", message }, 500);
+    const raw = err instanceof Error ? err.message : "Unknown error";
+    const isNetwork = raw.includes("timeout") || raw.includes("ETIMEDOUT") || raw.includes("fetch failed") || raw.includes("ECONNREFUSED");
+    const message = isNetwork
+      ? `Network unreachable (${channel}): ${raw}. Check if the target service is accessible from your server.`
+      : `${channel} send failed: ${raw}`;
+    return c.json({ error: "send_failed", channel, message }, 500);
   }
 });

@@ -107,21 +107,30 @@ backupRouter.post("/zip/restore", async (c) => {
   }
 
   const now = new Date().toISOString();
-  let imported = { subscriptions: 0, payments: 0, budgets: 0, templates: 0 };
+  const imported = { subscriptions: 0, payments: 0, budgets: 0, templates: 0 };
+  const subIdMap = new Map<string, string>();
 
   // Import subscriptions
   if (files["subscriptions.json"]) {
     try {
       const subs = JSON.parse(strFromU8(files["subscriptions.json"])) as Array<Record<string, unknown>>;
-      const existingNames = new Set(
-        (await db.select({ name: subscriptions.name }).from(subscriptions).where(eq(subscriptions.user, userId)))
-          .map((s) => s.name.toLowerCase()),
+      const existingByName = new Map(
+        (await db.select({ id: subscriptions.id, name: subscriptions.name }).from(subscriptions).where(eq(subscriptions.user, userId)))
+          .map((s) => [s.name.toLowerCase(), s.id] as const),
       );
 
       for (const sub of subs) {
-        if (existingNames.has(String(sub["name"] ?? "").toLowerCase())) continue;
+        const oldId = String(sub["id"] ?? "");
+        const subName = String(sub["name"] ?? "").toLowerCase();
+        const existingId = existingByName.get(subName);
+        if (existingId) {
+          if (oldId) subIdMap.set(oldId, existingId);
+          continue;
+        }
+        const newId = crypto.randomUUID();
+        if (oldId) subIdMap.set(oldId, newId);
         await db.insert(subscriptions).values({
-          id: crypto.randomUUID(),
+          id: newId,
           user: userId,
           name: String(sub["name"] ?? ""),
           logo: String(sub["logo"] ?? ""),
@@ -140,7 +149,7 @@ backupRouter.post("/zip/restore", async (c) => {
           notes: String(sub["notes"] ?? ""),
           tags: Array.isArray(sub["tags"]) ? sub["tags"] as string[] : [],
           extra: {},
-          reminderDays: 3,
+          reminderDays: Number(sub["reminderDays"] ?? 3),
           reminderOffsets: Array.isArray(sub["reminderOffsets"]) ? sub["reminderOffsets"] as number[] : [3],
           createdAt: now,
           updatedAt: now,
@@ -150,15 +159,18 @@ backupRouter.post("/zip/restore", async (c) => {
     } catch { /* skip malformed */ }
   }
 
-  // Import payments
+  // Import payments (map old subscriptionId → new)
   if (files["payments.json"]) {
     try {
       const payments = JSON.parse(strFromU8(files["payments.json"])) as Array<Record<string, unknown>>;
       for (const p of payments) {
+        const rawSubId = String(p["subscriptionId"] ?? p["subscription_id"] ?? "");
+        const mappedSubId = subIdMap.get(rawSubId) ?? null;
         await db.insert(subscriptionPayments).values({
           id: crypto.randomUUID(),
           user: userId,
-          subscriptionId: String(p["subscriptionId"] ?? p["subscription_id"] ?? ""),
+          subscriptionId: mappedSubId,
+          subscriptionName: String(p["subscriptionName"] ?? p["subscription_name"] ?? ""),
           paidAt: String(p["paidAt"] ?? p["paid_at"] ?? now.slice(0, 10)),
           amount: Number(p["amount"] ?? 0),
           currency: String(p["currency"] ?? "CNY"),
@@ -195,6 +207,31 @@ backupRouter.post("/zip/restore", async (c) => {
     } catch { /* skip malformed */ }
   }
 
+  // Import templates
+  if (files["templates.json"]) {
+    try {
+      const tpls = JSON.parse(strFromU8(files["templates.json"])) as Array<Record<string, unknown>>;
+      for (const tpl of tpls) {
+        const scope = normalizeTemplateScope(tpl["scope"]);
+        const rawScopeId = String(tpl["scopeId"] ?? tpl["scope_id"] ?? "");
+        const scopeId = scope === "subscription"
+          ? (subIdMap.get(rawScopeId) ?? rawScopeId)
+          : rawScopeId;
+        await db.insert(notificationTemplates).values({
+          id: crypto.randomUUID(),
+          user: userId,
+          scope,
+          scopeId,
+          titleTemplate: String(tpl["titleTemplate"] ?? tpl["title_template"] ?? ""),
+          bodyTemplate: String(tpl["bodyTemplate"] ?? tpl["body_template"] ?? ""),
+          createdAt: now,
+          updatedAt: now,
+        });
+        imported.templates++;
+      }
+    } catch { /* skip malformed */ }
+  }
+
   return c.json({ ok: true, imported });
 });
 
@@ -214,6 +251,13 @@ function normalizeStatus(value: unknown): "trial" | "active" | "paused" | "cance
 
 function normalizeScopeType(value: unknown): "global" | "category" | "tag" | "payment_method" {
   const valid = ["global", "category", "tag", "payment_method"] as const;
+  const s = String(value ?? "global");
+  if ((valid as readonly string[]).includes(s)) return s as typeof valid[number];
+  return "global";
+}
+
+function normalizeTemplateScope(value: unknown): "global" | "channel" | "subscription" {
+  const valid = ["global", "channel", "subscription"] as const;
   const s = String(value ?? "global");
   if ((valid as readonly string[]).includes(s)) return s as typeof valid[number];
   return "global";

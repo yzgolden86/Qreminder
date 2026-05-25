@@ -11,13 +11,15 @@ import { useAnnualReport } from "@/hooks/use-annual-report";
 import { useSettings } from "@/hooks/use-settings";
 import { useExchangeRates } from "@/hooks/use-exchange-rates";
 import { useI18n } from "@/i18n/I18nProvider";
+import { useCustomConfig } from "@/contexts/CustomConfigContext";
 import { cn } from "@/lib/utils";
 
 export default function AnnualReportPage() {
-  const { t, formatCurrency } = useI18n();
+  const { t, formatCurrency, label } = useI18n();
   const { data: settings } = useSettings();
   const defaultCurrency = settings?.defaultCurrency ?? "CNY";
   const { convert } = useExchangeRates();
+  const { config } = useCustomConfig();
 
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
@@ -199,10 +201,12 @@ export default function AnnualReportPage() {
                 .sort(([, a], [, b]) => b - a)
                 .map(([cat, amount]) => {
                   const ratio = report.totalSpent > 0 ? amount / report.totalSpent : 0;
+                  const catConfig = config.categories.find((c) => c.value === cat);
+                  const catLabel = catConfig ? label(catConfig.labels) : cat;
                   return (
                     <div key={cat}>
                       <div className="mb-1 flex items-center justify-between text-[12px]">
-                        <span className="text-foreground">{cat}</span>
+                        <span className="text-foreground">{catLabel}</span>
                         <span className="text-muted-foreground">
                           {formatCurrency(amount, defaultCurrency)}
                           <span className="ml-1 text-[10px]">({(ratio * 100).toFixed(0)}%)</span>

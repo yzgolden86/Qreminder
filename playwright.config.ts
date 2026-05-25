@@ -41,7 +41,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: `node --experimental-strip-types runtimes/node/src/index.ts`,
+      command: `pnpm --filter @qreminder/runtime-node exec tsx src/index.ts`,
       env: {
         ...proxyEnv,
         PORT: String(e2eServerPort),

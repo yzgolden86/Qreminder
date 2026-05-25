@@ -31,20 +31,20 @@ export function MonthlyCompletionWidget() {
     const currentMonth = `${yyyy}-${mm}`;
     const today = `${yyyy}-${mm}-${dd}`;
 
-    // Due this month: any active/trial subscription whose nextBillingDate lies
-    // inside the current month. Cancelled/paused subscriptions are excluded.
-    const dueSubs = subs.filter(
-      (s) =>
-        (s.status === "active" || s.status === "trial") &&
-        s.nextBillingDate.startsWith(currentMonth),
+    const activeSubs = subs.filter(
+      (s) => s.status === "active" || s.status === "trial",
     );
 
-    // Paid this month, indexed by subscriptionId. Multiple payments for the
-    // same subscription only count as one "paid event".
     const paidSubIds = new Set(
       payments
         .filter((p) => p.paidAt.slice(0, 10).startsWith(currentMonth) && p.subscriptionId)
         .map((p) => p.subscriptionId!),
+    );
+
+    // Due this month: nextBillingDate is in current month, OR already paid this month
+    // (payment pushes nextBillingDate forward, so we include paid subs to avoid paid=0)
+    const dueSubs = activeSubs.filter(
+      (s) => s.nextBillingDate.startsWith(currentMonth) || paidSubIds.has(s.id),
     );
 
     const paid = dueSubs.filter((s) => paidSubIds.has(s.id)).length;

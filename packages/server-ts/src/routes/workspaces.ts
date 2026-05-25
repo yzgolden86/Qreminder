@@ -160,6 +160,7 @@ workspacesRouter.post("/:id/members", requireWorkspaceRole("admin"), async (c) =
 // PATCH /workspaces/:id/members/:memberId — update member role (admin or owner)
 workspacesRouter.patch("/:id/members/:memberId", requireWorkspaceRole("admin"), async (c) => {
   const db = c.get("deps").db;
+  const wsId = c.req.param("id");
   const memberId = c.req.param("memberId");
 
   const body = await c.req.json().catch(() => null);
@@ -168,11 +169,10 @@ workspacesRouter.patch("/:id/members/:memberId", requireWorkspaceRole("admin"), 
     return c.json({ error: "validation_error" }, 400);
   }
 
-  // Prevent demoting/changing the owner via this endpoint; owner role moves only through transfer (future feature).
   const [target] = await db
     .select()
     .from(workspaceMembers)
-    .where(eq(workspaceMembers.id, memberId));
+    .where(and(eq(workspaceMembers.id, memberId), eq(workspaceMembers.workspaceId, wsId)));
   if (!target) return c.json({ error: "not_found" }, 404);
   if (target.role === "owner") {
     return c.json({ error: "cannot_modify_owner" }, 409);
@@ -181,7 +181,7 @@ workspacesRouter.patch("/:id/members/:memberId", requireWorkspaceRole("admin"), 
   await db
     .update(workspaceMembers)
     .set({ role: parsed.data.role })
-    .where(eq(workspaceMembers.id, memberId));
+    .where(and(eq(workspaceMembers.id, memberId), eq(workspaceMembers.workspaceId, wsId)));
 
   return c.json({ ok: true });
 });

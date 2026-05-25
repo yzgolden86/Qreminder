@@ -37,7 +37,8 @@ import { NOTIFICATION_CHANNELS, type NotificationChannel } from "@/types/subscri
 import { useCustomConfig } from "@/contexts/CustomConfigContext";
 
 export function CategoryTagChannelsSection() {
-  const { t } = useI18n();
+  const { t, label: localizeLabel } = useI18n();
+  const { config } = useCustomConfig();
   const categoryQuery = useCategoryDefaultChannels();
   const tagQuery = useTagDefaultChannels();
   const categories = categoryQuery.data ?? {};
@@ -116,15 +117,19 @@ export function CategoryTagChannelsSection() {
             <p className="text-[11px] text-muted-foreground">{t("categoryTagChannels.emptyCategory")}</p>
           ) : (
             <div className="grid gap-1.5">
-              {Object.entries(categories).map(([cat, channels]) => (
-                <MappingRow
-                  key={cat}
-                  label={cat}
-                  channels={channels}
-                  onEdit={() => setEditing({ mode: "category", key: cat, channels })}
-                  onDelete={() => handleDelete("category", cat)}
-                />
-              ))}
+              {Object.entries(categories).map(([cat, channels]) => {
+                const catConfig = config.categories.find((c) => c.value === cat);
+                const catLabel = catConfig ? localizeLabel(catConfig.labels) : cat;
+                return (
+                  <MappingRow
+                    key={cat}
+                    label={catLabel}
+                    channels={channels}
+                    onEdit={() => setEditing({ mode: "category", key: cat, channels })}
+                    onDelete={() => handleDelete("category", cat)}
+                  />
+                );
+              })}
             </div>
           )}
         </div>
