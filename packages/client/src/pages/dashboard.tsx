@@ -10,11 +10,13 @@ import { BudgetUsageWidget } from "@/components/budget-usage-widget";
 import { RealSpendingWidget } from "@/components/real-spending-widget";
 import { MonthlyCompletionWidget } from "@/components/monthly-completion-widget";
 import { InactiveSubscriptionsPanel } from "@/components/inactive-subscriptions-panel";
+import { InsightsPanel } from "@/components/insights-panel";
 import { AddSubscriptionDialog } from "@/components/add-subscription-dialog";
 import { EditSubscriptionDialog } from "@/components/edit-subscription-dialog";
 import { AiExtractDialog } from "@/components/ai-extract-dialog";
 import { AiSummaryWidget } from "@/components/ai-summary-widget";
 import { SubscriptionChannelsDialog } from "@/components/subscription-channels-dialog";
+import { BulkChannelsDialog } from "@/components/bulk-channels-dialog";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -109,6 +111,7 @@ export default function Home() {
   const [batchMode, setBatchMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
+  const [bulkChannelsDialogOpen, setBulkChannelsDialogOpen] = useState(false);
   const [channelsDialogSubId, setChannelsDialogSubId] = useState<string | null>(null);
   const batchDelete = useBatchDeleteSubscriptions();
   const batchUpdate = useBatchUpdateSubscriptions();
@@ -335,6 +338,8 @@ export default function Home() {
         <MonthlyCompletionWidget />
 
         <InactiveSubscriptionsPanel />
+
+        <InsightsPanel />
 
         <RealSpendingWidget estimatedMonthly={totalMonthly} />
 
@@ -672,10 +677,25 @@ export default function Home() {
                 <Trash2 className="h-3.5 w-3.5" />
                 {t("subscriptions.batchDelete")}
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => setBulkChannelsDialogOpen(true)}
+              >
+                {t("subscriptions.batchChannels")}
+              </Button>
             </div>
           </div>
         </div>
       )}
+
+      <BulkChannelsDialog
+        open={bulkChannelsDialogOpen}
+        onOpenChange={setBulkChannelsDialogOpen}
+        subscriptionIds={[...selectedIds]}
+        onSuccess={exitBatchMode}
+      />
 
       <AlertDialog open={batchDeleteDialogOpen} onOpenChange={setBatchDeleteDialogOpen}>
         <AlertDialogContent>

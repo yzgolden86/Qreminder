@@ -1,6 +1,8 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactElement } from "react";
 import { IMAGE_UPLOAD_ACCEPT } from "@/lib/upload-constraints";
 import { LogoPicker } from "./logo-picker";
 
@@ -53,6 +55,17 @@ function expectApiFetchCallWithSignal(urlPart: string) {
   expect(call?.[2]?.signal).toBeInstanceOf(AbortSignal);
 }
 
+/**
+ * LogoPicker now embeds <LogoFromUrlButton>, which uses React Query's useMutation.
+ * Provide a fresh client per test so retries/cache don't leak between cases.
+ */
+function renderWithClient(ui: ReactElement) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+}
+
 describe("LogoPicker", () => {
   beforeEach(() => {
     mocks.apiFetch.mockReset();
@@ -80,7 +93,7 @@ describe("LogoPicker", () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
 
-    render(<LogoPicker value={undefined} onChange={onChange} serviceName="Netflix" />);
+    renderWithClient(<LogoPicker value={undefined} onChange={onChange} serviceName="Netflix" />);
 
     await user.click(screen.getByRole("button", { name: "搜索 Logo" }));
 
@@ -97,7 +110,7 @@ describe("LogoPicker", () => {
   });
 
   it("allows SVG files in the custom Logo file picker", () => {
-    const { container } = render(<LogoPicker value={undefined} onChange={vi.fn()} />);
+    const { container } = renderWithClient(<LogoPicker value={undefined} onChange={vi.fn()} />);
     const input = container.querySelector<HTMLInputElement>('input[type="file"]');
 
     expect(input).toHaveAttribute("accept", IMAGE_UPLOAD_ACCEPT);
@@ -113,7 +126,7 @@ describe("LogoPicker", () => {
       return Promise.resolve({ imageUrls: [], kind: "logo" });
     });
 
-    render(<LogoPicker value={undefined} onChange={vi.fn()} serviceName="DMIT" />);
+    renderWithClient(<LogoPicker value={undefined} onChange={vi.fn()} serviceName="DMIT" />);
 
     await user.click(screen.getByRole("button", { name: "搜索 Logo" }));
 
@@ -132,7 +145,7 @@ describe("LogoPicker", () => {
       return Promise.resolve({ imageUrls: [], kind: "logo" });
     });
 
-    render(<LogoPicker value={undefined} onChange={vi.fn()} serviceName="DMIT" />);
+    renderWithClient(<LogoPicker value={undefined} onChange={vi.fn()} serviceName="DMIT" />);
 
     await user.click(screen.getByRole("button", { name: "搜索 Logo" }));
 
@@ -144,7 +157,7 @@ describe("LogoPicker", () => {
   it("keeps the search box empty after clearing the auto-filled service name", async () => {
     const user = userEvent.setup();
 
-    render(<LogoPicker value={undefined} onChange={vi.fn()} serviceName="youtube" />);
+    renderWithClient(<LogoPicker value={undefined} onChange={vi.fn()} serviceName="youtube" />);
 
     await user.click(screen.getByRole("button", { name: "搜索 Logo" }));
     const searchInput = screen.getByPlaceholderText("输入服务名称或品牌...");

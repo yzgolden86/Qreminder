@@ -3,6 +3,9 @@
  *
  * 被 notification-cron 调用，根据用户 enabledChannels 逐一发送。
  * 每个渠道独立 try/catch，单渠道失败不阻断其他渠道。
+ *
+ * Fallback 语义：当一组渠道全部失败时，调用方可以再调一次本函数尝试 fallback
+ * 渠道；本函数本身保持单层语义，由 notification-cron 编排两段调用。
  */
 import type { MailerAdapter } from "../adapters/mailer.js";
 
@@ -15,6 +18,8 @@ export interface ChannelSendResult {
   channel: string;
   success: boolean;
   error?: string;
+  /** True if this attempt was a fallback after primary channels failed. */
+  fallback?: boolean;
 }
 
 export interface DispatchResult {
@@ -32,18 +37,24 @@ export async function dispatchToChannels(
   settings: Record<string, unknown>,
   userEmail: string,
   message: ChannelMessage,
+  options: { markAsFallback?: boolean } = {},
 ): Promise<DispatchResult> {
   const results: ChannelSendResult[] = [];
 
   for (const channel of channels) {
     try {
       await sendToChannel(deps, channel, settings, userEmail, message);
-      results.push({ channel, success: true });
+      results.push({
+        channel,
+        success: true,
+        ...(options.markAsFallback ? { fallback: true } : {}),
+      });
     } catch (err) {
       results.push({
         channel,
         success: false,
         error: err instanceof Error ? err.message : String(err),
+        ...(options.markAsFallback ? { fallback: true } : {}),
       });
     }
   }

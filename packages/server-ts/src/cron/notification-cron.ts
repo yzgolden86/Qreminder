@@ -10,11 +10,17 @@ import {
   notificationJobs,
   settings as settingsTable,
   subscriptions as subscriptionsTable,
+  notificationTemplates,
   users,
 } from "../db/schema.js";
 import type { Database } from "../db/types.js";
 import type { MailerAdapter } from "../adapters/mailer.js";
-import { dispatchToChannels, type ChannelMessage } from "./channel-dispatcher.js";
+import { dispatchToChannels, type ChannelMessage, type ChannelSendResult } from "./channel-dispatcher.js";
+import {
+  resolveChannelsForSubscription,
+  renderTemplate,
+  buildTemplateVariables,
+} from "./channel-resolver.js";
 
 export interface NotificationCronOptions {
   now?: Date;
@@ -186,54 +192,88 @@ export async function runNotificationCron(
       updatedAt: opts.now.toISOString(),
     };
 
-    // Split renewal vs trial hits so the message can distinguish them.
-    // Trial-ending reminders are higher urgency than renewal: a trial user
-    // hasn't paid yet, and if they don't cancel they'll be charged unexpectedly.
-    const renewalHits = hits.filter((h) => h.kind === "renewal");
-    const trialHits = hits.filter((h) => h.kind === "trial");
+    // Resolve channels per hit and group hits by their resolved channel set.
+    // This is what turns subscriptionNotificationChannels / tag defaults /
+    // category defaults from "stored but ignored" into real routing.
+    const subById = new Map(userSubs.map((s) => [s.id, s]));
+    const channelSettings = settings as unknown as Record<string, unknown>;
+    type GroupedHit = { hit: NotificationHit; sub: Subscription | undefined };
+    const groups = new Map<string, { channels: string[]; hits: GroupedHit[] }>();
 
-    const titleParts: string[] = [];
-    if (trialHits.length > 0) {
-      titleParts.push(`${trialHits.length} trial ending`);
-    }
-    if (renewalHits.length > 0) {
-      titleParts.push(`${renewalHits.length} renewal${renewalHits.length === 1 ? "" : "s"}`);
-    }
-    const bodyParts: string[] = [];
-    if (trialHits.length > 0) {
-      bodyParts.push(
-        "⚠️ Trial ending soon (will start charging if not cancelled):",
-        ...trialHits.map(
-          (h) => `  • ${h.subscriptionName} — ${h.daysUntil === 0 ? "today" : `in ${h.daysUntil} day${h.daysUntil === 1 ? "" : "s"}`}`,
-        ),
+    for (const hit of hits) {
+      const sub = subById.get(hit.subscriptionId);
+      const resolution = await resolveChannelsForSubscription(
+        deps.db,
+        userRow.id,
+        hit.subscriptionId,
+        sub?.category ?? "",
+        sub?.tags ?? [],
+        settings.enabledChannels,
+        channelSettings,
       );
+      if (resolution.channels.length === 0) continue;
+      const key = [...resolution.channels].sort().join("|");
+      const entry = groups.get(key) ?? { channels: resolution.channels, hits: [] };
+      entry.hits.push({ hit, sub });
+      groups.set(key, entry);
     }
-    if (renewalHits.length > 0) {
-      if (bodyParts.length > 0) bodyParts.push("");
-      bodyParts.push(
-        "Upcoming renewals:",
-        ...renewalHits.map(
-          (h) => `  • ${h.subscriptionName} — ${h.daysUntil === 0 ? "today" : `in ${h.daysUntil} day${h.daysUntil === 1 ? "" : "s"}`}`,
-        ),
+
+    if (groups.size === 0) {
+      // Every hit resolved to zero channels (defensive — shouldn't happen because
+      // we already skipped when enabledChannels is empty).
+      results.push({ userId: userRow.id, action: "skipped", reason: "no_resolved_channels" });
+      continue;
+    }
+
+    // Load templates once per user — we pick the best match per hit below.
+    const userTemplates = await deps.db
+      .select()
+      .from(notificationTemplates)
+      .where(eq(notificationTemplates.user, userRow.id));
+
+    const allDispatchResults: ChannelSendResult[] = [];
+    let anySuccessAcross = false;
+
+    // Read fallback channels from user settings (deduped against primary set).
+    const rawFallback = (channelSettings["fallbackChannels"] ?? []) as unknown;
+    const fallbackChannels: string[] = Array.isArray(rawFallback)
+      ? (rawFallback as unknown[]).filter((c): c is string => typeof c === "string")
+      : [];
+
+    for (const group of groups.values()) {
+      const channelMessage = buildChannelMessage(group.hits, group.channels, userTemplates, userRow.name);
+      const dispatch = await dispatchToChannels(
+        { mailer: deps.mailer },
+        group.channels,
+        channelSettings,
+        userRow.email,
+        channelMessage,
       );
+      allDispatchResults.push(...dispatch.results);
+      if (dispatch.anySuccess) {
+        anySuccessAcross = true;
+        continue;
+      }
+
+      // Primary group failed entirely — try fallback channels not already in the
+      // failing set so we don't just retry the same channel.
+      const remainingFallback = fallbackChannels.filter((c) => !group.channels.includes(c));
+      if (remainingFallback.length === 0) continue;
+
+      const fallbackDispatch = await dispatchToChannels(
+        { mailer: deps.mailer },
+        remainingFallback,
+        channelSettings,
+        userRow.email,
+        channelMessage,
+        { markAsFallback: true },
+      );
+      allDispatchResults.push(...fallbackDispatch.results);
+      if (fallbackDispatch.anySuccess) anySuccessAcross = true;
     }
 
-    const channelMessage: ChannelMessage = {
-      title: `Qreminder · ${titleParts.join(", ") || `${hits.length} reminders`}`,
-      body: bodyParts.length > 0 ? bodyParts.join("\n") : "No reminders",
-    };
-
-    const channelSettings = (settings as unknown as Record<string, unknown>);
-    const dispatch = await dispatchToChannels(
-      { mailer: deps.mailer },
-      settings.enabledChannels,
-      channelSettings,
-      userRow.email,
-      channelMessage,
-    );
-
-    if (!dispatch.anySuccess && dispatch.results.length > 0) {
-      const errors = dispatch.results
+    if (!anySuccessAcross && allDispatchResults.length > 0) {
+      const errors = allDispatchResults
         .filter((r) => !r.success)
         .map((r) => `${r.channel}: ${r.error}`)
         .join("; ");
@@ -241,7 +281,7 @@ export async function runNotificationCron(
         ...jobPayload,
         status: "failed",
         lastError: errors,
-        result: { hits, channelResults: dispatch.results },
+        result: { hits, channelResults: allDispatchResults },
       });
       results.push({ userId: userRow.id, action: "failed", reason: "all_channels_failed", hits });
       continue;
@@ -251,12 +291,110 @@ export async function runNotificationCron(
       ...jobPayload,
       status: "sent",
       lastError: "",
-      result: { hits, channelResults: dispatch.results },
+      result: { hits, channelResults: allDispatchResults },
     });
     results.push({ userId: userRow.id, action: "sent", hits });
   }
 
   return summarize(results);
+}
+
+type TemplateRow = typeof notificationTemplates.$inferSelect;
+
+/**
+ * Pick the best matching template for a given hit/channel pair.
+ *
+ * Priority: subscription scope > channel scope > global scope.
+ * Within the same scope, any matching row wins (UI prevents duplicates).
+ */
+export function pickTemplate(
+  templates: TemplateRow[],
+  subscriptionId: string,
+  channel: string,
+): TemplateRow | undefined {
+  const subScoped = templates.find(
+    (t) => t.scope === "subscription" && t.scopeId === subscriptionId,
+  );
+  if (subScoped) return subScoped;
+  const channelScoped = templates.find((t) => t.scope === "channel" && t.scopeId === channel);
+  if (channelScoped) return channelScoped;
+  return templates.find((t) => t.scope === "global");
+}
+
+/**
+ * Build the channel message for a group of hits. Uses notificationTemplates
+ * when available; otherwise emits the legacy English aggregated format.
+ */
+export function buildChannelMessage(
+  groupedHits: Array<{ hit: NotificationHit; sub: Subscription | undefined }>,
+  channels: string[],
+  templates: TemplateRow[],
+  userName: string,
+): ChannelMessage {
+  // If every hit can find a template, render per-hit lines using it; otherwise
+  // fall back to the legacy English aggregate to avoid losing readability.
+  const primaryChannel = channels[0] ?? "";
+  const renderedLines: string[] = [];
+  const titleAccumulator: string[] = [];
+  let usedTemplate = false;
+
+  for (const { hit, sub } of groupedHits) {
+    const template = pickTemplate(templates, hit.subscriptionId, primaryChannel);
+    if (!template || !sub) continue;
+    const variables = buildTemplateVariables(
+      {
+        name: sub.name,
+        price: sub.price,
+        currency: sub.currency,
+        nextBillingDate: sub.nextBillingDate,
+        category: sub.category,
+        paymentMethod: sub.paymentMethod ?? "",
+      },
+      hit.daysUntil,
+      userName,
+    );
+    titleAccumulator.push(renderTemplate(template.titleTemplate, variables));
+    renderedLines.push(renderTemplate(template.bodyTemplate, variables));
+    usedTemplate = true;
+  }
+
+  if (usedTemplate && renderedLines.length > 0) {
+    return {
+      title: titleAccumulator.length === 1
+        ? titleAccumulator[0]!
+        : `Qreminder · ${groupedHits.length} reminders`,
+      body: renderedLines.join("\n\n"),
+    };
+  }
+
+  // Legacy aggregated format — kept identical to pre-v3.3 behavior.
+  const renewalHits = groupedHits.filter(({ hit }) => hit.kind === "renewal").map(({ hit }) => hit);
+  const trialHits = groupedHits.filter(({ hit }) => hit.kind === "trial").map(({ hit }) => hit);
+  const titleParts: string[] = [];
+  if (trialHits.length > 0) titleParts.push(`${trialHits.length} trial ending`);
+  if (renewalHits.length > 0) titleParts.push(`${renewalHits.length} renewal${renewalHits.length === 1 ? "" : "s"}`);
+  const bodyParts: string[] = [];
+  if (trialHits.length > 0) {
+    bodyParts.push(
+      "⚠️ Trial ending soon (will start charging if not cancelled):",
+      ...trialHits.map(
+        (h) => `  • ${h.subscriptionName} — ${h.daysUntil === 0 ? "today" : `in ${h.daysUntil} day${h.daysUntil === 1 ? "" : "s"}`}`,
+      ),
+    );
+  }
+  if (renewalHits.length > 0) {
+    if (bodyParts.length > 0) bodyParts.push("");
+    bodyParts.push(
+      "Upcoming renewals:",
+      ...renewalHits.map(
+        (h) => `  • ${h.subscriptionName} — ${h.daysUntil === 0 ? "today" : `in ${h.daysUntil} day${h.daysUntil === 1 ? "" : "s"}`}`,
+      ),
+    );
+  }
+  return {
+    title: `Qreminder · ${titleParts.join(", ") || `${groupedHits.length} reminders`}`,
+    body: bodyParts.length > 0 ? bodyParts.join("\n") : "No reminders",
+  };
 }
 
 async function findJob(

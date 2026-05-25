@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Sparkles, Loader2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { Sparkles, Loader2, Upload, ImageIcon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -13,8 +13,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/sonner";
-import { useAiExtract } from "@/hooks/use-ai";
+import { useAiExtract, useAiExtractImage } from "@/hooks/use-ai";
 import { useSettings } from "@/hooks/use-settings";
 import { useI18n } from "@/i18n/I18nProvider";
 import { DEFAULT_REMINDER_OFFSETS, type SubscriptionDraft } from "@/types/subscription";
@@ -46,13 +47,24 @@ const CYCLE_MAP: Record<string, "weekly" | "monthly" | "quarterly" | "semi-annua
   yearly: "annual",
 };
 
+// Server enforces ~6MB on the base64 payload (which expands ~33%); cap raw file at 4MB.
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+const IMAGE_ACCEPT = "image/png,image/jpeg,image/webp,image/gif";
+
+type InputMode = "text" | "image";
+
 export function AiExtractDialog({ onAdd, trigger }: AiExtractDialogProps) {
   const { t } = useI18n();
   const { data: settings } = useSettings();
   const extract = useAiExtract();
+  const extractImage = useAiExtractImage();
   const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<InputMode>("text");
   const [text, setText] = useState("");
+  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
+  const [imageName, setImageName] = useState<string | null>(null);
   const [result, setResult] = useState<ExtractedResult | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   // Editable copies of extracted fields so user can adjust before saving.
   const [editedName, setEditedName] = useState("");
   const [editedAmount, setEditedAmount] = useState("");
@@ -61,14 +73,32 @@ export function AiExtractDialog({ onAdd, trigger }: AiExtractDialogProps) {
   const [editedCycle, setEditedCycle] = useState("monthly");
 
   const aiEnabled = settings?.aiEnabled && settings?.aiApiKey;
+  const isPending = extract.isPending || extractImage.isPending;
 
   const reset = () => {
     setText("");
+    setImageDataUrl(null);
+    setImageName(null);
+    setMode("text");
     setResult(null);
     setEditedName("");
     setEditedAmount("");
     setEditedDate("");
     setEditedCycle("monthly");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const applyExtracted = (extracted: ExtractedResult) => {
+    setResult(extracted);
+    setEditedName(extracted.name ?? "");
+    setEditedAmount(typeof extracted.amount === "number" ? String(extracted.amount) : "");
+    setEditedCurrency((extracted.currency ?? "CNY").toUpperCase());
+    setEditedDate(extracted.nextRenewalDate ?? new Date().toISOString().slice(0, 10));
+    const normalizedCycle = extracted.billingCycle
+      ? CYCLE_MAP[extracted.billingCycle.toLowerCase()] ?? "monthly"
+      : "monthly";
+    setEditedCycle(normalizedCycle);
+    toast.success(t("ai.extractSuccess"));
   };
 
   const handleExtract = async () => {
@@ -81,19 +111,59 @@ export function AiExtractDialog({ onAdd, trigger }: AiExtractDialogProps) {
         toast.error(extracted.reason || t("ai.extractFailed"));
         return;
       }
-      setResult(extracted);
-      setEditedName(extracted.name ?? "");
-      setEditedAmount(typeof extracted.amount === "number" ? String(extracted.amount) : "");
-      setEditedCurrency((extracted.currency ?? "CNY").toUpperCase());
-      setEditedDate(extracted.nextRenewalDate ?? new Date().toISOString().slice(0, 10));
-      const normalizedCycle = extracted.billingCycle
-        ? CYCLE_MAP[extracted.billingCycle.toLowerCase()] ?? "monthly"
-        : "monthly";
-      setEditedCycle(normalizedCycle);
-      toast.success(t("ai.extractSuccess"));
+      applyExtracted(extracted);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("ai.extractFailed"));
     }
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error(t("ai.imageInvalidType"));
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      toast.error(t("ai.imageTooLarge"));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : null;
+      if (!result) {
+        toast.error(t("ai.imageReadFailed"));
+        return;
+      }
+      setImageDataUrl(result);
+      setImageName(file.name);
+      setResult(null);
+    };
+    reader.onerror = () => toast.error(t("ai.imageReadFailed"));
+    reader.readAsDataURL(file);
+  };
+
+  const handleExtractImage = async () => {
+    if (!imageDataUrl) return;
+    setResult(null);
+    try {
+      const data = await extractImage.mutateAsync(imageDataUrl);
+      const extracted = data.result as ExtractedResult;
+      if (extracted.error) {
+        toast.error(extracted.reason || t("ai.extractFailed"));
+        return;
+      }
+      applyExtracted(extracted);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("ai.extractFailed"));
+    }
+  };
+
+  const clearImage = () => {
+    setImageDataUrl(null);
+    setImageName(null);
+    setResult(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleConfirm = () => {
@@ -104,6 +174,9 @@ export function AiExtractDialog({ onAdd, trigger }: AiExtractDialogProps) {
       return;
     }
     const now = new Date().toISOString().slice(0, 10);
+    const sourceNote = mode === "text"
+      ? text.slice(0, 200)
+      : imageName ? `[image] ${imageName}` : "[image]";
     const draft = {
       name: editedName.trim(),
       logo: "",
@@ -119,7 +192,7 @@ export function AiExtractDialog({ onAdd, trigger }: AiExtractDialogProps) {
       autoCalculateNextBillingDate: true,
       trialEndDate: null,
       website: "",
-      notes: text.slice(0, 200),
+      notes: sourceNote,
       tags: [] as string[],
       reminderOffsets: [...DEFAULT_REMINDER_OFFSETS],
       extra: {},
@@ -157,36 +230,106 @@ export function AiExtractDialog({ onAdd, trigger }: AiExtractDialogProps) {
         )}
 
         <div className="grid gap-4 py-2">
-          <div className="grid gap-2">
-            <Label htmlFor="ai-extract-text">{t("ai.inputLabel")}</Label>
-            <Textarea
-              id="ai-extract-text"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder={t("ai.extractPlaceholder")}
-              className="min-h-[100px] border-border bg-secondary"
-              disabled={!aiEnabled || extract.isPending}
-            />
-          </div>
+          <Tabs value={mode} onValueChange={(v) => setMode(v as InputMode)}>
+            <TabsList className="grid grid-cols-2 w-full">
+              <TabsTrigger value="text">{t("ai.modeText")}</TabsTrigger>
+              <TabsTrigger value="image">{t("ai.modeImage")}</TabsTrigger>
+            </TabsList>
 
-          <Button
-            type="button"
-            onClick={handleExtract}
-            disabled={!aiEnabled || !text.trim() || extract.isPending}
-            className="gap-2 bg-primary text-primary-foreground hover:bg-primary-glow"
-          >
-            {extract.isPending ? (
-              <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                {t("ai.extracting")}
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-3.5 w-3.5" />
-                {t("ai.extractAction")}
-              </>
-            )}
-          </Button>
+            <TabsContent value="text" className="grid gap-3">
+              <div className="grid gap-2">
+                <Label htmlFor="ai-extract-text">{t("ai.inputLabel")}</Label>
+                <Textarea
+                  id="ai-extract-text"
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  placeholder={t("ai.extractPlaceholder")}
+                  className="min-h-[100px] border-border bg-secondary"
+                  disabled={!aiEnabled || isPending}
+                />
+              </div>
+              <Button
+                type="button"
+                onClick={handleExtract}
+                disabled={!aiEnabled || !text.trim() || isPending}
+                className="gap-2 bg-primary text-primary-foreground hover:bg-primary-glow"
+              >
+                {extract.isPending ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    {t("ai.extracting")}
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-3.5 w-3.5" />
+                    {t("ai.extractAction")}
+                  </>
+                )}
+              </Button>
+            </TabsContent>
+
+            <TabsContent value="image" className="grid gap-3">
+              <div className="grid gap-2">
+                <Label>{t("ai.imageInputLabel")}</Label>
+                <p className="text-[11px] text-muted-foreground">{t("ai.imageHelp")}</p>
+                {imageDataUrl ? (
+                  <div className="relative rounded-md border border-border bg-secondary/40 p-2">
+                    <img
+                      src={imageDataUrl}
+                      alt={imageName ?? "preview"}
+                      className="mx-auto max-h-[200px] rounded object-contain"
+                    />
+                    <button
+                      type="button"
+                      onClick={clearImage}
+                      className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground"
+                      aria-label={t("common.cancel")}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                    {imageName && (
+                      <p className="mt-2 truncate text-[11px] text-muted-foreground">{imageName}</p>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={!aiEnabled || isPending}
+                    className="flex flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-border bg-secondary/40 px-4 py-8 text-muted-foreground transition-colors hover:border-primary hover:bg-primary/5 disabled:opacity-50 disabled:hover:border-border disabled:hover:bg-secondary/40"
+                  >
+                    <ImageIcon className="h-8 w-8" />
+                    <span className="text-[12px]">{t("ai.imageDropHint")}</span>
+                  </button>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={IMAGE_ACCEPT}
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+              </div>
+              <Button
+                type="button"
+                onClick={handleExtractImage}
+                disabled={!aiEnabled || !imageDataUrl || isPending}
+                className="gap-2 bg-primary text-primary-foreground hover:bg-primary-glow"
+              >
+                {extractImage.isPending ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    {t("ai.extracting")}
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-3.5 w-3.5" />
+                    {t("ai.extractImageAction")}
+                  </>
+                )}
+              </Button>
+            </TabsContent>
+          </Tabs>
 
           {result && !result.error && (
             <div className="rounded-md border border-border bg-secondary/40 p-3">

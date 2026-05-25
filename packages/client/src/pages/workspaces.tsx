@@ -36,6 +36,8 @@ import {
   useWorkspaceMembers,
   useInviteMember,
   useRemoveMember,
+  useUpdateMemberRole,
+  workspaceRoleAtLeast,
   type Workspace,
 } from "@/hooks/use-workspaces";
 import { useI18n } from "@/i18n/I18nProvider";
@@ -229,13 +231,14 @@ function WorkspaceDetailPanel({ workspace, onDelete }: WorkspaceDetailPanelProps
   const members = membersQuery.data ?? [];
   const inviteMember = useInviteMember();
   const removeMember = useRemoveMember();
+  const updateRole = useUpdateMemberRole();
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<typeof ROLE_OPTIONS[number]>("editor");
   const [removeId, setRemoveId] = useState<string | null>(null);
 
-  const canManage = workspace.role === "owner" || workspace.role === "admin";
+  const canManage = workspaceRoleAtLeast(workspace.role, "admin");
 
   const handleInvite = async () => {
     if (!inviteEmail.trim()) return;
@@ -315,8 +318,31 @@ function WorkspaceDetailPanel({ workspace, onDelete }: WorkspaceDetailPanelProps
                   <p className="truncate text-[10px] text-muted-foreground">{member.email}</p>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <RoleIcon className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-[10px] text-muted-foreground">{member.role}</span>
+                  {canManage && member.role !== "owner" ? (
+                    <Select
+                      value={member.role}
+                      onValueChange={(role) =>
+                        updateRole
+                          .mutateAsync({ workspaceId: workspace.id, memberId: member.id, role })
+                          .then(() => toast.success(t("workspace.roleUpdated")))
+                          .catch(() => toast.error(t("error.generic")))
+                      }
+                    >
+                      <SelectTrigger className="h-7 w-[88px] border-border bg-secondary text-[11px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">{t("workspace.roleAdmin")}</SelectItem>
+                        <SelectItem value="editor">{t("workspace.roleEditor")}</SelectItem>
+                        <SelectItem value="viewer">{t("workspace.roleViewer")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <>
+                      <RoleIcon className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-[10px] text-muted-foreground">{member.role}</span>
+                    </>
+                  )}
                 </div>
                 {canManage && member.role !== "owner" && (
                   <Button

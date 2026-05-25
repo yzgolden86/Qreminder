@@ -21,12 +21,14 @@ import { budgetsRouter } from "./routes/budgets.js";
 import { notificationStrategyRouter } from "./routes/notification-strategy.js";
 import { backupRouter } from "./routes/backup.js";
 import { csvImportRouter } from "./routes/csv-import.js";
+import { externalImportRouter } from "./routes/external-import.js";
 import { diagnosticsRouter } from "./routes/diagnostics.js";
 import { aiRouter } from "./routes/ai.js";
 import { workspacesRouter } from "./routes/workspaces.js";
 import { auditLogsRouter } from "./routes/audit-logs.js";
 import { webdavRouter } from "./routes/webdav.js";
 import { annualReportRouter } from "./routes/annual-report.js";
+import { insightsRouter } from "./routes/insights.js";
 
 export interface AppDeps {
   db: Database;
@@ -104,12 +106,14 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   app.route("/api/notification-strategy", notificationStrategyRouter);
   app.route("/api/backup", backupRouter);
   app.route("/api/import", csvImportRouter);
+  app.route("/api/import", externalImportRouter);
   app.route("/api/app/admin/diagnostics", diagnosticsRouter);
   app.route("/api/ai", aiRouter);
   app.route("/api/workspaces", workspacesRouter);
   app.route("/api/app/admin/audit-logs", auditLogsRouter);
   app.route("/api/backup", webdavRouter);
   app.route("/api/payments/annual-report", annualReportRouter);
+  app.route("/api/insights", insightsRouter);
 
   app.get("/api/app/health", (c) =>
     c.json({ status: "ok", runtime: deps.scheduler.kind }),

@@ -99,6 +99,82 @@ notificationStrategyRouter.delete("/channels/:subscriptionId", async (c) => {
   return c.json({ ok: true });
 });
 
+// === Bulk channel assignment ===
+
+const bulkSchema = z.object({
+  subscriptionIds: z.array(z.string().min(1)).min(1).max(500),
+  channels: z.array(z.string().min(1)),
+  /** When true, applies even to subs that already have custom channels. */
+  overwrite: z.boolean().optional(),
+});
+
+// PUT /strategy/channels/bulk — assign channels to many subscriptions at once.
+// Why: configuring 50+ subscriptions one-by-one is impractical. This lets a user
+// say "for all these IDs, set the channels to X". Existing per-sub channels are
+// replaced when overwrite=true; otherwise skipped to be safe.
+notificationStrategyRouter.put("/channels/bulk", async (c) => {
+  const db = c.get("deps").db;
+  const userId = c.get("user").id;
+  const body = await c.req.json().catch(() => null);
+  const parsed = bulkSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "validation_error", issues: parsed.error.issues }, 400);
+  }
+
+  // Filter the requested ids down to ones the user actually owns — prevents the
+  // caller from poking at someone else's sub via a forged id.
+  const ownedSubs = await db
+    .select({ id: subscriptions.id })
+    .from(subscriptions)
+    .where(eq(subscriptions.user, userId));
+  const ownedIds = new Set(ownedSubs.map((s) => s.id));
+  const targetIds = parsed.data.subscriptionIds.filter((id) => ownedIds.has(id));
+
+  if (targetIds.length === 0) {
+    return c.json({ ok: true, applied: 0, skipped: parsed.data.subscriptionIds.length });
+  }
+
+  // Find which targets already have custom channels.
+  const existing = await db
+    .select()
+    .from(subscriptionNotificationChannels)
+    .where(eq(subscriptionNotificationChannels.user, userId));
+  const existingBySub = new Set(existing.map((r) => r.subscriptionId));
+
+  const idsToApply = parsed.data.overwrite
+    ? targetIds
+    : targetIds.filter((id) => !existingBySub.has(id));
+
+  const now = new Date().toISOString();
+  for (const subId of idsToApply) {
+    // Wipe existing rows for this sub (whether or not overwrite triggered) so
+    // the final state matches `channels` exactly.
+    await db
+      .delete(subscriptionNotificationChannels)
+      .where(
+        and(
+          eq(subscriptionNotificationChannels.user, userId),
+          eq(subscriptionNotificationChannels.subscriptionId, subId),
+        ),
+      );
+    for (const channel of parsed.data.channels) {
+      await db.insert(subscriptionNotificationChannels).values({
+        id: crypto.randomUUID(),
+        user: userId,
+        subscriptionId: subId,
+        channel,
+        createdAt: now,
+      });
+    }
+  }
+
+  return c.json({
+    ok: true,
+    applied: idsToApply.length,
+    skipped: targetIds.length - idsToApply.length + (parsed.data.subscriptionIds.length - targetIds.length),
+  });
+});
+
 // === Notification Templates ===
 
 const createTemplateSchema = z.object({

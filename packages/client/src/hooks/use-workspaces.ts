@@ -98,3 +98,46 @@ export function useRemoveMember() {
     },
   });
 }
+
+export function useUpdateMemberRole() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { workspaceId: string; memberId: string; role: string }) =>
+      apiFetch(`/api/workspaces/${data.workspaceId}/members/${data.memberId}`, okResponseSchema, {
+        method: "PATCH",
+        body: JSON.stringify({ role: data.role }),
+      }),
+    onSuccess: (_, variables) => {
+      void qc.invalidateQueries({ queryKey: ["workspaces", variables.workspaceId, "members"] });
+    },
+  });
+}
+
+/**
+ * Workspace role hierarchy — kept in sync with the server's `workspace-permissions.ts`.
+ * If the server ranking changes, update both files.
+ */
+export type WorkspaceRole = "owner" | "admin" | "editor" | "viewer";
+
+const ROLE_RANK: Record<WorkspaceRole, number> = {
+  owner: 40,
+  admin: 30,
+  editor: 20,
+  viewer: 10,
+};
+
+export function workspaceRoleAtLeast(actual: string | undefined, required: WorkspaceRole): boolean {
+  if (!actual) return false;
+  const actualRank = ROLE_RANK[actual as WorkspaceRole];
+  if (actualRank === undefined) return false;
+  return actualRank >= ROLE_RANK[required];
+}
+
+/** Resolve the current user's role in a workspace from the cached workspaces list. */
+export function useWorkspaceRole(workspaceId: string | undefined): WorkspaceRole | null {
+  const { data: workspaces } = useWorkspaces();
+  if (!workspaceId || !workspaces) return null;
+  const ws = workspaces.find((w) => w.id === workspaceId);
+  const role = ws?.role as WorkspaceRole | undefined;
+  return role ?? null;
+}

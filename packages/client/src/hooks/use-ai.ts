@@ -20,6 +20,16 @@ export function useAiExtract() {
   });
 }
 
+export function useAiExtractImage() {
+  return useMutation({
+    mutationFn: (imageDataUrl: string) =>
+      apiFetch("/api/ai/extract-image", extractResultSchema, {
+        method: "POST",
+        body: JSON.stringify({ imageDataUrl }),
+      }),
+  });
+}
+
 export function useAiSummary() {
   return useMutation({
     mutationFn: () =>

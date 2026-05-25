@@ -2,12 +2,16 @@
  * 工作空间（家庭/团队）路由。
  *
  * CRUD for workspaces + member management.
+ *
+ * 角色检查统一走 [[workspace-permissions]] 的 requireWorkspaceRole 中间件，
+ * 避免在每个 handler 里重复 if-else 角色判断。
  */
 import { Hono } from "hono";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { workspaces, workspaceMembers, users } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
+import { requireWorkspaceRole, getMembership } from "../lib/workspace-permissions.js";
 import type { AppEnv } from "../app.js";
 
 export const workspacesRouter = new Hono<AppEnv>();
@@ -86,30 +90,17 @@ workspacesRouter.post("/", async (c) => {
 });
 
 // DELETE /workspaces/:id — delete workspace (owner only)
-workspacesRouter.delete("/:id", async (c) => {
+workspacesRouter.delete("/:id", requireWorkspaceRole("owner"), async (c) => {
   const db = c.get("deps").db;
-  const userId = c.get("user").id;
   const wsId = c.req.param("id");
-
-  const [ws] = await db.select().from(workspaces).where(eq(workspaces.id, wsId));
-  if (!ws) return c.json({ error: "not_found" }, 404);
-  if (ws.owner !== userId) return c.json({ error: "forbidden" }, 403);
-
   await db.delete(workspaces).where(eq(workspaces.id, wsId));
   return c.json({ ok: true });
 });
 
-// GET /workspaces/:id/members — list members
-workspacesRouter.get("/:id/members", async (c) => {
+// GET /workspaces/:id/members — list members (any member can view)
+workspacesRouter.get("/:id/members", requireWorkspaceRole("viewer"), async (c) => {
   const db = c.get("deps").db;
-  const userId = c.get("user").id;
   const wsId = c.req.param("id");
-
-  const [membership] = await db
-    .select()
-    .from(workspaceMembers)
-    .where(and(eq(workspaceMembers.workspaceId, wsId), eq(workspaceMembers.userId, userId)));
-  if (!membership) return c.json({ error: "forbidden" }, 403);
 
   const members = await db
     .select()
@@ -132,19 +123,10 @@ workspacesRouter.get("/:id/members", async (c) => {
   });
 });
 
-// POST /workspaces/:id/members — invite member
-workspacesRouter.post("/:id/members", async (c) => {
+// POST /workspaces/:id/members — invite member (admin or owner)
+workspacesRouter.post("/:id/members", requireWorkspaceRole("admin"), async (c) => {
   const db = c.get("deps").db;
-  const userId = c.get("user").id;
   const wsId = c.req.param("id");
-
-  const [membership] = await db
-    .select()
-    .from(workspaceMembers)
-    .where(and(eq(workspaceMembers.workspaceId, wsId), eq(workspaceMembers.userId, userId)));
-  if (!membership || (membership.role !== "owner" && membership.role !== "admin")) {
-    return c.json({ error: "forbidden" }, 403);
-  }
 
   const body = await c.req.json().catch(() => null);
   const parsed = inviteMemberSchema.safeParse(body);
@@ -158,10 +140,7 @@ workspacesRouter.post("/:id/members", async (c) => {
     return c.json({ error: "user_not_found", message: "No user with this email" }, 404);
   }
 
-  const [existing] = await db
-    .select()
-    .from(workspaceMembers)
-    .where(and(eq(workspaceMembers.workspaceId, wsId), eq(workspaceMembers.userId, targetUser.id)));
+  const existing = await getMembership(db, wsId, targetUser.id);
   if (existing) {
     return c.json({ error: "already_member" }, 409);
   }
@@ -178,25 +157,25 @@ workspacesRouter.post("/:id/members", async (c) => {
   return c.json({ ok: true }, 201);
 });
 
-// PATCH /workspaces/:id/members/:memberId — update member role
-workspacesRouter.patch("/:id/members/:memberId", async (c) => {
+// PATCH /workspaces/:id/members/:memberId — update member role (admin or owner)
+workspacesRouter.patch("/:id/members/:memberId", requireWorkspaceRole("admin"), async (c) => {
   const db = c.get("deps").db;
-  const userId = c.get("user").id;
-  const wsId = c.req.param("id");
   const memberId = c.req.param("memberId");
-
-  const [membership] = await db
-    .select()
-    .from(workspaceMembers)
-    .where(and(eq(workspaceMembers.workspaceId, wsId), eq(workspaceMembers.userId, userId)));
-  if (!membership || (membership.role !== "owner" && membership.role !== "admin")) {
-    return c.json({ error: "forbidden" }, 403);
-  }
 
   const body = await c.req.json().catch(() => null);
   const parsed = updateMemberSchema.safeParse(body);
   if (!parsed.success) {
     return c.json({ error: "validation_error" }, 400);
+  }
+
+  // Prevent demoting/changing the owner via this endpoint; owner role moves only through transfer (future feature).
+  const [target] = await db
+    .select()
+    .from(workspaceMembers)
+    .where(eq(workspaceMembers.id, memberId));
+  if (!target) return c.json({ error: "not_found" }, 404);
+  if (target.role === "owner") {
+    return c.json({ error: "cannot_modify_owner" }, 409);
   }
 
   await db
@@ -207,19 +186,19 @@ workspacesRouter.patch("/:id/members/:memberId", async (c) => {
   return c.json({ ok: true });
 });
 
-// DELETE /workspaces/:id/members/:memberId — remove member
-workspacesRouter.delete("/:id/members/:memberId", async (c) => {
+// DELETE /workspaces/:id/members/:memberId — remove member (admin or owner)
+workspacesRouter.delete("/:id/members/:memberId", requireWorkspaceRole("admin"), async (c) => {
   const db = c.get("deps").db;
-  const userId = c.get("user").id;
   const wsId = c.req.param("id");
   const memberId = c.req.param("memberId");
 
-  const [membership] = await db
+  const [target] = await db
     .select()
     .from(workspaceMembers)
-    .where(and(eq(workspaceMembers.workspaceId, wsId), eq(workspaceMembers.userId, userId)));
-  if (!membership || (membership.role !== "owner" && membership.role !== "admin")) {
-    return c.json({ error: "forbidden" }, 403);
+    .where(and(eq(workspaceMembers.id, memberId), eq(workspaceMembers.workspaceId, wsId)));
+  if (!target) return c.json({ error: "not_found" }, 404);
+  if (target.role === "owner") {
+    return c.json({ error: "cannot_remove_owner" }, 409);
   }
 
   await db.delete(workspaceMembers).where(eq(workspaceMembers.id, memberId));

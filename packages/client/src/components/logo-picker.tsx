@@ -32,6 +32,7 @@ import { IMAGE_UPLOAD_ACCEPT } from '@/lib/upload-constraints';
 import { useFaviconSearch } from '@/hooks/use-favicon-search';
 import { useCroppedImageUpload, type UploadStatus } from '@/hooks/use-cropped-image-upload';
 import { useTheSvgIconSearch } from '@/hooks/use-thesvg-icon-search';
+import { LogoFromUrlButton, LogoLibraryButton } from '@/components/logo-tools';
 import { useI18n } from '@/i18n/I18nProvider';
 
 /** 透出上传状态类型，方便表单弹窗阻止上传中的保存。 */
@@ -62,6 +63,8 @@ interface LogoPickerProps {
   onUploadStatusChange?: ((status: UploadStatus) => void) | undefined;
   /** 服务名提示：打开弹窗时可自动填入并触发搜索。 */
   serviceName?: string | undefined;
+  /** 网站 URL：用于"从 URL 抓取 logo"按钮预填，常见来自 subscription.website。 */
+  website?: string | undefined;
 }
 
 /** 常见订阅服务关键词 → 域名映射（用于更准确地取 Logo/Favicon）。 */
@@ -81,6 +84,7 @@ export function LogoPicker({
   onChange,
   onUploadStatusChange,
   serviceName = '',
+  website,
 }: LogoPickerProps) {
   const { t } = useI18n();
   const builtInSearch = useTheSvgIconSearch(32);
@@ -393,6 +397,11 @@ export function LogoPicker({
             </p>
           )}
         </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <LogoFromUrlButton initialUrl={website ?? serviceName ?? ""} onPick={(url) => applyValue(url)} />
+        <LogoLibraryButton onPick={(url) => applyValue(url)} />
       </div>
     </div>
 

@@ -62,6 +62,52 @@ async function callLlm(config: AiConfig, systemPrompt: string, userMessage: stri
   return content;
 }
 
+/**
+ * Multimodal call for image extraction. Uses OpenAI's vision payload shape, which
+ * other vendors (Anthropic via OpenAI-compatible proxy, OpenRouter, etc.) also accept.
+ * The image is passed as a data URL — caller is responsible for size validation.
+ */
+async function callLlmWithImage(
+  config: AiConfig,
+  systemPrompt: string,
+  textPrompt: string,
+  imageDataUrl: string,
+): Promise<string> {
+  const url = `${config.endpoint.replace(/\/$/, "")}/chat/completions`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${config.apiKey}`,
+    },
+    body: JSON.stringify({
+      model: config.model,
+      messages: [
+        { role: "system", content: systemPrompt },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: textPrompt },
+            { type: "image_url", image_url: { url: imageDataUrl } },
+          ],
+        },
+      ],
+      temperature: 0.1,
+      max_tokens: 1024,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => "");
+    throw new Error(`AI vision API error: HTTP ${res.status} ${err.slice(0, 200)}`);
+  }
+
+  const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error("AI returned empty response");
+  return content;
+}
+
 const extractSchema = z.object({
   text: z.string().min(1).max(5000),
 });
@@ -103,6 +149,63 @@ Return ONLY valid JSON, no markdown, no explanation.`;
     return c.json({ result: extracted });
   } catch (err) {
     const message = err instanceof Error ? err.message : "AI extraction failed";
+    return c.json({ error: "ai_error", message }, 500);
+  }
+});
+
+// POST /api/ai/extract-image — vision-based extraction from a screenshot / photo
+// of a bill, email, or app billing screen. The client base64-encodes the image
+// and sends it as a data URL.
+const extractImageSchema = z.object({
+  imageDataUrl: z
+    .string()
+    .min(20)
+    .max(8 * 1024 * 1024) // ~6 MB base64 ≈ 4.5 MB raw — comfortably under typical Worker limits
+    .startsWith("data:image/"),
+});
+
+aiRouter.post("/extract-image", async (c) => {
+  const db = c.get("deps").db;
+  const userId = c.get("user").id;
+
+  const [settingsRow] = await db.select().from(settings).where(eq(settings.user, userId));
+  const userSettings = (settingsRow?.settings ?? {}) as Record<string, unknown>;
+  const config = getAiConfig(userSettings);
+
+  if (!config.enabled || !config.apiKey) {
+    return c.json(
+      { error: "ai_not_configured", message: "Please enable AI and configure API key in settings" },
+      400,
+    );
+  }
+
+  const body = await c.req.json().catch(() => null);
+  const parsed = extractImageSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "validation_error", issues: parsed.error.issues }, 400);
+  }
+
+  const systemPrompt = `You are a subscription data extractor. Look at the image (screenshot of a bill, payment notification, subscription page, or email) and extract subscription information. Return ONLY a JSON object:
+- name: subscription/service name (string, required)
+- amount: payment amount (number, required)
+- currency: currency code like USD, CNY, HKD (string, required)
+- nextRenewalDate: next billing date in YYYY-MM-DD format (string, optional)
+- paymentMethod: payment method description (string, optional)
+- billingCycle: one of "weekly", "monthly", "quarterly", "semi-annual", "annual" (string, optional)
+- category: suggested category (string, optional)
+
+If you cannot extract the information from the image, return {"error": "cannot_extract", "reason": "brief explanation"}.
+Return ONLY valid JSON, no markdown, no explanation.`;
+
+  const textPrompt = "Extract subscription info from this image and return JSON only.";
+
+  try {
+    const result = await callLlmWithImage(config, systemPrompt, textPrompt, parsed.data.imageDataUrl);
+    const cleaned = result.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const extracted = JSON.parse(cleaned);
+    return c.json({ result: extracted });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "AI image extraction failed";
     return c.json({ error: "ai_error", message }, 500);
   }
 });

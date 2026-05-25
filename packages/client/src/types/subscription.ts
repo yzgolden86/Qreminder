@@ -191,6 +191,11 @@ export interface AppSettings {
   notificationTimeLocal: LocalTime;
   /** 启用的通知渠道（可多选）。 */
   enabledChannels: NotificationChannel[];
+  /**
+   * 备用通知渠道：当主渠道集合全部发送失败时，cron 会再尝试这些渠道。
+   * 与主渠道交集会被自动剔除，避免重发同一渠道。
+   */
+  fallbackChannels?: NotificationChannel[];
   /** 第三方 API 测试号码（部分渠道测试用）。 */
   testPhone: string;
   

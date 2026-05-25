@@ -43,6 +43,15 @@ vi.mock("../application/use-settings-form-controller", () => ({
   useSettingsFormController: mocks.useSettingsFormController,
 }));
 
+// CategoryTagChannelsSection / NotificationStrategySection pull custom config
+// + hit the API. Stub them so this file stays focused on the controller bindings.
+vi.mock("./category-tag-channels-section", () => ({
+  CategoryTagChannelsSection: () => null,
+}));
+vi.mock("./notification-strategy-section", () => ({
+  NotificationStrategySection: () => null,
+}));
+
 function createControllerState(overrides: {
   settings?: Partial<AppSettings>;
   canAccessPocketBaseAdmin?: boolean;

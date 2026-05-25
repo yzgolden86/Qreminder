@@ -136,6 +136,7 @@ export const SubscriptionFormFields = memo(function SubscriptionFormFields({
         onChange={(logo) => update("logo", logo)}
         onUploadStatusChange={onLogoUploadStatusChange}
         serviceName={formData.name}
+        website={formData.website}
       />
 
       <div className="grid gap-4 sm:grid-cols-2">
