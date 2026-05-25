@@ -4,6 +4,7 @@ import { z } from "zod";
 import { subscriptions, subscriptionPriceHistory } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
 import { subscriptionDraftSchema } from "@qreminder/shared";
+import { writeAuditLog } from "./audit-logs.js";
 import type { AppEnv } from "../app.js";
 
 export const subscriptionsRouter = new Hono<AppEnv>();
@@ -125,6 +126,13 @@ subscriptionsRouter.post("/", async (c) => {
   };
   await db.insert(subscriptions).values(record);
   const [inserted] = await db.select().from(subscriptions).where(eq(subscriptions.id, id));
+  await writeAuditLog(db, {
+    userId,
+    action: "subscription.create",
+    targetType: "subscription",
+    targetId: id,
+    summary: `Created subscription "${draft.name}"`,
+  });
   return c.json({ subscription: toDto(inserted!) }, 201);
 });
 
@@ -169,6 +177,13 @@ subscriptionsRouter.patch("/:id", async (c) => {
     .select()
     .from(subscriptions)
     .where(eq(subscriptions.id, id));
+  await writeAuditLog(db, {
+    userId,
+    action: "subscription.update",
+    targetType: "subscription",
+    targetId: id,
+    summary: `Updated subscription "${existing.name}"`,
+  });
   return c.json({ subscription: toDto(updated!) });
 });
 
@@ -202,6 +217,12 @@ subscriptionsRouter.delete("/:id", async (c) => {
     .where(and(eq(subscriptions.id, id), eq(subscriptions.user, userId)));
   if (!existing) return c.json({ error: "not_found" }, 404);
   await db.delete(subscriptions).where(eq(subscriptions.id, id));
+  await writeAuditLog(db, {
+    userId,
+    action: "subscription.delete",
+    targetType: "subscription",
+    targetId: id,
+  });
   return c.json({ ok: true });
 });
 

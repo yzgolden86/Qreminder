@@ -12,6 +12,7 @@ import { z } from "zod";
 import { workspaces, workspaceMembers, users } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
 import { requireWorkspaceRole, getMembership } from "../lib/workspace-permissions.js";
+import { writeAuditLog } from "./audit-logs.js";
 import type { AppEnv } from "../app.js";
 
 export const workspacesRouter = new Hono<AppEnv>();
@@ -154,6 +155,15 @@ workspacesRouter.post("/:id/members", requireWorkspaceRole("admin"), async (c) =
     createdAt: now,
   });
 
+  await writeAuditLog(db, {
+    userId: c.get("user").id,
+    workspaceId: wsId,
+    action: "workspace.member.add",
+    targetType: "workspace_member",
+    targetId: targetUser.id,
+    summary: `Added member "${parsed.data.email}" as ${parsed.data.role}`,
+  });
+
   return c.json({ ok: true }, 201);
 });
 
@@ -183,6 +193,15 @@ workspacesRouter.patch("/:id/members/:memberId", requireWorkspaceRole("admin"), 
     .set({ role: parsed.data.role })
     .where(and(eq(workspaceMembers.id, memberId), eq(workspaceMembers.workspaceId, wsId)));
 
+  await writeAuditLog(db, {
+    userId: c.get("user").id,
+    workspaceId: wsId,
+    action: "workspace.member.roleChange",
+    targetType: "workspace_member",
+    targetId: memberId,
+    summary: `Changed role to ${parsed.data.role}`,
+  });
+
   return c.json({ ok: true });
 });
 
@@ -202,5 +221,12 @@ workspacesRouter.delete("/:id/members/:memberId", requireWorkspaceRole("admin"),
   }
 
   await db.delete(workspaceMembers).where(eq(workspaceMembers.id, memberId));
+  await writeAuditLog(db, {
+    userId: c.get("user").id,
+    workspaceId: wsId,
+    action: "workspace.member.remove",
+    targetType: "workspace_member",
+    targetId: memberId,
+  });
   return c.json({ ok: true });
 });

@@ -9,7 +9,7 @@
  *
  * 数据存于 settings JSON 的 categoryDefaultChannels / tagDefaultChannels。
  */
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Layers2, Plus, Trash2, Tag, FolderTree } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -259,7 +259,7 @@ function MappingDialog({
   const [selected, setSelected] = useState<string[]>(initialChannels);
   const [submitting, setSubmitting] = useState(false);
 
-  useMemo(() => {
+  useEffect(() => {
     setKey(initialKey);
     setSelected(initialChannels);
   }, [initialKey, initialChannels, open]);

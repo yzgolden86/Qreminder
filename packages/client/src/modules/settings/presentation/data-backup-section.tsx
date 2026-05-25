@@ -121,7 +121,7 @@ export function DataBackupSection({ settings, updateSetting }: DataBackupSection
     try {
       let url = "";
       let body: BodyInit;
-      let headers: Record<string, string> = {};
+      const headers: Record<string, string> = {};
 
       if (importType === "json") {
         url = "/api/import/json/confirm";
@@ -144,8 +144,8 @@ export function DataBackupSection({ settings, updateSetting }: DataBackupSection
         body,
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error((err as { message?: string }).message ?? `HTTP ${res.status}`);
+        const err = (await res.json().catch(() => ({}))) as { message?: string };
+        throw new Error(err.message ?? `HTTP ${res.status}`);
       }
       const data = await res.json() as { imported?: number; skipped?: number };
       toast.success(t("backup.importSuccess", {

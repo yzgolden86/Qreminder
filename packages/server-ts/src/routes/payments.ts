@@ -9,6 +9,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { z } from "zod";
 import { subscriptionPayments, subscriptions } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
+import { writeAuditLog } from "./audit-logs.js";
 import type { AppEnv } from "../app.js";
 
 export const paymentsRouter = new Hono<AppEnv>();
@@ -83,6 +84,14 @@ paymentsRouter.post("/", async (c) => {
     updatedAt: now,
   });
 
+  await writeAuditLog(db, {
+    userId,
+    action: "payment.create",
+    targetType: "payment",
+    targetId: id,
+    summary: `Payment for "${sub.name}" (${parsed.data.amount} ${parsed.data.currency})`,
+  });
+
   return c.json({ id }, 201);
 });
 
@@ -132,6 +141,12 @@ paymentsRouter.delete("/:id", async (c) => {
   if (!existing) return c.json({ error: "not_found" }, 404);
 
   await db.delete(subscriptionPayments).where(eq(subscriptionPayments.id, paymentId));
+  await writeAuditLog(db, {
+    userId,
+    action: "payment.delete",
+    targetType: "payment",
+    targetId: paymentId,
+  });
   return c.json({ ok: true });
 });
 

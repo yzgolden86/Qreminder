@@ -16,6 +16,7 @@ import {
   notificationTemplates,
 } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
+import { writeAuditLog } from "./audit-logs.js";
 import type { AppEnv } from "../app.js";
 
 export const backupRouter = new Hono<AppEnv>();
@@ -231,6 +232,14 @@ backupRouter.post("/zip/restore", async (c) => {
       }
     } catch { /* skip malformed */ }
   }
+
+  await writeAuditLog(db, {
+    userId,
+    action: "backup.restore",
+    targetType: "backup",
+    summary: `Restored from ZIP: ${imported.subscriptions} subs, ${imported.payments} payments, ${imported.budgets} budgets, ${imported.templates} templates`,
+    metadata: imported,
+  });
 
   return c.json({ ok: true, imported });
 });

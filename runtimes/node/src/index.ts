@@ -6,7 +6,7 @@ import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import cron from "node-cron";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, mkdirSync } from "node:fs";
 import { createApp, runNotificationCron } from "@qreminder/server";
 import * as schema from "@qreminder/server";
 import type {
@@ -22,6 +22,9 @@ import { createNodemailerAdapter } from "./nodemailer-adapter.js";
 const port = Number(process.env.PORT ?? 3000);
 const dbPath = process.env.DATABASE_PATH ?? "./data/qreminder.db";
 const assetsDir = process.env.ASSETS_DIR ?? "./data/assets";
+
+mkdirSync(dirname(resolve(dbPath)), { recursive: true });
+mkdirSync(resolve(assetsDir), { recursive: true });
 
 const sqlite = new Database(dbPath);
 sqlite.pragma("journal_mode = WAL");
