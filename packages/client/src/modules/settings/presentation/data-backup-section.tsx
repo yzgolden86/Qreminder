@@ -6,11 +6,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/sonner";
+import { ImportPreviewDialog } from "@/components/import-preview-dialog";
 import { useI18n } from "@/i18n/I18nProvider";
 import type { AppSettings } from "@/types/subscription";
 import { LoadingButtonContent, type UpdateSetting } from "./settings-shared-controls";
 
 type ImportType = "json" | "csv" | "zip";
+
+interface ImportPreviewData {
+  valid: boolean;
+  schemaVersion?: number;
+  exportedAt?: string;
+  summary: {
+    subscriptions: number;
+    new: number;
+    duplicate: number;
+  };
+  items: Array<{
+    name: string;
+    status: "new" | "duplicate";
+  }>;
+}
 
 interface DataBackupSectionProps {
   settings: AppSettings;
@@ -48,6 +64,10 @@ export function DataBackupSection({ settings, updateSetting }: DataBackupSection
   const [importType, setImportType] = useState<ImportType | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [webdavStatus, setWebdavStatus] = useState<{ reachable: boolean; backupCount?: number | undefined; error?: string | undefined } | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewData, setPreviewData] = useState<ImportPreviewData | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const pendingFileRef = useRef<{ body: string | ArrayBuffer; type: ImportType } | null>(null);
 
   useEffect(() => {
     if (!settings.webdavEnabled || !settings.webdavUrl) {
@@ -111,53 +131,111 @@ export function DataBackupSection({ settings, updateSetting }: DataBackupSection
     e.target.value = "";
     if (!file || !importType) return;
 
-    const confirmMsg = t("backup.importConfirm");
-    if (!window.confirm(confirmMsg)) {
-      setImportType(null);
-      return;
-    }
-
     setBusy(`import-${importType}`);
     try {
-      let url = "";
-      let body: BodyInit;
+      const body = importType === "zip" ? await file.arrayBuffer() : await file.text();
+      let previewUrl = "";
       const headers: Record<string, string> = {};
 
       if (importType === "json") {
-        url = "/api/import/json/confirm";
-        body = await file.text();
+        previewUrl = "/api/import/json/preview";
         headers["Content-Type"] = "application/json";
       } else if (importType === "csv") {
-        url = "/api/import/csv/confirm";
-        body = await file.text();
+        previewUrl = "/api/import/csv/preview";
         headers["Content-Type"] = "text/csv";
       } else {
-        url = "/api/backup/zip/restore";
-        body = await file.arrayBuffer();
+        previewUrl = "/api/backup/zip/restore";
         headers["Content-Type"] = "application/zip";
       }
 
-      const res = await fetch(url, {
-        method: "POST",
-        credentials: "include",
-        headers,
-        body,
-      });
-      if (!res.ok) {
-        const err = (await res.json().catch(() => ({}))) as { message?: string };
-        throw new Error(err.message ?? `HTTP ${res.status}`);
+      if (importType === "zip") {
+        const confirmMsg = t("backup.importConfirm");
+        if (!window.confirm(confirmMsg)) {
+          setImportType(null);
+          setBusy(null);
+          return;
+        }
+        const res = await fetch(previewUrl, {
+          method: "POST",
+          credentials: "include",
+          headers,
+          body,
+        });
+        if (!res.ok) {
+          const err = (await res.json().catch(() => ({}))) as { message?: string };
+          throw new Error(err.message ?? `HTTP ${res.status}`);
+        }
+        const data = await res.json() as { imported?: number };
+        toast.success(t("backup.importSuccess", { imported: data.imported ?? 0 }));
+        await queryClient.invalidateQueries();
+      } else {
+        const res = await fetch(previewUrl, {
+          method: "POST",
+          credentials: "include",
+          headers,
+          body,
+        });
+        if (!res.ok) {
+          const err = (await res.json().catch(() => ({}))) as { message?: string };
+          throw new Error(err.message ?? `HTTP ${res.status}`);
+        }
+        const preview = await res.json() as ImportPreviewData;
+        pendingFileRef.current = { body: body as string, type: importType };
+        setPreviewData(preview);
+        setPreviewOpen(true);
       }
-      const data = await res.json() as { imported?: number; skipped?: number };
-      toast.success(t("backup.importSuccess", {
-        imported: typeof data.imported === "number" ? data.imported :
-          (data as unknown as { imported: { subscriptions: number } }).imported?.subscriptions ?? 0,
-      }));
-      await queryClient.invalidateQueries();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Import failed");
     } finally {
       setBusy(null);
       setImportType(null);
+    }
+  };
+
+  const handleImportConfirm = async (createBackup: boolean) => {
+    const pending = pendingFileRef.current;
+    if (!pending) return;
+
+    setPreviewLoading(true);
+    try {
+      if (createBackup) {
+        await fetch("/api/backup/zip", { credentials: "include" })
+          .then((r) => r.blob())
+          .then((blob) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `qreminder-backup-before-import-${Date.now()}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+          });
+        toast.success(t("backup.backupCreated"));
+      }
+
+      const confirmUrl = pending.type === "json" ? "/api/import/json/confirm" : "/api/import/csv/confirm";
+      const contentType = pending.type === "json" ? "application/json" : "text/csv";
+
+      const res = await fetch(confirmUrl, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": contentType },
+        body: pending.body,
+      });
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { message?: string };
+        throw new Error(err.message ?? `HTTP ${res.status}`);
+      }
+      const data = await res.json() as { imported?: number };
+      toast.success(t("backup.importSuccess", { imported: data.imported ?? 0 }));
+      await queryClient.invalidateQueries();
+      setPreviewOpen(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Import failed");
+    } finally {
+      setPreviewLoading(false);
+      pendingFileRef.current = null;
     }
   };
 
@@ -403,6 +481,17 @@ export function DataBackupSection({ settings, updateSetting }: DataBackupSection
           )}
         </div>
       </div>
+
+      <ImportPreviewDialog
+        open={previewOpen}
+        onOpenChange={(open) => {
+          setPreviewOpen(open);
+          if (!open) pendingFileRef.current = null;
+        }}
+        preview={previewData}
+        onConfirm={handleImportConfirm}
+        loading={previewLoading}
+      />
     </section>
   );
 }
