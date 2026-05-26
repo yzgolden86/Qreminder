@@ -25,6 +25,7 @@ const setChannelsSchema = z.object({
 notificationStrategyRouter.get("/channels/:subscriptionId", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const subId = c.req.param("subscriptionId");
 
   const rows = await db
@@ -33,6 +34,7 @@ notificationStrategyRouter.get("/channels/:subscriptionId", async (c) => {
     .where(
       and(
         eq(subscriptionNotificationChannels.user, userId),
+        eq(subscriptionNotificationChannels.workspaceId, workspaceId),
         eq(subscriptionNotificationChannels.subscriptionId, subId),
       ),
     );
@@ -44,6 +46,7 @@ notificationStrategyRouter.get("/channels/:subscriptionId", async (c) => {
 notificationStrategyRouter.put("/channels", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const body = await c.req.json().catch(() => null);
   const parsed = setChannelsSchema.safeParse(body);
   if (!parsed.success) {
@@ -62,6 +65,7 @@ notificationStrategyRouter.put("/channels", async (c) => {
     .where(
       and(
         eq(subscriptionNotificationChannels.user, userId),
+        eq(subscriptionNotificationChannels.workspaceId, workspaceId),
         eq(subscriptionNotificationChannels.subscriptionId, parsed.data.subscriptionId),
       ),
     );
@@ -72,6 +76,7 @@ notificationStrategyRouter.put("/channels", async (c) => {
     await db.insert(subscriptionNotificationChannels).values({
       id: crypto.randomUUID(),
       user: userId,
+      workspaceId,
       subscriptionId: parsed.data.subscriptionId,
       channel,
       createdAt: now,
@@ -85,6 +90,7 @@ notificationStrategyRouter.put("/channels", async (c) => {
 notificationStrategyRouter.delete("/channels/:subscriptionId", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const subId = c.req.param("subscriptionId");
 
   await db
@@ -92,6 +98,7 @@ notificationStrategyRouter.delete("/channels/:subscriptionId", async (c) => {
     .where(
       and(
         eq(subscriptionNotificationChannels.user, userId),
+        eq(subscriptionNotificationChannels.workspaceId, workspaceId),
         eq(subscriptionNotificationChannels.subscriptionId, subId),
       ),
     );
@@ -115,6 +122,7 @@ const bulkSchema = z.object({
 notificationStrategyRouter.put("/channels/bulk", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const body = await c.req.json().catch(() => null);
   const parsed = bulkSchema.safeParse(body);
   if (!parsed.success) {
@@ -126,7 +134,7 @@ notificationStrategyRouter.put("/channels/bulk", async (c) => {
   const ownedSubs = await db
     .select({ id: subscriptions.id })
     .from(subscriptions)
-    .where(eq(subscriptions.user, userId));
+    .where(and(eq(subscriptions.user, userId), eq(subscriptions.workspaceId, workspaceId)));
   const ownedIds = new Set(ownedSubs.map((s) => s.id));
   const targetIds = parsed.data.subscriptionIds.filter((id) => ownedIds.has(id));
 
@@ -138,7 +146,7 @@ notificationStrategyRouter.put("/channels/bulk", async (c) => {
   const existing = await db
     .select()
     .from(subscriptionNotificationChannels)
-    .where(eq(subscriptionNotificationChannels.user, userId));
+    .where(and(eq(subscriptionNotificationChannels.user, userId), eq(subscriptionNotificationChannels.workspaceId, workspaceId)));
   const existingBySub = new Set(existing.map((r) => r.subscriptionId));
 
   const idsToApply = parsed.data.overwrite
@@ -154,6 +162,7 @@ notificationStrategyRouter.put("/channels/bulk", async (c) => {
       .where(
         and(
           eq(subscriptionNotificationChannels.user, userId),
+          eq(subscriptionNotificationChannels.workspaceId, workspaceId),
           eq(subscriptionNotificationChannels.subscriptionId, subId),
         ),
       );
@@ -161,6 +170,7 @@ notificationStrategyRouter.put("/channels/bulk", async (c) => {
       await db.insert(subscriptionNotificationChannels).values({
         id: crypto.randomUUID(),
         user: userId,
+        workspaceId,
         subscriptionId: subId,
         channel,
         createdAt: now,
@@ -190,10 +200,11 @@ const updateTemplateSchema = createTemplateSchema.partial();
 notificationStrategyRouter.get("/templates", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const rows = await db
     .select()
     .from(notificationTemplates)
-    .where(eq(notificationTemplates.user, userId));
+    .where(and(eq(notificationTemplates.user, userId), eq(notificationTemplates.workspaceId, workspaceId)));
   return c.json({ templates: rows });
 });
 
@@ -201,6 +212,7 @@ notificationStrategyRouter.get("/templates", async (c) => {
 notificationStrategyRouter.post("/templates", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const body = await c.req.json().catch(() => null);
   const parsed = createTemplateSchema.safeParse(body);
   if (!parsed.success) {
@@ -212,6 +224,7 @@ notificationStrategyRouter.post("/templates", async (c) => {
   await db.insert(notificationTemplates).values({
     id,
     user: userId,
+    workspaceId,
     scope: parsed.data.scope,
     scopeId: parsed.data.scopeId ?? "",
     titleTemplate: parsed.data.titleTemplate,
@@ -227,6 +240,7 @@ notificationStrategyRouter.post("/templates", async (c) => {
 notificationStrategyRouter.patch("/templates/:id", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const templateId = c.req.param("id");
   const body = await c.req.json().catch(() => null);
   const parsed = updateTemplateSchema.safeParse(body);
@@ -237,7 +251,7 @@ notificationStrategyRouter.patch("/templates/:id", async (c) => {
   const [existing] = await db
     .select()
     .from(notificationTemplates)
-    .where(and(eq(notificationTemplates.id, templateId), eq(notificationTemplates.user, userId)));
+    .where(and(eq(notificationTemplates.id, templateId), eq(notificationTemplates.user, userId), eq(notificationTemplates.workspaceId, workspaceId)));
   if (!existing) return c.json({ error: "not_found" }, 404);
 
   const now = new Date().toISOString();
@@ -255,12 +269,13 @@ notificationStrategyRouter.patch("/templates/:id", async (c) => {
 notificationStrategyRouter.delete("/templates/:id", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const templateId = c.req.param("id");
 
   const [existing] = await db
     .select()
     .from(notificationTemplates)
-    .where(and(eq(notificationTemplates.id, templateId), eq(notificationTemplates.user, userId)));
+    .where(and(eq(notificationTemplates.id, templateId), eq(notificationTemplates.user, userId), eq(notificationTemplates.workspaceId, workspaceId)));
   if (!existing) return c.json({ error: "not_found" }, 404);
 
   await db.delete(notificationTemplates).where(eq(notificationTemplates.id, templateId));

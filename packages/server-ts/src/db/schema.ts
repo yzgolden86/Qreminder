@@ -54,6 +54,7 @@ export const subscriptions = sqliteTable(
   {
     id: text("id").primaryKey(),
     user: text("user").notNull().references(() => users.id),
+    workspaceId: text("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     logo: text("logo").default(""),
     price: real("price").notNull().default(0),
@@ -91,6 +92,7 @@ export const subscriptions = sqliteTable(
   },
   (table) => ({
     userIdx: index("idx_subscriptions_user").on(table.user),
+    workspaceIdx: index("idx_subscriptions_workspace").on(table.workspaceId),
   }),
 );
 
@@ -99,6 +101,7 @@ export const settings = sqliteTable(
   {
     id: text("id").primaryKey(),
     user: text("user").notNull().references(() => users.id),
+    workspaceId: text("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }),
     settings: text("settings", { mode: "json" }).$type<Record<string, unknown>>().notNull().default({}),
     createdAt: text("createdAt").notNull(),
     updatedAt: text("updatedAt").notNull(),
@@ -113,6 +116,7 @@ export const customConfigs = sqliteTable(
   {
     id: text("id").primaryKey(),
     user: text("user").notNull().references(() => users.id),
+    workspaceId: text("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }),
     config: text("config", { mode: "json" }).$type<Record<string, unknown>>().notNull().default({}),
     createdAt: text("createdAt").notNull(),
     updatedAt: text("updatedAt").notNull(),
@@ -131,6 +135,7 @@ export const appSettings = sqliteTable("app_settings", {
 export const assets = sqliteTable("assets", {
   id: text("id").primaryKey(),
   user: text("user").notNull().references(() => users.id),
+  workspaceId: text("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }),
   kind: text("kind", { enum: ["logo", "icon"] }).notNull(),
   file: text("file").notNull(),
   mimeType: text("mimeType").notNull().default(""),
@@ -145,6 +150,7 @@ export const notificationJobs = sqliteTable(
   {
     id: text("id").primaryKey(),
     user: text("user").notNull().references(() => users.id),
+    workspaceId: text("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }),
     scheduledLocalDate: text("scheduledLocalDate").notNull(),
     scheduledLocalTime: text("scheduledLocalTime").notNull(),
     timeZone: text("timeZone").notNull(),
@@ -173,6 +179,7 @@ export const subscriptionPayments = sqliteTable(
   {
     id: text("id").primaryKey(),
     user: text("user").notNull().references(() => users.id),
+    workspaceId: text("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }),
     // subscriptionId is nullable + set null on delete: deleting a subscription
     // must not erase the financial ledger. Past payments are a historical fact;
     // they get orphaned (subscriptionId = null) but keep their amount/date.
@@ -200,6 +207,7 @@ export const budgets = sqliteTable(
   {
     id: text("id").primaryKey(),
     user: text("user").notNull().references(() => users.id),
+    workspaceId: text("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }),
     scopeType: text("scope_type", {
       enum: ["global", "category", "tag", "payment_method"],
     }).notNull().default("global"),
@@ -221,6 +229,7 @@ export const subscriptionNotificationChannels = sqliteTable(
   {
     id: text("id").primaryKey(),
     user: text("user").notNull().references(() => users.id),
+    workspaceId: text("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }),
     subscriptionId: text("subscription_id").notNull().references(() => subscriptions.id, { onDelete: "cascade" }),
     channel: text("channel").notNull(),
     createdAt: text("created_at").notNull(),
@@ -236,6 +245,7 @@ export const notificationTemplates = sqliteTable(
   {
     id: text("id").primaryKey(),
     user: text("user").notNull().references(() => users.id),
+    workspaceId: text("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }),
     scope: text("scope", {
       enum: ["global", "channel", "subscription"],
     }).notNull().default("global"),
@@ -304,6 +314,7 @@ export const subscriptionPriceHistory = sqliteTable(
   {
     id: text("id").primaryKey(),
     user: text("user").notNull().references(() => users.id),
+    workspaceId: text("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }),
     subscriptionId: text("subscription_id")
       .notNull()
       .references(() => subscriptions.id, { onDelete: "cascade" }),

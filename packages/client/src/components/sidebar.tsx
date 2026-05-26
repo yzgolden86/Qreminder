@@ -16,6 +16,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useTheme } from "@/lib/theme-provider";
 import { useToast } from "@/hooks/use-toast";
 import { QreminderLogo } from "@/components/icons/qreminder-logo";
+import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { writeAppearancePendingToStorage } from "@/lib/theme-storage";
 import { authClient } from "@/lib/auth-client";
 import { useI18n } from "@/i18n/I18nProvider";
@@ -309,6 +310,12 @@ function SidebarContent({ collapsed, onToggleCollapse, onNavigate }: SidebarCont
   return (
     <div className="flex h-full flex-col">
       <BrandHeader collapsed={collapsed} onNavigate={onNavigate} />
+
+      {!collapsed && (
+        <div className="border-b border-border px-3 py-2">
+          <WorkspaceSwitcher />
+        </div>
+      )}
 
       <nav className="flex-1 overflow-y-auto px-2 py-3">
         <NavList items={primaryNav} collapsed={collapsed} onNavigate={onNavigate} role={role} />

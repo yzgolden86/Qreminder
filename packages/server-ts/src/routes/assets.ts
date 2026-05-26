@@ -23,6 +23,7 @@ assetsRouter.post("/", requireSession, async (c) => {
   const db = c.get("deps").db;
   const storage = c.get("deps").storage;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
 
   const form = await c.req.formData();
   const kind = String(form.get("kind") ?? "");
@@ -57,6 +58,7 @@ assetsRouter.post("/", requireSession, async (c) => {
   await db.insert(assets).values({
     id,
     user: userId,
+    workspaceId,
     kind: kind as "logo" | "icon",
     file: stored.key,
     mimeType: stored.mimeType,
@@ -79,12 +81,13 @@ assetsRouter.get("/:id", requireSession, async (c) => {
   const db = c.get("deps").db;
   const storage = c.get("deps").storage;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const id = c.req.param("id");
 
   const [row] = await db
     .select()
     .from(assets)
-    .where(and(eq(assets.id, id), eq(assets.user, userId)));
+    .where(and(eq(assets.id, id), eq(assets.user, userId), eq(assets.workspaceId, workspaceId)));
   if (!row) return c.json({ error: "not_found" }, 404);
 
   const obj = await storage.get(row.file);
@@ -104,6 +107,7 @@ assetsRouter.get("/:id", requireSession, async (c) => {
 assetsRouter.get("/", requireSession, async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const kind = c.req.query("kind");
   if (kind && !allowedKinds.has(kind)) {
     return c.json({ error: "invalid_kind" }, 400);
@@ -114,8 +118,8 @@ assetsRouter.get("/", requireSession, async (c) => {
     .from(assets)
     .where(
       kind
-        ? and(eq(assets.user, userId), eq(assets.kind, kind as "logo" | "icon"))
-        : eq(assets.user, userId),
+        ? and(eq(assets.user, userId), eq(assets.workspaceId, workspaceId), eq(assets.kind, kind as "logo" | "icon"))
+        : and(eq(assets.user, userId), eq(assets.workspaceId, workspaceId)),
     )
     .orderBy(desc(assets.createdAt))
     .limit(200);
@@ -137,12 +141,13 @@ assetsRouter.delete("/:id", requireSession, async (c) => {
   const db = c.get("deps").db;
   const storage = c.get("deps").storage;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const id = c.req.param("id");
 
   const [row] = await db
     .select()
     .from(assets)
-    .where(and(eq(assets.id, id), eq(assets.user, userId)));
+    .where(and(eq(assets.id, id), eq(assets.user, userId), eq(assets.workspaceId, workspaceId)));
   if (!row) return c.json({ error: "not_found" }, 404);
 
   await storage.delete(row.file);
@@ -158,6 +163,7 @@ assetsRouter.post("/fetch-from-url", requireSession, async (c) => {
   const db = c.get("deps").db;
   const storage = c.get("deps").storage;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
 
   const body = await c.req.json().catch(() => null) as { url?: string; kind?: string } | null;
   if (!body || typeof body.url !== "string") {
@@ -203,6 +209,7 @@ assetsRouter.post("/fetch-from-url", requireSession, async (c) => {
   await db.insert(assets).values({
     id,
     user: userId,
+    workspaceId,
     kind: kind as "logo" | "icon",
     file: stored.key,
     mimeType: stored.mimeType,

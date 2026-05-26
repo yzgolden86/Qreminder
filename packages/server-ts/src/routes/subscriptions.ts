@@ -69,21 +69,23 @@ function toDto(row: SubscriptionRow): ApiSubscriptionDTO {
 subscriptionsRouter.get("/", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const rows = await db
     .select()
     .from(subscriptions)
-    .where(eq(subscriptions.user, userId));
+    .where(and(eq(subscriptions.workspaceId, workspaceId), eq(subscriptions.user, userId)));
   return c.json({ subscriptions: rows.map(toDto) });
 });
 
 subscriptionsRouter.get("/:id", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const id = c.req.param("id");
   const [row] = await db
     .select()
     .from(subscriptions)
-    .where(and(eq(subscriptions.id, id), eq(subscriptions.user, userId)));
+    .where(and(eq(subscriptions.id, id), eq(subscriptions.workspaceId, workspaceId), eq(subscriptions.user, userId)));
   if (!row) return c.json({ error: "not_found" }, 404);
   return c.json({ subscription: toDto(row) });
 });
@@ -91,6 +93,7 @@ subscriptionsRouter.get("/:id", async (c) => {
 subscriptionsRouter.post("/", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const body = await c.req.json();
   const parsed = subscriptionDraftSchema.safeParse(body);
   if (!parsed.success) {
@@ -102,6 +105,7 @@ subscriptionsRouter.post("/", async (c) => {
   const record = {
     id,
     user: userId,
+    workspaceId,
     name: draft.name,
     logo: draft.logo ?? "",
     price: draft.price,
@@ -139,6 +143,7 @@ subscriptionsRouter.post("/", async (c) => {
 subscriptionsRouter.patch("/:id", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const id = c.req.param("id");
   const body = await c.req.json();
   const parsed = subscriptionDraftSchema.partial().safeParse(body);
@@ -152,7 +157,7 @@ subscriptionsRouter.patch("/:id", async (c) => {
   const [existing] = await db
     .select()
     .from(subscriptions)
-    .where(and(eq(subscriptions.id, id), eq(subscriptions.user, userId)));
+    .where(and(eq(subscriptions.id, id), eq(subscriptions.workspaceId, workspaceId), eq(subscriptions.user, userId)));
   if (!existing) return c.json({ error: "not_found" }, 404);
 
   // Log price/currency change before applying the update. Only insert when
@@ -163,6 +168,7 @@ subscriptionsRouter.patch("/:id", async (c) => {
     await db.insert(subscriptionPriceHistory).values({
       id: crypto.randomUUID(),
       user: userId,
+      workspaceId,
       subscriptionId: id,
       oldPrice: existing.price,
       newPrice,
@@ -210,11 +216,12 @@ subscriptionsRouter.get("/:id/price-history", async (c) => {
 subscriptionsRouter.delete("/:id", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const id = c.req.param("id");
   const [existing] = await db
     .select({ id: subscriptions.id })
     .from(subscriptions)
-    .where(and(eq(subscriptions.id, id), eq(subscriptions.user, userId)));
+    .where(and(eq(subscriptions.id, id), eq(subscriptions.workspaceId, workspaceId), eq(subscriptions.user, userId)));
   if (!existing) return c.json({ error: "not_found" }, 404);
   await db.delete(subscriptions).where(eq(subscriptions.id, id));
   await writeAuditLog(db, {
@@ -236,6 +243,7 @@ const snoozeSchema = z.object({
 subscriptionsRouter.post("/:id/snooze", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const id = c.req.param("id");
   const body = await c.req.json().catch(() => ({}));
   const parsed = snoozeSchema.safeParse(body);
@@ -246,7 +254,7 @@ subscriptionsRouter.post("/:id/snooze", async (c) => {
   const [existing] = await db
     .select({ id: subscriptions.id })
     .from(subscriptions)
-    .where(and(eq(subscriptions.id, id), eq(subscriptions.user, userId)));
+    .where(and(eq(subscriptions.id, id), eq(subscriptions.workspaceId, workspaceId), eq(subscriptions.user, userId)));
   if (!existing) return c.json({ error: "not_found" }, 404);
 
   let snoozedUntil: string | null = null;
@@ -270,12 +278,13 @@ subscriptionsRouter.post("/:id/snooze", async (c) => {
 subscriptionsRouter.post("/:id/track-usage", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const id = c.req.param("id");
 
   const [existing] = await db
     .select({ id: subscriptions.id })
     .from(subscriptions)
-    .where(and(eq(subscriptions.id, id), eq(subscriptions.user, userId)));
+    .where(and(eq(subscriptions.id, id), eq(subscriptions.workspaceId, workspaceId), eq(subscriptions.user, userId)));
   if (!existing) return c.json({ error: "not_found" }, 404);
 
   const today = new Date();

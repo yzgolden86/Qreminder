@@ -11,6 +11,7 @@ import { RealSpendingWidget } from "@/components/real-spending-widget";
 import { MonthlyCompletionWidget } from "@/components/monthly-completion-widget";
 import { InactiveSubscriptionsPanel } from "@/components/inactive-subscriptions-panel";
 import { InsightsPanel } from "@/components/insights-panel";
+import { MobileQuickCards } from "@/components/mobile-quick-cards";
 import { AddSubscriptionDialog } from "@/components/add-subscription-dialog";
 import { EditSubscriptionDialog } from "@/components/edit-subscription-dialog";
 import { AiExtractDialog } from "@/components/ai-extract-dialog";
@@ -225,6 +226,14 @@ export default function Home() {
 
   return (
     <>
+      <MobileQuickCards
+        subscriptions={subscriptions}
+        defaultCurrency={defaultCurrency}
+        convert={convert}
+        timeZone={timeZone}
+        className="mb-4 sm:mb-6"
+      />
+
       <div className="mb-4 grid gap-3 sm:mb-6 sm:gap-5 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             title={t("dashboard.monthlySpend")}

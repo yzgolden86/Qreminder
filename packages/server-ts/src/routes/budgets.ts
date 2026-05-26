@@ -29,7 +29,11 @@ const updateBudgetSchema = createBudgetSchema.partial();
 budgetsRouter.get("/", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
-  const rows = await db.select().from(budgets).where(eq(budgets.user, userId));
+  const workspaceId = c.get("workspaceId");
+  const rows = await db
+    .select()
+    .from(budgets)
+    .where(and(eq(budgets.user, userId), eq(budgets.workspaceId, workspaceId)));
   return c.json({ budgets: rows });
 });
 
@@ -37,6 +41,7 @@ budgetsRouter.get("/", async (c) => {
 budgetsRouter.post("/", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const body = await c.req.json().catch(() => null);
   const parsed = createBudgetSchema.safeParse(body);
   if (!parsed.success) {
@@ -48,6 +53,7 @@ budgetsRouter.post("/", async (c) => {
   await db.insert(budgets).values({
     id,
     user: userId,
+    workspaceId,
     scopeType: parsed.data.scopeType,
     scopeId: parsed.data.scopeId ?? "",
     period: parsed.data.period,
@@ -65,6 +71,7 @@ budgetsRouter.post("/", async (c) => {
 budgetsRouter.patch("/:id", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const budgetId = c.req.param("id");
   const body = await c.req.json().catch(() => null);
   const parsed = updateBudgetSchema.safeParse(body);
@@ -75,7 +82,7 @@ budgetsRouter.patch("/:id", async (c) => {
   const [existing] = await db
     .select()
     .from(budgets)
-    .where(and(eq(budgets.id, budgetId), eq(budgets.user, userId)));
+    .where(and(eq(budgets.id, budgetId), eq(budgets.user, userId), eq(budgets.workspaceId, workspaceId)));
   if (!existing) return c.json({ error: "not_found" }, 404);
 
   const now = new Date().toISOString();
@@ -95,12 +102,13 @@ budgetsRouter.patch("/:id", async (c) => {
 budgetsRouter.delete("/:id", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const budgetId = c.req.param("id");
 
   const [existing] = await db
     .select()
     .from(budgets)
-    .where(and(eq(budgets.id, budgetId), eq(budgets.user, userId)));
+    .where(and(eq(budgets.id, budgetId), eq(budgets.user, userId), eq(budgets.workspaceId, workspaceId)));
   if (!existing) return c.json({ error: "not_found" }, 404);
 
   await db.delete(budgets).where(eq(budgets.id, budgetId));
@@ -111,11 +119,12 @@ budgetsRouter.delete("/:id", async (c) => {
 budgetsRouter.get("/usage", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
 
   const [userBudgets, allPayments, allSubs] = await Promise.all([
-    db.select().from(budgets).where(eq(budgets.user, userId)),
-    db.select().from(subscriptionPayments).where(eq(subscriptionPayments.user, userId)),
-    db.select().from(subscriptions).where(eq(subscriptions.user, userId)),
+    db.select().from(budgets).where(and(eq(budgets.user, userId), eq(budgets.workspaceId, workspaceId))),
+    db.select().from(subscriptionPayments).where(and(eq(subscriptionPayments.user, userId), eq(subscriptionPayments.workspaceId, workspaceId))),
+    db.select().from(subscriptions).where(and(eq(subscriptions.user, userId), eq(subscriptions.workspaceId, workspaceId))),
   ]);
 
   const now = new Date();

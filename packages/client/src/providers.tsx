@@ -16,6 +16,7 @@ import { ThemeProvider } from "@/lib/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { CustomConfigProvider } from "@/contexts/CustomConfigContext";
+import { WorkspaceProvider } from "@/contexts/workspace-context";
 import { AuthSync } from "@/components/auth-sync";
 import { AppearanceSync } from "@/components/appearance-sync";
 import { I18nProvider } from "@/i18n/I18nProvider";
@@ -35,14 +36,16 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         </Suspense>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           <AppearanceSync />
-          <CustomConfigProvider>
-            <VaultProvider>
-              <TooltipProvider>
-                <Sonner />
-                {children}
-              </TooltipProvider>
-            </VaultProvider>
-          </CustomConfigProvider>
+          <WorkspaceProvider>
+            <CustomConfigProvider>
+              <VaultProvider>
+                <TooltipProvider>
+                  <Sonner />
+                  {children}
+                </TooltipProvider>
+              </VaultProvider>
+            </CustomConfigProvider>
+          </WorkspaceProvider>
         </ThemeProvider>
       </I18nProvider>
     </QueryClientProvider>

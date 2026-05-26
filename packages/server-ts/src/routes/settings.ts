@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { settings } from "../db/schema.js";
 import { settingsSchema } from "@qreminder/shared";
 import { requireSession } from "../middleware/require-session.js";
@@ -13,25 +13,28 @@ settingsRouter.use("*", requireSession);
 settingsRouter.get("/", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
-  const [row] = await db.select().from(settings).where(eq(settings.user, userId));
+  const workspaceId = c.get("workspaceId");
+  const [row] = await db.select().from(settings).where(and(eq(settings.user, userId), eq(settings.workspaceId, workspaceId)));
   return c.json({ settings: (row?.settings as Record<string, unknown> | undefined) ?? {} });
 });
 
 settingsRouter.patch("/", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const body = await c.req.json();
   const parsed = settingsSchema.partial().passthrough().safeParse(body);
   if (!parsed.success) {
     return c.json({ error: "validation_error", issues: parsed.error.issues }, 400);
   }
   const now = new Date().toISOString();
-  const [existing] = await db.select().from(settings).where(eq(settings.user, userId));
+  const [existing] = await db.select().from(settings).where(and(eq(settings.user, userId), eq(settings.workspaceId, workspaceId)));
   if (!existing) {
     const id = crypto.randomUUID();
     await db.insert(settings).values({
       id,
       user: userId,
+      workspaceId,
       settings: parsed.data as Record<string, unknown>,
       createdAt: now,
       updatedAt: now,
@@ -55,15 +58,17 @@ settingsRouter.patch("/", async (c) => {
 settingsRouter.post("/ical/reset-token", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const now = new Date().toISOString();
   const newToken = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "").slice(0, 16);
 
-  const [existing] = await db.select().from(settings).where(eq(settings.user, userId));
+  const [existing] = await db.select().from(settings).where(and(eq(settings.user, userId), eq(settings.workspaceId, workspaceId)));
   if (!existing) {
     const id = crypto.randomUUID();
     await db.insert(settings).values({
       id,
       user: userId,
+      workspaceId,
       settings: { icalToken: newToken, icalEnabled: true },
       createdAt: now,
       updatedAt: now,
@@ -85,7 +90,8 @@ settingsRouter.post("/ical/reset-token", async (c) => {
 settingsRouter.get("/category-channels", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
-  const [row] = await db.select().from(settings).where(eq(settings.user, userId));
+  const workspaceId = c.get("workspaceId");
+  const [row] = await db.select().from(settings).where(and(eq(settings.user, userId), eq(settings.workspaceId, workspaceId)));
   const categoryDefaults = ((row?.settings as Record<string, unknown> | undefined)?.["categoryDefaultChannels"] ?? {}) as Record<string, string[]>;
   return c.json({ categoryDefaultChannels: categoryDefaults });
 });
@@ -93,6 +99,7 @@ settingsRouter.get("/category-channels", async (c) => {
 settingsRouter.put("/category-channels", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const body = await c.req.json().catch(() => null);
   if (!body || typeof body !== "object" || !("category" in body) || !("channels" in body)) {
     return c.json({ error: "validation_error" }, 400);
@@ -103,7 +110,7 @@ settingsRouter.put("/category-channels", async (c) => {
   }
 
   const now = new Date().toISOString();
-  const [existing] = await db.select().from(settings).where(eq(settings.user, userId));
+  const [existing] = await db.select().from(settings).where(and(eq(settings.user, userId), eq(settings.workspaceId, workspaceId)));
   const current = (existing?.settings ?? {}) as Record<string, unknown>;
   const categoryDefaults = (current["categoryDefaultChannels"] ?? {}) as Record<string, string[]>;
   categoryDefaults[category] = channels;
@@ -114,6 +121,7 @@ settingsRouter.put("/category-channels", async (c) => {
     await db.insert(settings).values({
       id,
       user: userId,
+      workspaceId,
       settings: merged,
       createdAt: now,
       updatedAt: now,

@@ -5,6 +5,7 @@ import type { SchedulerAdapter } from "./adapters/scheduler.js";
 import type { Database } from "./db/types.js";
 import { createAuth, type Auth } from "./auth.js";
 import { ensureDefaultAdmin } from "./bootstrap-default-admin.js";
+import { resolveWorkspace } from "./middleware/resolve-workspace.js";
 import { subscriptionsRouter } from "./routes/subscriptions.js";
 import { settingsRouter } from "./routes/settings.js";
 import { assetsRouter } from "./routes/assets.js";
@@ -91,6 +92,20 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   });
 
   app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
+
+  // Business routes requiring workspace context
+  app.use("/api/subscriptions/*", resolveWorkspace);
+  app.use("/api/settings/*", resolveWorkspace);
+  app.use("/api/custom-configs/*", resolveWorkspace);
+  app.use("/api/assets/*", resolveWorkspace);
+  app.use("/api/payments/*", resolveWorkspace);
+  app.use("/api/budgets/*", resolveWorkspace);
+  app.use("/api/notification-strategy/*", resolveWorkspace);
+  app.use("/api/export/*", resolveWorkspace);
+  app.use("/api/import/*", resolveWorkspace);
+  app.use("/api/ai/*", resolveWorkspace);
+  app.use("/api/annual-report/*", resolveWorkspace);
+  app.use("/api/insights/*", resolveWorkspace);
 
   app.route("/api/subscriptions", subscriptionsRouter);
   app.route("/api/settings", settingsRouter);

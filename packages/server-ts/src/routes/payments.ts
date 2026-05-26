@@ -37,9 +37,10 @@ const updatePaymentSchema = z.object({
 paymentsRouter.get("/", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const subId = c.req.query("subscriptionId");
 
-  const conditions = [eq(subscriptionPayments.user, userId)];
+  const conditions = [eq(subscriptionPayments.workspaceId, workspaceId), eq(subscriptionPayments.user, userId)];
   if (subId) conditions.push(eq(subscriptionPayments.subscriptionId, subId));
 
   const rows = await db
@@ -55,6 +56,7 @@ paymentsRouter.get("/", async (c) => {
 paymentsRouter.post("/", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const body = await c.req.json().catch(() => null);
   const parsed = createPaymentSchema.safeParse(body);
   if (!parsed.success) {
@@ -64,7 +66,7 @@ paymentsRouter.post("/", async (c) => {
   const [sub] = await db
     .select()
     .from(subscriptions)
-    .where(and(eq(subscriptions.id, parsed.data.subscriptionId), eq(subscriptions.user, userId)));
+    .where(and(eq(subscriptions.id, parsed.data.subscriptionId), eq(subscriptions.workspaceId, workspaceId), eq(subscriptions.user, userId)));
   if (!sub) return c.json({ error: "subscription_not_found" }, 404);
 
   const now = new Date().toISOString();
@@ -72,6 +74,7 @@ paymentsRouter.post("/", async (c) => {
   await db.insert(subscriptionPayments).values({
     id,
     user: userId,
+    workspaceId,
     subscriptionId: parsed.data.subscriptionId,
     subscriptionName: sub.name,
     paidAt: parsed.data.paidAt,
@@ -99,6 +102,7 @@ paymentsRouter.post("/", async (c) => {
 paymentsRouter.patch("/:id", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const paymentId = c.req.param("id");
   const body = await c.req.json().catch(() => null);
   const parsed = updatePaymentSchema.safeParse(body);
@@ -109,7 +113,7 @@ paymentsRouter.patch("/:id", async (c) => {
   const [existing] = await db
     .select()
     .from(subscriptionPayments)
-    .where(and(eq(subscriptionPayments.id, paymentId), eq(subscriptionPayments.user, userId)));
+    .where(and(eq(subscriptionPayments.id, paymentId), eq(subscriptionPayments.workspaceId, workspaceId), eq(subscriptionPayments.user, userId)));
   if (!existing) return c.json({ error: "not_found" }, 404);
 
   const now = new Date().toISOString();
@@ -132,12 +136,13 @@ paymentsRouter.patch("/:id", async (c) => {
 paymentsRouter.delete("/:id", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const paymentId = c.req.param("id");
 
   const [existing] = await db
     .select()
     .from(subscriptionPayments)
-    .where(and(eq(subscriptionPayments.id, paymentId), eq(subscriptionPayments.user, userId)));
+    .where(and(eq(subscriptionPayments.id, paymentId), eq(subscriptionPayments.workspaceId, workspaceId), eq(subscriptionPayments.user, userId)));
   if (!existing) return c.json({ error: "not_found" }, 404);
 
   await db.delete(subscriptionPayments).where(eq(subscriptionPayments.id, paymentId));
@@ -162,6 +167,7 @@ const renewSchema = z.object({
 paymentsRouter.post("/renew/:subscriptionId", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const subId = c.req.param("subscriptionId");
   const body = await c.req.json().catch(() => ({}));
   const parsed = renewSchema.safeParse(body);
@@ -172,7 +178,7 @@ paymentsRouter.post("/renew/:subscriptionId", async (c) => {
   const [sub] = await db
     .select()
     .from(subscriptions)
-    .where(and(eq(subscriptions.id, subId), eq(subscriptions.user, userId)));
+    .where(and(eq(subscriptions.id, subId), eq(subscriptions.workspaceId, workspaceId), eq(subscriptions.user, userId)));
   if (!sub) return c.json({ error: "subscription_not_found" }, 404);
 
   const now = new Date().toISOString();
@@ -184,6 +190,7 @@ paymentsRouter.post("/renew/:subscriptionId", async (c) => {
   await db.insert(subscriptionPayments).values({
     id: paymentId,
     user: userId,
+    workspaceId,
     subscriptionId: subId,
     subscriptionName: sub.name,
     paidAt,
@@ -213,11 +220,12 @@ paymentsRouter.post("/renew/:subscriptionId", async (c) => {
 paymentsRouter.get("/stats", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
 
   const allPayments = await db
     .select()
     .from(subscriptionPayments)
-    .where(eq(subscriptionPayments.user, userId));
+    .where(and(eq(subscriptionPayments.workspaceId, workspaceId), eq(subscriptionPayments.user, userId)));
 
   // Allow the client to override the "current month" so the widget matches the
   // user's local clock even when the server runs in a different timezone.
@@ -254,7 +262,7 @@ paymentsRouter.get("/stats", async (c) => {
 
   const subIds = [...new Set(allPayments.map((p) => p.subscriptionId).filter((id): id is string => id !== null))];
   if (subIds.length > 0) {
-    const subs = await db.select().from(subscriptions).where(eq(subscriptions.user, userId));
+    const subs = await db.select().from(subscriptions).where(and(eq(subscriptions.workspaceId, workspaceId), eq(subscriptions.user, userId)));
     const subMap = new Map(subs.map((s) => [s.id, s]));
     for (const p of allPayments) {
       if (!p.paidAt.slice(0, 10).startsWith(currentYear)) continue;
@@ -328,6 +336,7 @@ const syncSchema = z.object({
 paymentsRouter.post("/sync-from-subscriptions", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const body = await c.req.json().catch(() => ({}));
   const parsed = syncSchema.safeParse(body);
   if (!parsed.success) {
@@ -348,7 +357,7 @@ paymentsRouter.post("/sync-from-subscriptions", async (c) => {
     scopeStart = "0000-01-01";
   }
 
-  const baseConditions = [eq(subscriptions.user, userId)];
+  const baseConditions = [eq(subscriptions.workspaceId, workspaceId), eq(subscriptions.user, userId)];
   const allSubs = await db.select().from(subscriptions).where(and(...baseConditions));
   const filtered = allSubs.filter((s) => {
     if (s.status !== "active" && s.status !== "trial") return false;
@@ -365,7 +374,7 @@ paymentsRouter.post("/sync-from-subscriptions", async (c) => {
   const existingPayments = await db
     .select()
     .from(subscriptionPayments)
-    .where(eq(subscriptionPayments.user, userId));
+    .where(and(eq(subscriptionPayments.workspaceId, workspaceId), eq(subscriptionPayments.user, userId)));
   const existingByKey = new Set(
     existingPayments
       .filter((p): p is typeof p & { subscriptionId: string } => p.subscriptionId !== null)
@@ -395,6 +404,7 @@ paymentsRouter.post("/sync-from-subscriptions", async (c) => {
           await db.insert(subscriptionPayments).values({
             id,
             user: userId,
+            workspaceId,
             subscriptionId: sub.id,
             subscriptionName: sub.name,
             paidAt: cursor,

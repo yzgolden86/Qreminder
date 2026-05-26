@@ -209,6 +209,14 @@ function getClientTimeZoneHeader(): string | null {
   }
 }
 
+function getCurrentWorkspaceId(): string | null {
+  try {
+    return localStorage.getItem("qreminder:currentWorkspaceId");
+  } catch {
+    return null;
+  }
+}
+
 /**
  * 带运行时 schema 校验的 fetch 封装（默认 JSON）。
  *
@@ -232,6 +240,10 @@ export async function apiFetch<Schema extends z.ZodType>(
   if (!headers.has("x-client-time-zone")) {
     const timeZone = getClientTimeZoneHeader();
     if (timeZone) headers.set("x-client-time-zone", timeZone);
+  }
+  if (!headers.has("x-workspace-id")) {
+    const workspaceId = getCurrentWorkspaceId();
+    if (workspaceId) headers.set("x-workspace-id", workspaceId);
   }
   for (const [key, value] of Object.entries(getLocaleHeaders())) {
     if (!headers.has(key)) headers.set(key, value);
