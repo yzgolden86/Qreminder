@@ -15,6 +15,7 @@ function makeSub(overrides: Partial<SubscriptionRow>): SubscriptionRow {
   return {
     id: "s1",
     user: "u1",
+    workspaceId: null,
     name: "Sample",
     logo: "",
     price: 10,
