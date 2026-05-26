@@ -39,6 +39,7 @@ backupRouter.get("/zip", async (c) => {
 
   const settingsData = (userSettings[0]?.settings ?? {}) as Record<string, unknown>;
   const safeSettings = { ...settingsData };
+  delete safeSettings["aiApiKey"];
   delete safeSettings["telegramBotToken"];
   delete safeSettings["notifyxApiKey"];
   delete safeSettings["webhookHeaders"];
@@ -46,6 +47,7 @@ backupRouter.get("/zip", async (c) => {
   delete safeSettings["barkDeviceKey"];
   delete safeSettings["serverchanSendKey"];
   delete safeSettings["smtpPassword"];
+  delete safeSettings["webdavPassword"];
   delete safeSettings["icalToken"];
 
   const metadata = {
