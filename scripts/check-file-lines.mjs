@@ -34,6 +34,9 @@ const EXCLUDED_PATHS = [
   /(^|\/)dist\//,
   /(^|\/)coverage\//,
   /^packages\/client\/src\/lib\/thesvg-index\.json$/,
+  /^packages\/server-ts\/drizzle\/meta\//,
+  /^packages\/client\/src\/i18n\/messages\//,
+  /^Qreminder_development_roadmap\.md$/,
 ];
 
 function trackedAndNewFiles() {

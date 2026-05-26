@@ -17,36 +17,23 @@ import { AiExtractDialog } from "@/components/ai-extract-dialog";
 import { AiSummaryWidget } from "@/components/ai-summary-widget";
 import { SubscriptionChannelsDialog } from "@/components/subscription-channels-dialog";
 import { BulkChannelsDialog } from "@/components/bulk-channels-dialog";
+import { DashboardFilterPanel } from "@/components/dashboard-filter-panel";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type {
-  Category,
-  Subscription,
-  SubscriptionStatus,
-} from "@/types/subscription";
+import type { Subscription, SubscriptionStatus } from "@/types/subscription";
 import {
   CreditCard,
   TrendingUp,
   Clock,
   Sparkles,
   Search,
-  Filter,
   Plus,
   Grid,
   List as ListIcon,
@@ -56,6 +43,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "@/components/ui/sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -66,7 +54,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { toast } from "@/components/ui/sonner";
 import { useExchangeRates } from "@/hooks/use-exchange-rates";
 import { useSubscriptions, useBatchDeleteSubscriptions, useBatchUpdateSubscriptions } from "@/hooks/use-subscriptions";
 import { useSettings } from "@/hooks/use-settings";
@@ -76,24 +63,10 @@ import { useDashboardStats } from "@/modules/subscriptions/application/use-dashb
 import { useSubscriptionCrud } from "@/modules/subscriptions/application/use-subscription-crud";
 import { useSubscriptionExport } from "@/modules/subscriptions/application/use-subscription-export";
 import { useSubscriptionFilters } from "@/modules/subscriptions/application/use-subscription-filters";
-import type { SubscriptionSortOption } from "@/modules/subscriptions/domain/subscription-filters";
 import { useCustomConfig } from "@/contexts/CustomConfigContext";
 import { useI18n } from "@/i18n/I18nProvider";
-import type { MessageKey } from "@/i18n/messages";
 
 const EMPTY_SUBSCRIPTIONS: Subscription[] = [];
-
-const SORT_OPTION_LABEL_KEYS: Record<SubscriptionSortOption, MessageKey> = {
-  default: "subscriptions.sort.default",
-  renewal_asc: "subscriptions.sort.renewalAsc",
-  renewal_desc: "subscriptions.sort.renewalDesc",
-  monthly_cost_desc: "subscriptions.sort.monthlyCostDesc",
-  monthly_cost_asc: "subscriptions.sort.monthlyCostAsc",
-  price_desc: "subscriptions.sort.priceDesc",
-  price_asc: "subscriptions.sort.priceAsc",
-  name_asc: "subscriptions.sort.nameAsc",
-  name_desc: "subscriptions.sort.nameDesc",
-};
 
 export default function Home() {
   const subscriptionsQuery = useSubscriptions();
@@ -189,22 +162,6 @@ export default function Home() {
     config,
     locale,
   );
-
-  const categoryFilterLabel =
-    categoryFilter === "all"
-      ? t("subscriptions.allCategories")
-      : config.categories.find((category) => category.value === categoryFilter)?.labels
-        ? label(
-            config.categories.find((category) => category.value === categoryFilter)!.labels,
-          )
-        : categoryFilter;
-  const statusFilterLabel =
-    statusFilter === "all"
-      ? t("subscriptions.allStatuses")
-      : config.statuses.find((status) => status.value === statusFilter)?.labels
-        ? label(config.statuses.find((status) => status.value === statusFilter)!.labels)
-        : statusFilter;
-  const sortOptionLabel = t(SORT_OPTION_LABEL_KEYS[sortOption]);
 
   const toggleSelection = (id: string) => {
     setSelectedIds((prev) => {
@@ -423,128 +380,21 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="mb-6 grid gap-4 rounded-xl surface-card p-4 sm:p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
-            <div className="relative w-full sm:flex-1 sm:min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder={t("subscriptions.searchPlaceholder")}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="border-border bg-secondary/70 pl-10"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-4">
-              <Select
-                value={categoryFilter}
-                onValueChange={(v) => setCategoryFilter(v as Category | "all")}
-              >
-                <SelectTrigger
-                  className="w-full border-border bg-secondary sm:w-[140px]"
-                  tooltipContent={categoryFilterLabel}
-                >
-                  <SelectValue placeholder={t("subscription.field.category")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("subscriptions.allCategories")}</SelectItem>
-                  {config.categories.map((category) => (
-                    <SelectItem key={category.id} value={category.value}>
-                      {label(category.labels)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={statusFilter}
-                onValueChange={(v) => setStatusFilter(v as SubscriptionStatus | "all")}
-              >
-                <SelectTrigger
-                  className="w-full border-border bg-secondary sm:w-[140px]"
-                  tooltipContent={statusFilterLabel}
-                >
-                  <SelectValue placeholder={t("subscription.field.status")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("subscriptions.allStatuses")}</SelectItem>
-                  {config.statuses.map((status) => (
-                    <SelectItem key={status.id} value={status.value}>
-                      {label(status.labels)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={sortOption}
-                onValueChange={(v) => setSortOption(v as SubscriptionSortOption)}
-              >
-                <SelectTrigger
-                  aria-label={t("subscriptions.sort.label")}
-                  className="col-span-2 w-full border-border bg-secondary sm:col-span-1 sm:w-[190px]"
-                  tooltipContent={sortOptionLabel}
-                >
-                  <SelectValue placeholder={t("subscriptions.sort.label")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="default">{t("subscriptions.sort.default")}</SelectItem>
-                  <SelectItem value="renewal_asc">
-                    {t("subscriptions.sort.renewalAsc")}
-                  </SelectItem>
-                  <SelectItem value="renewal_desc">
-                    {t("subscriptions.sort.renewalDesc")}
-                  </SelectItem>
-                  <SelectItem value="monthly_cost_desc">
-                    {t("subscriptions.sort.monthlyCostDesc")}
-                  </SelectItem>
-                  <SelectItem value="monthly_cost_asc">
-                    {t("subscriptions.sort.monthlyCostAsc")}
-                  </SelectItem>
-                  <SelectItem value="price_desc">{t("subscriptions.sort.priceDesc")}</SelectItem>
-                  <SelectItem value="price_asc">{t("subscriptions.sort.priceAsc")}</SelectItem>
-                  <SelectItem value="name_asc">{t("subscriptions.sort.nameAsc")}</SelectItem>
-                  <SelectItem value="name_desc">{t("subscriptions.sort.nameDesc")}</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {hasActiveControls && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearFilters}
-                  className="col-span-2 text-muted-foreground sm:col-span-1"
-                >
-                  {t("subscriptions.clearFilters")}
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {allTags.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">
-                {t("subscription.field.tags")}:
-              </span>
-              {allTags.map((tag) => (
-                <Badge
-                  key={tag}
-                  variant="outline"
-                  className={cn(
-                    "cursor-pointer transition-colors",
-                    selectedTags.includes(tag)
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border hover:border-primary/50",
-                  )}
-                  onClick={() => toggleTag(tag)}
-                >
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-          )}
-        </div>
+        <DashboardFilterPanel
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          categoryFilter={categoryFilter}
+          setCategoryFilter={setCategoryFilter}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          sortOption={sortOption}
+          setSortOption={setSortOption}
+          hasActiveControls={hasActiveControls}
+          clearFilters={clearFilters}
+          allTags={allTags}
+          selectedTags={selectedTags}
+          toggleTag={toggleTag}
+        />
 
         {filteredSubscriptions.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card/40 px-6 py-12 text-center sm:py-20">
