@@ -70,6 +70,7 @@ const deps: AppDeps = {
       .map((s) => s.trim())
       .filter(Boolean),
   },
+  signupEnabled: process.env.SIGNUP_ENABLED === "true",
 };
 
 const app = createApp(deps);

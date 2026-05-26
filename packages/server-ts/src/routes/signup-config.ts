@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { requireSession } from "../middleware/require-session.js";
+import { writeAuditLog } from "./audit-logs.js";
 import {
   readSignupConfig,
   writeSignupConfig,
@@ -45,5 +46,11 @@ signupConfigRouter.patch("/", async (c) => {
       .filter(Boolean),
   };
   await writeSignupConfig(deps.db, next);
+  await writeAuditLog(deps.db, {
+    userId: c.get("user").id,
+    action: "admin.signupConfig.update",
+    targetType: "signup_config",
+    metadata: { enabled: next.enabled, unrestricted: next.unrestricted, domainCount: next.allowedDomains.length },
+  });
   return c.json({ config: next });
 });

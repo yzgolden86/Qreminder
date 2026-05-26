@@ -20,10 +20,10 @@ export function MonthlyCompletionWidget() {
   const { t } = useI18n();
   const subsQuery = useSubscriptions();
   const paymentsQuery = usePayments();
-  const subs = subsQuery.data ?? [];
-  const payments = paymentsQuery.data ?? [];
 
   const { dueCount, paidCount, overdueCount, completion } = useMemo(() => {
+    const subs = subsQuery.data ?? [];
+    const payments = paymentsQuery.data ?? [];
     const now = new Date();
     const yyyy = now.getFullYear();
     const mm = String(now.getMonth() + 1).padStart(2, "0");
@@ -60,7 +60,7 @@ export function MonthlyCompletionWidget() {
       overdueCount: overdue,
       completion: completionPct,
     };
-  }, [subs, payments]);
+  }, [subsQuery.data, paymentsQuery.data]);
 
   if (subsQuery.isLoading || paymentsQuery.isLoading) return null;
   if (dueCount === 0) return null;

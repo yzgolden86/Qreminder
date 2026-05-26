@@ -13,6 +13,7 @@ export interface AuthOptions {
   secret: string;
   baseURL: string;
   trustedOrigins: string[];
+  signupEnabled?: boolean;
 }
 
 export function createAuth(options: AuthOptions) {
@@ -59,12 +60,15 @@ export function createAuth(options: AuthOptions) {
           return;
         }
         const config = await readSignupConfig(options.db);
-        if (!config.enabled) {
+        const effectiveEnabled = config.enabled || options.signupEnabled === true;
+        if (!effectiveEnabled) {
           throw new APIError("FORBIDDEN", { message: "signup_disabled" });
         }
-        const email = String(ctx.body?.email ?? "").trim().toLowerCase();
-        if (!isEmailAllowedBySignupConfig(email, config)) {
-          throw new APIError("FORBIDDEN", { message: "signup_not_allowed" });
+        if (config.enabled) {
+          const email = String(ctx.body?.email ?? "").trim().toLowerCase();
+          if (!isEmailAllowedBySignupConfig(email, config)) {
+            throw new APIError("FORBIDDEN", { message: "signup_not_allowed" });
+          }
         }
       }),
     },

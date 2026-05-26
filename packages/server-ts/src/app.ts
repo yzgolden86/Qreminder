@@ -40,6 +40,7 @@ export interface AppDeps {
     baseURL: string;
     trustedOrigins: string[];
   };
+  signupEnabled?: boolean;
 }
 
 export interface AppEnv {
@@ -75,6 +76,7 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
     secret: deps.auth.secret,
     baseURL: deps.auth.baseURL,
     trustedOrigins,
+    ...(deps.signupEnabled != null && { signupEnabled: deps.signupEnabled }),
   });
 
   app.use("*", async (c, next) => {
@@ -122,7 +124,7 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   app.get("/api/app/signup-status", async (c) => {
     const { readSignupConfig } = await import("./signup-config.js");
     const config = await readSignupConfig(deps.db);
-    return c.json({ enabled: config.enabled });
+    return c.json({ enabled: config.enabled || deps.signupEnabled === true });
   });
 
   return app;

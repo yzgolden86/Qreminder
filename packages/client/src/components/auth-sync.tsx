@@ -59,7 +59,7 @@ export function AuthSync() {
     if (hasSession && pathname === "/login") {
       router.replace(sanitizeNextPath(searchParams?.get("next"), "/"));
     }
-  }, [isPending, isPublicRoute, pathname, router, searchParams, sessionData?.session]);
+  }, [isPending, isPublicRoute, pathname, router, searchParams, sessionData?.session, sessionData?.user]);
 
   useEffect(() => {
     // 认证态变化后刷新用户私有数据，避免退出/切换账号后残留旧用户缓存。

@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { eq, and, asc } from "drizzle-orm";
 import { users, accounts, settings as settingsTable } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
+import { writeAuditLog } from "./audit-logs.js";
 import type { AppEnv } from "../app.js";
 
 export const adminUsersRouter = new Hono<AppEnv>();
@@ -136,6 +137,13 @@ adminUsersRouter.post("/", async (c) => {
   });
 
   const [created] = await db.select().from(users).where(eq(users.id, userId));
+  await writeAuditLog(db, {
+    userId: c.get("user").id,
+    action: "admin.user.create",
+    targetType: "user",
+    targetId: userId,
+    summary: `Created user "${email}"`,
+  });
   return c.json({ user: toUserDTO(created!) }, 201);
 });
 
@@ -175,6 +183,14 @@ adminUsersRouter.patch("/:id", async (c) => {
     return c.json({ error: "no_valid_fields" }, 400);
   }
 
+  await writeAuditLog(db, {
+    userId: c.get("user").id,
+    action: "admin.user.update",
+    targetType: "user",
+    targetId: id,
+    metadata: { fields: Object.keys(allowed), passwordChanged: Boolean(newPassword) },
+  });
+
   return c.json({ ok: true });
 });
 
@@ -184,5 +200,11 @@ adminUsersRouter.delete("/:id", async (c) => {
   const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.id, id));
   if (!existing) return c.json({ error: "not_found" }, 404);
   await db.delete(users).where(eq(users.id, id));
+  await writeAuditLog(db, {
+    userId: c.get("user").id,
+    action: "admin.user.delete",
+    targetType: "user",
+    targetId: id,
+  });
   return c.json({ ok: true });
 });

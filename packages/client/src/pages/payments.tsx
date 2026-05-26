@@ -48,9 +48,10 @@ export default function PaymentsPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const subscriptionsQuery = useSubscriptions();
-  const subscriptions = subscriptionsQuery.data ?? [];
+  const subscriptions = subscriptionsQuery.data;
+  const subsList = subscriptions ?? [];
   const subMap = useMemo(
-    () => new Map(subscriptions.map((s) => [s.id, s])),
+    () => new Map((subscriptions ?? []).map((s) => [s.id, s])),
     [subscriptions],
   );
 
@@ -144,7 +145,7 @@ export default function PaymentsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t("payments.filterAll")}</SelectItem>
-              {subscriptions.map((sub) => (
+              {subsList.map((sub) => (
                 <SelectItem key={sub.id} value={sub.id}>
                   {sub.name}
                 </SelectItem>
@@ -259,7 +260,7 @@ export default function PaymentsPage() {
       <AddPaymentDialog
         open={addOpen}
         onOpenChange={setAddOpen}
-        subscriptions={subscriptions}
+        subscriptions={subsList}
         onSubmit={async (data) => {
           try {
             await createPayment.mutateAsync(data);
@@ -275,7 +276,7 @@ export default function PaymentsPage() {
       <SyncFromSubsDialog
         open={syncOpen}
         onOpenChange={setSyncOpen}
-        activeCount={subscriptions.filter((s) => s.status === "active" || s.status === "trial").length}
+        activeCount={subsList.filter((s) => s.status === "active" || s.status === "trial").length}
         isPending={syncFromSubs.isPending}
         onConfirm={async (scope) => {
           try {

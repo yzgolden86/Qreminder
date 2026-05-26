@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { settings } from "../db/schema.js";
 import { settingsSchema } from "@qreminder/shared";
 import { requireSession } from "../middleware/require-session.js";
+import { writeAuditLog } from "./audit-logs.js";
 import type { AppEnv } from "../app.js";
 
 export const settingsRouter = new Hono<AppEnv>();
@@ -42,6 +43,12 @@ settingsRouter.patch("/", async (c) => {
     .update(settings)
     .set({ settings: merged, updatedAt: now })
     .where(eq(settings.id, existing.id));
+  await writeAuditLog(db, {
+    userId,
+    action: "settings.update",
+    targetType: "settings",
+    metadata: { fields: Object.keys(parsed.data) },
+  });
   return c.json({ settings: merged });
 });
 
