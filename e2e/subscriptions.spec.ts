@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-const testEmail = "e2e-test@example.com";
+const testRunId = `${Date.now()}-${process.pid}`;
+const testEmail = `e2e-test-${testRunId}@example.com`;
 const testPassword = "password123456";
 const testName = "E2E Tester";
 

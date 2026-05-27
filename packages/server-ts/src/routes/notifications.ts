@@ -3,6 +3,7 @@ import { z } from "zod";
 import { and, desc, eq } from "drizzle-orm";
 import { notificationJobs } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
+import { requireActiveWorkspaceRole } from "../lib/workspace-permissions.js";
 import type { AppEnv } from "../app.js";
 
 export const notificationsRouter = new Hono<AppEnv>();
@@ -16,6 +17,7 @@ notificationsRouter.use("*", requireSession);
 notificationsRouter.get("/recent-failures", async (c) => {
   const db = c.get("deps").db;
   const userId = (c.get("user") as { id: string }).id;
+  const workspaceId = c.get("workspaceId");
   const daysParam = Number.parseInt(c.req.query("days") ?? "7", 10);
   const days = Number.isFinite(daysParam) && daysParam > 0 && daysParam <= 90 ? daysParam : 7;
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
@@ -27,6 +29,7 @@ notificationsRouter.get("/recent-failures", async (c) => {
     .where(
       and(
         eq(notificationJobs.user, userId),
+        eq(notificationJobs.workspaceId, workspaceId),
         eq(notificationJobs.status, "failed"),
       ),
     )
@@ -45,6 +48,7 @@ notificationsRouter.get("/recent-failures", async (c) => {
       timeZone: r.timeZone,
       attempts: r.attempts,
       lastError: r.lastError,
+      workspaceId: r.workspaceId,
     })),
   });
 });
@@ -100,7 +104,7 @@ function checkRateLimit(userId: string): boolean {
   return true;
 }
 
-notificationsRouter.post("/test", async (c) => {
+notificationsRouter.post("/test", requireActiveWorkspaceRole("editor"), async (c) => {
   const userId = (c.get("user") as { id: string }).id;
   if (!checkRateLimit(userId)) {
     return c.json({ error: "rate_limited", message: "Too many test requests, please wait a moment" }, 429);

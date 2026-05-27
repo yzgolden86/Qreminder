@@ -6,7 +6,7 @@
  * GET /api/backup/webdav/status — 查询最近备份状态
  */
 import { Hono } from "hono";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { zipSync, strToU8, unzipSync, strFromU8 } from "fflate";
 import {
   subscriptions,
@@ -17,6 +17,7 @@ import {
   notificationTemplates,
 } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
+import { requireActiveWorkspaceRole } from "../lib/workspace-permissions.js";
 import type { AppEnv } from "../app.js";
 
 export const webdavRouter = new Hono<AppEnv>();
@@ -49,8 +50,9 @@ function webdavHeaders(config: WebdavConfig): Record<string, string> {
 webdavRouter.post("/webdav", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
 
-  const [settingsRow] = await db.select().from(settings).where(eq(settings.user, userId));
+  const [settingsRow] = await db.select().from(settings).where(and(eq(settings.user, userId), eq(settings.workspaceId, workspaceId)));
   const userSettings = (settingsRow?.settings ?? {}) as Record<string, unknown>;
   const config = getWebdavConfig(userSettings);
 
@@ -59,11 +61,11 @@ webdavRouter.post("/webdav", async (c) => {
   }
 
   const [userSubs, userPayments, userBudgets, userConfig, userTemplates] = await Promise.all([
-    db.select().from(subscriptions).where(eq(subscriptions.user, userId)),
-    db.select().from(subscriptionPayments).where(eq(subscriptionPayments.user, userId)),
-    db.select().from(budgets).where(eq(budgets.user, userId)),
-    db.select().from(customConfigs).where(eq(customConfigs.user, userId)),
-    db.select().from(notificationTemplates).where(eq(notificationTemplates.user, userId)),
+    db.select().from(subscriptions).where(eq(subscriptions.workspaceId, workspaceId)),
+    db.select().from(subscriptionPayments).where(eq(subscriptionPayments.workspaceId, workspaceId)),
+    db.select().from(budgets).where(eq(budgets.workspaceId, workspaceId)),
+    db.select().from(customConfigs).where(and(eq(customConfigs.user, userId), eq(customConfigs.workspaceId, workspaceId))),
+    db.select().from(notificationTemplates).where(eq(notificationTemplates.workspaceId, workspaceId)),
   ]);
 
   const safeSettings = { ...userSettings };
@@ -126,11 +128,12 @@ webdavRouter.post("/webdav", async (c) => {
   }
 });
 
-webdavRouter.post("/webdav/restore", async (c) => {
+webdavRouter.post("/webdav/restore", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
 
-  const [settingsRow] = await db.select().from(settings).where(eq(settings.user, userId));
+  const [settingsRow] = await db.select().from(settings).where(and(eq(settings.user, userId), eq(settings.workspaceId, workspaceId)));
   const userSettings = (settingsRow?.settings ?? {}) as Record<string, unknown>;
   const config = getWebdavConfig(userSettings);
 
@@ -189,7 +192,7 @@ webdavRouter.post("/webdav/restore", async (c) => {
     if (files["subscriptions.json"]) {
       const subs = JSON.parse(strFromU8(files["subscriptions.json"])) as Array<Record<string, unknown>>;
       const existingByName = new Map(
-        (await db.select({ id: subscriptions.id, name: subscriptions.name }).from(subscriptions).where(eq(subscriptions.user, userId)))
+        (await db.select({ id: subscriptions.id, name: subscriptions.name }).from(subscriptions).where(eq(subscriptions.workspaceId, workspaceId)))
           .map((s) => [s.name.toLowerCase(), s.id] as const),
       );
       const now = new Date().toISOString();
@@ -207,6 +210,7 @@ webdavRouter.post("/webdav/restore", async (c) => {
         await db.insert(subscriptions).values({
           id: newId,
           user: userId,
+          workspaceId,
           name,
           logo: String(sub["logo"] ?? ""),
           price: Number(sub["price"] ?? 0),
@@ -243,6 +247,7 @@ webdavRouter.post("/webdav/restore", async (c) => {
           await db.insert(subscriptionPayments).values({
             id: crypto.randomUUID(),
             user: userId,
+            workspaceId,
             subscriptionId: mappedSubId,
             subscriptionName: String(p["subscriptionName"] ?? p["subscription_name"] ?? ""),
             paidAt: String(p["paidAt"] ?? p["paid_at"] ?? now.slice(0, 10)),
@@ -267,6 +272,7 @@ webdavRouter.post("/webdav/restore", async (c) => {
           await db.insert(budgets).values({
             id: crypto.randomUUID(),
             user: userId,
+            workspaceId,
             scopeType: normalizeScopeType(b["scopeType"] ?? b["scope_type"]),
             scopeId: String(b["scopeId"] ?? b["scope_id"] ?? ""),
             period: (b["period"] === "yearly" ? "yearly" : "monthly") as "monthly" | "yearly",
@@ -294,6 +300,7 @@ webdavRouter.post("/webdav/restore", async (c) => {
           await db.insert(notificationTemplates).values({
             id: crypto.randomUUID(),
             user: userId,
+            workspaceId,
             scope,
             scopeId,
             titleTemplate: String(tpl["titleTemplate"] ?? tpl["title_template"] ?? ""),
@@ -318,8 +325,9 @@ webdavRouter.post("/webdav/restore", async (c) => {
 webdavRouter.get("/webdav/status", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
 
-  const [settingsRow] = await db.select().from(settings).where(eq(settings.user, userId));
+  const [settingsRow] = await db.select().from(settings).where(and(eq(settings.user, userId), eq(settings.workspaceId, workspaceId)));
   const userSettings = (settingsRow?.settings ?? {}) as Record<string, unknown>;
   const config = getWebdavConfig(userSettings);
 

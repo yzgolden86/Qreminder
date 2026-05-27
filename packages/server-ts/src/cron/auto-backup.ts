@@ -41,6 +41,7 @@ export interface AutoBackupResult {
 }
 
 const SENSITIVE_SETTING_KEYS = [
+  "aiApiKey",
   "telegramBotToken",
   "notifyxApiKey",
   "webhookHeaders",
@@ -48,6 +49,7 @@ const SENSITIVE_SETTING_KEYS = [
   "barkDeviceKey",
   "serverchanSendKey",
   "smtpPassword",
+  "webdavPassword",
   "icalToken",
 ];
 

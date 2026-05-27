@@ -18,6 +18,7 @@ import type {
 } from "@qreminder/server";
 import { createFsStorage } from "./fs-storage.js";
 import { createNodemailerAdapter } from "./nodemailer-adapter.js";
+import type { ScheduledTask } from "node-cron";
 
 const port = Number(process.env.PORT ?? 3000);
 const dbPath = process.env.DATABASE_PATH ?? "./data/qreminder.db";
@@ -89,16 +90,17 @@ if (existsSync(clientIndexPath)) {
   });
 }
 
-serve({ fetch: app.fetch, port }, ({ port: listenPort }) => {
+const httpServer = serve({ fetch: app.fetch, port }, ({ port: listenPort }) => {
   console.log(`qreminder-node listening on http://0.0.0.0:${listenPort}`);
 });
 
 const cronExpr = process.env.NOTIFICATION_SCHEDULER_CRON ?? "* * * * *";
 const cronEnabled = process.env.NOTIFICATION_SCHEDULER_ENABLED !== "false";
+let cronTask: ScheduledTask | null = null;
 
 if (cronEnabled) {
   let running = false;
-  cron.schedule(cronExpr, async () => {
+  cronTask = cron.schedule(cronExpr, async () => {
     if (running) return;
     running = true;
     try {
@@ -115,3 +117,47 @@ if (cronEnabled) {
     }
   });
 }
+
+function closeHttpServer() {
+  return new Promise<void>((resolve, reject) => {
+    if (!httpServer.listening) {
+      resolve();
+      return;
+    }
+
+    httpServer.close((err) => {
+      if (err) reject(err);
+      else resolve();
+    });
+
+    if ("closeIdleConnections" in httpServer) {
+      httpServer.closeIdleConnections();
+    }
+  });
+}
+
+let shuttingDown = false;
+
+async function shutdown(signal: NodeJS.Signals) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+
+  try {
+    console.log(`qreminder-node received ${signal}, shutting down`);
+    cronTask?.stop();
+    await closeHttpServer();
+    sqlite.close();
+    process.exit(0);
+  } catch (err) {
+    console.error("qreminder-node shutdown failed:", err);
+    process.exit(1);
+  }
+}
+
+process.once("SIGINT", (signal) => {
+  void shutdown(signal);
+});
+
+process.once("SIGTERM", (signal) => {
+  void shutdown(signal);
+});

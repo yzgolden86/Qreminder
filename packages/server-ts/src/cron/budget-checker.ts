@@ -4,7 +4,7 @@
  * 被 notification-cron 调用，检查用户预算使用率，
  * 超过 80% 或 100% 时生成提醒消息。
  */
-import { eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { budgets, subscriptions, subscriptionPayments } from "../db/schema.js";
 import type { Database } from "../db/types.js";
 
@@ -22,11 +22,24 @@ export interface BudgetAlert {
 export async function checkBudgetAlerts(
   db: Database,
   userId: string,
+  workspaceId: string | null = null,
 ): Promise<BudgetAlert[]> {
   const [userBudgets, allPayments, allSubs] = await Promise.all([
-    db.select().from(budgets).where(eq(budgets.user, userId)),
-    db.select().from(subscriptionPayments).where(eq(subscriptionPayments.user, userId)),
-    db.select().from(subscriptions).where(eq(subscriptions.user, userId)),
+    db.select().from(budgets).where(
+      workspaceId
+        ? eq(budgets.workspaceId, workspaceId)
+        : and(eq(budgets.user, userId), sql`${budgets.workspaceId} IS NULL`),
+    ),
+    db.select().from(subscriptionPayments).where(
+      workspaceId
+        ? eq(subscriptionPayments.workspaceId, workspaceId)
+        : and(eq(subscriptionPayments.user, userId), sql`${subscriptionPayments.workspaceId} IS NULL`),
+    ),
+    db.select().from(subscriptions).where(
+      workspaceId
+        ? eq(subscriptions.workspaceId, workspaceId)
+        : and(eq(subscriptions.user, userId), sql`${subscriptions.workspaceId} IS NULL`),
+    ),
   ]);
 
   const now = new Date();

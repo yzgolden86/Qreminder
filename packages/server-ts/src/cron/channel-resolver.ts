@@ -5,8 +5,8 @@
  *
  * 被 notification-cron 调用，为每条订阅确定最终发送渠道列表。
  */
-import { eq, and } from "drizzle-orm";
-import { subscriptionNotificationChannels, settings } from "../db/schema.js";
+import { and, eq, sql } from "drizzle-orm";
+import { subscriptionNotificationChannels } from "../db/schema.js";
 import type { Database } from "../db/types.js";
 
 export interface ChannelResolutionResult {
@@ -17,6 +17,7 @@ export interface ChannelResolutionResult {
 export async function resolveChannelsForSubscription(
   db: Database,
   userId: string,
+  workspaceId: string | null,
   subscriptionId: string,
   subscriptionCategory: string,
   subscriptionTags: string[],
@@ -28,10 +29,16 @@ export async function resolveChannelsForSubscription(
     .select()
     .from(subscriptionNotificationChannels)
     .where(
-      and(
-        eq(subscriptionNotificationChannels.user, userId),
-        eq(subscriptionNotificationChannels.subscriptionId, subscriptionId),
-      ),
+      workspaceId
+        ? and(
+            eq(subscriptionNotificationChannels.workspaceId, workspaceId),
+            eq(subscriptionNotificationChannels.subscriptionId, subscriptionId),
+          )
+        : and(
+            eq(subscriptionNotificationChannels.user, userId),
+            sql`${subscriptionNotificationChannels.workspaceId} IS NULL`,
+            eq(subscriptionNotificationChannels.subscriptionId, subscriptionId),
+          ),
     );
 
   if (subChannels.length > 0) {

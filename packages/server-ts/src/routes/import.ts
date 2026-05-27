@@ -8,6 +8,7 @@ import { Hono } from "hono";
 import { eq } from "drizzle-orm";
 import { subscriptions } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
+import { requireActiveWorkspaceRole } from "../lib/workspace-permissions.js";
 import type { AppEnv } from "../app.js";
 
 export const importRouter = new Hono<AppEnv>();
@@ -65,12 +66,12 @@ importRouter.post("/json/preview", async (c) => {
 
   const { parsed } = validation;
   const db = c.get("deps").db;
-  const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
 
   const existingSubs = await db
     .select({ id: subscriptions.id, name: subscriptions.name })
     .from(subscriptions)
-    .where(eq(subscriptions.user, userId));
+    .where(eq(subscriptions.workspaceId, workspaceId));
 
   const existingNames = new Set(existingSubs.map((s) => s.name.toLowerCase()));
   const importSubs = parsed.data.subscriptions ?? [];
@@ -102,7 +103,7 @@ importRouter.post("/json/preview", async (c) => {
   });
 });
 
-importRouter.post("/json/confirm", async (c) => {
+importRouter.post("/json/confirm", requireActiveWorkspaceRole("editor"), async (c) => {
   const body = await c.req.json().catch(() => null);
   const validation = validateExport(body);
   if (!validation.ok) {
@@ -112,12 +113,13 @@ importRouter.post("/json/confirm", async (c) => {
   const { parsed } = validation;
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const now = new Date().toISOString();
 
   const existingSubs = await db
     .select({ name: subscriptions.name })
     .from(subscriptions)
-    .where(eq(subscriptions.user, userId));
+    .where(eq(subscriptions.workspaceId, workspaceId));
   const existingNames = new Set(existingSubs.map((s) => s.name.toLowerCase()));
 
   const importSubs = (parsed.data.subscriptions ?? []).filter(
@@ -129,6 +131,7 @@ importRouter.post("/json/confirm", async (c) => {
     await db.insert(subscriptions).values({
       id: crypto.randomUUID(),
       user: userId,
+      workspaceId,
       name: sub.name,
       logo: sub.logo ?? "",
       price: sub.price ?? 0,

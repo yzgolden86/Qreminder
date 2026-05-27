@@ -5,7 +5,7 @@
  * 返回 text/calendar 格式的 VCALENDAR，包含用户活跃订阅的续费事件。
  */
 import { Hono } from "hono";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { settings, subscriptions } from "../db/schema.js";
 import type { AppEnv } from "../app.js";
 
@@ -28,7 +28,6 @@ icalRouter.get("/:token", async (c) => {
     return c.text("Not Found", 404);
   }
 
-  const userId = settingsRow.user;
   const userSettings = (settingsRow.settings ?? {}) as Record<string, unknown>;
 
   if (userSettings["icalEnabled"] === false) {
@@ -38,7 +37,11 @@ icalRouter.get("/:token", async (c) => {
   const userSubs = await db
     .select()
     .from(subscriptions)
-    .where(eq(subscriptions.user, userId));
+    .where(
+      settingsRow.workspaceId
+        ? eq(subscriptions.workspaceId, settingsRow.workspaceId)
+        : and(eq(subscriptions.user, settingsRow.user), sql`${subscriptions.workspaceId} IS NULL`),
+    );
 
   const activeSubs = userSubs.filter(
     (s) => s.status === "active" || s.status === "trial",

@@ -8,7 +8,11 @@
  */
 import { describe, it, expect, afterEach, beforeEach } from "vitest";
 import type { NotificationHit, Subscription } from "@qreminder/shared";
-import { pickTemplate, buildChannelMessage } from "./notification-cron.js";
+import { eq } from "drizzle-orm";
+import { notificationJobs, settings as settingsTable, workspaceMembers, workspaces } from "../db/schema.js";
+import { createTestDb, seedSubscription, seedUser, type TestDb } from "../test-utils/db.js";
+import type { MailerAdapter, MailMessage } from "../adapters/mailer.js";
+import { pickTemplate, buildChannelMessage, runNotificationCron } from "./notification-cron.js";
 
 type TemplateRow = {
   id: string;
@@ -175,5 +179,87 @@ describe("buildChannelMessage", () => {
     const msg = buildChannelMessage(groupedHits, ["email"], templates as never, "u");
     expect(msg.title).toBe("Sub:X");
     expect(msg.body).toBe("sub-body");
+  });
+});
+
+describe("runNotificationCron workspace scoping", () => {
+  let testDb: TestDb;
+
+  beforeEach(() => {
+    testDb = createTestDb();
+  });
+
+  afterEach(() => {
+    testDb.close();
+  });
+
+  it("creates independent jobs for the same user across workspaces", async () => {
+    const userId = await seedUser(testDb.db, "cron-workspace-user");
+    const now = "2026-06-12T09:00:00.000Z";
+    const workspacesToSeed = [
+      { id: "ws-cron-a", name: "Workspace A", subId: "sub-cron-a" },
+      { id: "ws-cron-b", name: "Workspace B", subId: "sub-cron-b" },
+    ];
+
+    for (const workspace of workspacesToSeed) {
+      await testDb.db.insert(workspaces).values({
+        id: workspace.id,
+        name: workspace.name,
+        owner: userId,
+        createdAt: now,
+        updatedAt: now,
+      });
+      await testDb.db.insert(workspaceMembers).values({
+        id: `member-${workspace.id}`,
+        workspaceId: workspace.id,
+        userId,
+        role: "owner",
+        createdAt: now,
+      });
+      await testDb.db.insert(settingsTable).values({
+        id: `settings-${workspace.id}`,
+        user: userId,
+        workspaceId: workspace.id,
+        settings: {
+          timezone: "UTC",
+          notificationTimeLocal: "09:00",
+          enabledChannels: ["email"],
+        },
+        createdAt: now,
+        updatedAt: now,
+      });
+      await seedSubscription(testDb.db, userId, {
+        id: workspace.subId,
+        workspaceId: workspace.id,
+        name: workspace.name,
+        nextBillingDate: "2026-06-15",
+        reminderOffsets: [3],
+      });
+    }
+
+    const sent: MailMessage[] = [];
+    const mailer: MailerAdapter = {
+      async send(message) {
+        sent.push(message);
+        return { id: `mail-${sent.length}` };
+      },
+    };
+
+    const result = await runNotificationCron(
+      { db: testDb.db, mailer },
+      { now: new Date(now), force: true },
+    );
+
+    expect(result.sent).toBe(2);
+    expect(sent).toHaveLength(2);
+    expect(sent.map((msg) => msg.text).join("\n")).toContain("Workspace A");
+    expect(sent.map((msg) => msg.text).join("\n")).toContain("Workspace B");
+
+    const jobs = await testDb.db
+      .select()
+      .from(notificationJobs)
+      .where(eq(notificationJobs.user, userId));
+    expect(jobs).toHaveLength(2);
+    expect(new Set(jobs.map((job) => job.workspaceId))).toEqual(new Set(["ws-cron-a", "ws-cron-b"]));
   });
 });

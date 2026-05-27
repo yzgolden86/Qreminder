@@ -5,7 +5,7 @@
  * GET /api/export/subscriptions.csv — 导出订阅列表为 CSV
  */
 import { Hono } from "hono";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import {
   subscriptions,
   settings,
@@ -21,17 +21,19 @@ exportRouter.use("*", requireSession);
 exportRouter.get("/json", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
 
   const [userSubs, userSettings, userConfig] = await Promise.all([
-    db.select().from(subscriptions).where(eq(subscriptions.user, userId)),
-    db.select().from(settings).where(eq(settings.user, userId)),
-    db.select().from(customConfigs).where(eq(customConfigs.user, userId)),
+    db.select().from(subscriptions).where(eq(subscriptions.workspaceId, workspaceId)),
+    db.select().from(settings).where(and(eq(settings.user, userId), eq(settings.workspaceId, workspaceId))),
+    db.select().from(customConfigs).where(and(eq(customConfigs.user, userId), eq(customConfigs.workspaceId, workspaceId))),
   ]);
 
   const settingsData = (userSettings[0]?.settings ?? {}) as Record<string, unknown>;
   const configData = (userConfig[0]?.config ?? {}) as Record<string, unknown>;
 
   const safeSettings = { ...settingsData };
+  delete safeSettings["aiApiKey"];
   delete safeSettings["telegramBotToken"];
   delete safeSettings["notifyxApiKey"];
   delete safeSettings["webhookHeaders"];
@@ -39,6 +41,7 @@ exportRouter.get("/json", async (c) => {
   delete safeSettings["barkDeviceKey"];
   delete safeSettings["serverchanSendKey"];
   delete safeSettings["smtpPassword"];
+  delete safeSettings["webdavPassword"];
   delete safeSettings["icalToken"];
 
   const exportData = {
@@ -80,12 +83,12 @@ exportRouter.get("/json", async (c) => {
 
 exportRouter.get("/subscriptions.csv", async (c) => {
   const db = c.get("deps").db;
-  const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
 
   const userSubs = await db
     .select()
     .from(subscriptions)
-    .where(eq(subscriptions.user, userId));
+    .where(eq(subscriptions.workspaceId, workspaceId));
 
   const headers = [
     "name",

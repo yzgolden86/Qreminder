@@ -107,7 +107,7 @@ export const settings = sqliteTable(
     updatedAt: text("updatedAt").notNull(),
   },
   (table) => ({
-    userUnique: uniqueIndex("idx_settings_user_unique").on(table.user),
+    userWorkspaceUnique: uniqueIndex("idx_settings_user_workspace_unique").on(table.user, table.workspaceId),
   }),
 );
 
@@ -122,7 +122,7 @@ export const customConfigs = sqliteTable(
     updatedAt: text("updatedAt").notNull(),
   },
   (table) => ({
-    userUnique: uniqueIndex("idx_custom_configs_user_unique").on(table.user),
+    userWorkspaceUnique: uniqueIndex("idx_custom_configs_user_workspace_unique").on(table.user, table.workspaceId),
   }),
 );
 
@@ -165,8 +165,9 @@ export const notificationJobs = sqliteTable(
     updatedAt: text("updatedAt").notNull(),
   },
   (table) => ({
-    userLocalTimeUnique: uniqueIndex("idx_notification_jobs_user_local_time_unique").on(
+    userWorkspaceLocalTimeUnique: uniqueIndex("idx_notification_jobs_user_workspace_local_time_unique").on(
       table.user,
+      table.workspaceId,
       table.scheduledLocalDate,
       table.scheduledLocalTime,
       table.timeZone,

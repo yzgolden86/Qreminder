@@ -6,7 +6,7 @@
  * POST /api/ai/models — 列出当前 endpoint 可用模型（实时调用，不缓存）
  */
 import { Hono } from "hono";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { settings, subscriptions, subscriptionPayments } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
@@ -115,8 +115,9 @@ const extractSchema = z.object({
 aiRouter.post("/extract", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
 
-  const [settingsRow] = await db.select().from(settings).where(eq(settings.user, userId));
+  const [settingsRow] = await db.select().from(settings).where(and(eq(settings.user, userId), eq(settings.workspaceId, workspaceId)));
   const userSettings = (settingsRow?.settings ?? {}) as Record<string, unknown>;
   const config = getAiConfig(userSettings);
 
@@ -167,8 +168,9 @@ const extractImageSchema = z.object({
 aiRouter.post("/extract-image", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
 
-  const [settingsRow] = await db.select().from(settings).where(eq(settings.user, userId));
+  const [settingsRow] = await db.select().from(settings).where(and(eq(settings.user, userId), eq(settings.workspaceId, workspaceId)));
   const userSettings = (settingsRow?.settings ?? {}) as Record<string, unknown>;
   const config = getAiConfig(userSettings);
 
@@ -213,8 +215,9 @@ Return ONLY valid JSON, no markdown, no explanation.`;
 aiRouter.post("/summary", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
 
-  const [settingsRow] = await db.select().from(settings).where(eq(settings.user, userId));
+  const [settingsRow] = await db.select().from(settings).where(and(eq(settings.user, userId), eq(settings.workspaceId, workspaceId)));
   const userSettings = (settingsRow?.settings ?? {}) as Record<string, unknown>;
   const config = getAiConfig(userSettings);
 
@@ -223,8 +226,8 @@ aiRouter.post("/summary", async (c) => {
   }
 
   const [userSubs, userPayments] = await Promise.all([
-    db.select().from(subscriptions).where(eq(subscriptions.user, userId)),
-    db.select().from(subscriptionPayments).where(eq(subscriptionPayments.user, userId)),
+    db.select().from(subscriptions).where(eq(subscriptions.workspaceId, workspaceId)),
+    db.select().from(subscriptionPayments).where(eq(subscriptionPayments.workspaceId, workspaceId)),
   ]);
 
   const now = new Date();
@@ -282,8 +285,9 @@ const modelsRequestSchema = z.object({
 aiRouter.post("/models", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
 
-  const [settingsRow] = await db.select().from(settings).where(eq(settings.user, userId));
+  const [settingsRow] = await db.select().from(settings).where(and(eq(settings.user, userId), eq(settings.workspaceId, workspaceId)));
   const userSettings = (settingsRow?.settings ?? {}) as Record<string, unknown>;
   const stored = getAiConfig(userSettings);
 

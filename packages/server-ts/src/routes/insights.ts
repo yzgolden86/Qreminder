@@ -20,18 +20,18 @@ insightsRouter.use("*", requireSession);
 
 insightsRouter.post("/duplicates", async (c) => {
   const db = c.get("deps").db;
-  const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
 
-  const rows = await db.select().from(subscriptions).where(eq(subscriptions.user, userId));
+  const rows = await db.select().from(subscriptions).where(eq(subscriptions.workspaceId, workspaceId));
   const groups: DuplicateGroup[] = detectDuplicates(rows);
   return c.json({ groups });
 });
 
 insightsRouter.post("/cancel-suggestions", async (c) => {
   const db = c.get("deps").db;
-  const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
 
-  const subs = await db.select().from(subscriptions).where(eq(subscriptions.user, userId));
+  const subs = await db.select().from(subscriptions).where(eq(subscriptions.workspaceId, workspaceId));
   const suggestions: CancelSuggestion[] = suggestCancellations(subs);
   return c.json({ suggestions });
 });

@@ -5,7 +5,7 @@
  * POST /api/backup/zip/restore — 从 ZIP 恢复数据
  */
 import { Hono } from "hono";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { zipSync, unzipSync, strToU8, strFromU8 } from "fflate";
 import {
   subscriptions,
@@ -17,6 +17,7 @@ import {
 } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
 import { writeAuditLog } from "./audit-logs.js";
+import { requireActiveWorkspaceRole } from "../lib/workspace-permissions.js";
 import type { AppEnv } from "../app.js";
 
 export const backupRouter = new Hono<AppEnv>();
@@ -26,15 +27,16 @@ backupRouter.use("*", requireSession);
 backupRouter.get("/zip", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
 
   const [userSubs, userSettings, userConfig, userPayments, userBudgets, userTemplates] =
     await Promise.all([
-      db.select().from(subscriptions).where(eq(subscriptions.user, userId)),
-      db.select().from(settings).where(eq(settings.user, userId)),
-      db.select().from(customConfigs).where(eq(customConfigs.user, userId)),
-      db.select().from(subscriptionPayments).where(eq(subscriptionPayments.user, userId)),
-      db.select().from(budgets).where(eq(budgets.user, userId)),
-      db.select().from(notificationTemplates).where(eq(notificationTemplates.user, userId)),
+      db.select().from(subscriptions).where(eq(subscriptions.workspaceId, workspaceId)),
+      db.select().from(settings).where(and(eq(settings.user, userId), eq(settings.workspaceId, workspaceId))),
+      db.select().from(customConfigs).where(and(eq(customConfigs.user, userId), eq(customConfigs.workspaceId, workspaceId))),
+      db.select().from(subscriptionPayments).where(eq(subscriptionPayments.workspaceId, workspaceId)),
+      db.select().from(budgets).where(eq(budgets.workspaceId, workspaceId)),
+      db.select().from(notificationTemplates).where(eq(notificationTemplates.workspaceId, workspaceId)),
     ]);
 
   const settingsData = (userSettings[0]?.settings ?? {}) as Record<string, unknown>;
@@ -74,9 +76,10 @@ backupRouter.get("/zip", async (c) => {
   return c.body(zipped);
 });
 
-backupRouter.post("/zip/restore", async (c) => {
+backupRouter.post("/zip/restore", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
 
   const body = await c.req.arrayBuffer();
   if (body.byteLength === 0) {
@@ -118,7 +121,7 @@ backupRouter.post("/zip/restore", async (c) => {
     try {
       const subs = JSON.parse(strFromU8(files["subscriptions.json"])) as Array<Record<string, unknown>>;
       const existingByName = new Map(
-        (await db.select({ id: subscriptions.id, name: subscriptions.name }).from(subscriptions).where(eq(subscriptions.user, userId)))
+        (await db.select({ id: subscriptions.id, name: subscriptions.name }).from(subscriptions).where(eq(subscriptions.workspaceId, workspaceId)))
           .map((s) => [s.name.toLowerCase(), s.id] as const),
       );
 
@@ -135,6 +138,7 @@ backupRouter.post("/zip/restore", async (c) => {
         await db.insert(subscriptions).values({
           id: newId,
           user: userId,
+          workspaceId,
           name: String(sub["name"] ?? ""),
           logo: String(sub["logo"] ?? ""),
           price: Number(sub["price"] ?? 0),
@@ -172,6 +176,7 @@ backupRouter.post("/zip/restore", async (c) => {
         await db.insert(subscriptionPayments).values({
           id: crypto.randomUUID(),
           user: userId,
+          workspaceId,
           subscriptionId: mappedSubId,
           subscriptionName: String(p["subscriptionName"] ?? p["subscription_name"] ?? ""),
           paidAt: String(p["paidAt"] ?? p["paid_at"] ?? now.slice(0, 10)),
@@ -196,6 +201,7 @@ backupRouter.post("/zip/restore", async (c) => {
         await db.insert(budgets).values({
           id: crypto.randomUUID(),
           user: userId,
+          workspaceId,
           scopeType: normalizeScopeType(b["scopeType"] ?? b["scope_type"]),
           scopeId: String(b["scopeId"] ?? b["scope_id"] ?? ""),
           period: (b["period"] === "yearly" ? "yearly" : "monthly") as "monthly" | "yearly",
@@ -223,6 +229,7 @@ backupRouter.post("/zip/restore", async (c) => {
         await db.insert(notificationTemplates).values({
           id: crypto.randomUUID(),
           user: userId,
+          workspaceId,
           scope,
           scopeId,
           titleTemplate: String(tpl["titleTemplate"] ?? tpl["title_template"] ?? ""),
@@ -237,6 +244,7 @@ backupRouter.post("/zip/restore", async (c) => {
 
   await writeAuditLog(db, {
     userId,
+    workspaceId,
     action: "backup.restore",
     targetType: "backup",
     summary: `Restored from ZIP: ${imported.subscriptions} subs, ${imported.payments} payments, ${imported.budgets} budgets, ${imported.templates} templates`,

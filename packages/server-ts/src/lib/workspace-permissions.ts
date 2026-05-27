@@ -78,6 +78,22 @@ export function requireWorkspaceRole(
   };
 }
 
+/** Enforce the role already resolved by resolveWorkspace for the active workspace. */
+export function requireActiveWorkspaceRole(
+  requiredRole: WorkspaceRole,
+): MiddlewareHandler<AppEnv & { Variables: { workspaceRole: WorkspaceRole } }> {
+  return async (c, next) => {
+    const role = c.get("workspaceRole");
+    if (!role) {
+      return c.json({ error: "missing_workspace_context" }, 400);
+    }
+    if (!roleAtLeast(role, requiredRole)) {
+      return c.json({ error: "forbidden", reason: "insufficient_role", required: requiredRole, have: role }, 403);
+    }
+    await next();
+  };
+}
+
 export const __testing__ = {
   ROLE_RANK,
 };

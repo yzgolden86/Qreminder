@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { eq, and, asc } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { users, accounts, settings as settingsTable } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
 import { writeAuditLog } from "./audit-logs.js";
@@ -34,10 +34,14 @@ function toUserDTO(row: typeof users.$inferSelect) {
   };
 }
 
+function legacySignupSettingsWhere(ownerId: string) {
+  return and(eq(settingsTable.user, ownerId), sql`${settingsTable.workspaceId} IS NULL`);
+}
+
 adminUsersRouter.get("/signup-config", async (c) => {
   const db = c.get("deps").db;
   const ownerId = c.get("user").id;
-  const [row] = await db.select().from(settingsTable).where(eq(settingsTable.user, ownerId));
+  const [row] = await db.select().from(settingsTable).where(legacySignupSettingsWhere(ownerId));
   const stored = (row?.settings as Record<string, unknown> | undefined) ?? {};
   return c.json({
     signupEnabled: Boolean(stored.signupEnabled ?? false),
@@ -65,7 +69,7 @@ adminUsersRouter.patch("/signup-config", async (c) => {
     return c.json({ error: "no_valid_fields" }, 400);
   }
   const now = new Date().toISOString();
-  const [existing] = await db.select().from(settingsTable).where(eq(settingsTable.user, ownerId));
+  const [existing] = await db.select().from(settingsTable).where(legacySignupSettingsWhere(ownerId));
   if (!existing) {
     const id = crypto.randomUUID();
     await db.insert(settingsTable).values({

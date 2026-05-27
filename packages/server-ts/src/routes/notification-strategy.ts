@@ -8,6 +8,7 @@ import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { subscriptionNotificationChannels, notificationTemplates, subscriptions } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
+import { requireActiveWorkspaceRole } from "../lib/workspace-permissions.js";
 import type { AppEnv } from "../app.js";
 
 export const notificationStrategyRouter = new Hono<AppEnv>();
@@ -24,7 +25,6 @@ const setChannelsSchema = z.object({
 // GET /strategy/channels/:subscriptionId
 notificationStrategyRouter.get("/channels/:subscriptionId", async (c) => {
   const db = c.get("deps").db;
-  const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
   const subId = c.req.param("subscriptionId");
 
@@ -33,7 +33,6 @@ notificationStrategyRouter.get("/channels/:subscriptionId", async (c) => {
     .from(subscriptionNotificationChannels)
     .where(
       and(
-        eq(subscriptionNotificationChannels.user, userId),
         eq(subscriptionNotificationChannels.workspaceId, workspaceId),
         eq(subscriptionNotificationChannels.subscriptionId, subId),
       ),
@@ -43,7 +42,7 @@ notificationStrategyRouter.get("/channels/:subscriptionId", async (c) => {
 });
 
 // PUT /strategy/channels — set channels for a subscription (replaces all)
-notificationStrategyRouter.put("/channels", async (c) => {
+notificationStrategyRouter.put("/channels", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
@@ -56,7 +55,7 @@ notificationStrategyRouter.put("/channels", async (c) => {
   const [sub] = await db
     .select()
     .from(subscriptions)
-    .where(and(eq(subscriptions.id, parsed.data.subscriptionId), eq(subscriptions.user, userId)));
+    .where(and(eq(subscriptions.id, parsed.data.subscriptionId), eq(subscriptions.workspaceId, workspaceId)));
   if (!sub) return c.json({ error: "subscription_not_found" }, 404);
 
   // Delete existing
@@ -64,7 +63,6 @@ notificationStrategyRouter.put("/channels", async (c) => {
     .delete(subscriptionNotificationChannels)
     .where(
       and(
-        eq(subscriptionNotificationChannels.user, userId),
         eq(subscriptionNotificationChannels.workspaceId, workspaceId),
         eq(subscriptionNotificationChannels.subscriptionId, parsed.data.subscriptionId),
       ),
@@ -87,9 +85,8 @@ notificationStrategyRouter.put("/channels", async (c) => {
 });
 
 // DELETE /strategy/channels/:subscriptionId — clear custom channels (fall back to defaults)
-notificationStrategyRouter.delete("/channels/:subscriptionId", async (c) => {
+notificationStrategyRouter.delete("/channels/:subscriptionId", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
-  const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
   const subId = c.req.param("subscriptionId");
 
@@ -97,7 +94,6 @@ notificationStrategyRouter.delete("/channels/:subscriptionId", async (c) => {
     .delete(subscriptionNotificationChannels)
     .where(
       and(
-        eq(subscriptionNotificationChannels.user, userId),
         eq(subscriptionNotificationChannels.workspaceId, workspaceId),
         eq(subscriptionNotificationChannels.subscriptionId, subId),
       ),
@@ -119,7 +115,7 @@ const bulkSchema = z.object({
 // Why: configuring 50+ subscriptions one-by-one is impractical. This lets a user
 // say "for all these IDs, set the channels to X". Existing per-sub channels are
 // replaced when overwrite=true; otherwise skipped to be safe.
-notificationStrategyRouter.put("/channels/bulk", async (c) => {
+notificationStrategyRouter.put("/channels/bulk", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
@@ -134,7 +130,7 @@ notificationStrategyRouter.put("/channels/bulk", async (c) => {
   const ownedSubs = await db
     .select({ id: subscriptions.id })
     .from(subscriptions)
-    .where(and(eq(subscriptions.user, userId), eq(subscriptions.workspaceId, workspaceId)));
+    .where(eq(subscriptions.workspaceId, workspaceId));
   const ownedIds = new Set(ownedSubs.map((s) => s.id));
   const targetIds = parsed.data.subscriptionIds.filter((id) => ownedIds.has(id));
 
@@ -146,7 +142,7 @@ notificationStrategyRouter.put("/channels/bulk", async (c) => {
   const existing = await db
     .select()
     .from(subscriptionNotificationChannels)
-    .where(and(eq(subscriptionNotificationChannels.user, userId), eq(subscriptionNotificationChannels.workspaceId, workspaceId)));
+    .where(eq(subscriptionNotificationChannels.workspaceId, workspaceId));
   const existingBySub = new Set(existing.map((r) => r.subscriptionId));
 
   const idsToApply = parsed.data.overwrite
@@ -161,7 +157,6 @@ notificationStrategyRouter.put("/channels/bulk", async (c) => {
       .delete(subscriptionNotificationChannels)
       .where(
         and(
-          eq(subscriptionNotificationChannels.user, userId),
           eq(subscriptionNotificationChannels.workspaceId, workspaceId),
           eq(subscriptionNotificationChannels.subscriptionId, subId),
         ),
@@ -199,17 +194,16 @@ const updateTemplateSchema = createTemplateSchema.partial();
 // GET /strategy/templates
 notificationStrategyRouter.get("/templates", async (c) => {
   const db = c.get("deps").db;
-  const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
   const rows = await db
     .select()
     .from(notificationTemplates)
-    .where(and(eq(notificationTemplates.user, userId), eq(notificationTemplates.workspaceId, workspaceId)));
+    .where(eq(notificationTemplates.workspaceId, workspaceId));
   return c.json({ templates: rows });
 });
 
 // POST /strategy/templates
-notificationStrategyRouter.post("/templates", async (c) => {
+notificationStrategyRouter.post("/templates", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
@@ -237,9 +231,8 @@ notificationStrategyRouter.post("/templates", async (c) => {
 });
 
 // PATCH /strategy/templates/:id
-notificationStrategyRouter.patch("/templates/:id", async (c) => {
+notificationStrategyRouter.patch("/templates/:id", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
-  const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
   const templateId = c.req.param("id");
   const body = await c.req.json().catch(() => null);
@@ -251,7 +244,7 @@ notificationStrategyRouter.patch("/templates/:id", async (c) => {
   const [existing] = await db
     .select()
     .from(notificationTemplates)
-    .where(and(eq(notificationTemplates.id, templateId), eq(notificationTemplates.user, userId), eq(notificationTemplates.workspaceId, workspaceId)));
+    .where(and(eq(notificationTemplates.id, templateId), eq(notificationTemplates.workspaceId, workspaceId)));
   if (!existing) return c.json({ error: "not_found" }, 404);
 
   const now = new Date().toISOString();
@@ -266,16 +259,15 @@ notificationStrategyRouter.patch("/templates/:id", async (c) => {
 });
 
 // DELETE /strategy/templates/:id
-notificationStrategyRouter.delete("/templates/:id", async (c) => {
+notificationStrategyRouter.delete("/templates/:id", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
-  const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
   const templateId = c.req.param("id");
 
   const [existing] = await db
     .select()
     .from(notificationTemplates)
-    .where(and(eq(notificationTemplates.id, templateId), eq(notificationTemplates.user, userId), eq(notificationTemplates.workspaceId, workspaceId)));
+    .where(and(eq(notificationTemplates.id, templateId), eq(notificationTemplates.workspaceId, workspaceId)));
   if (!existing) return c.json({ error: "not_found" }, 404);
 
   await db.delete(notificationTemplates).where(eq(notificationTemplates.id, templateId));

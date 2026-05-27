@@ -4,6 +4,7 @@ import { settings } from "../db/schema.js";
 import { settingsSchema } from "@qreminder/shared";
 import { requireSession } from "../middleware/require-session.js";
 import { writeAuditLog } from "./audit-logs.js";
+import { requireActiveWorkspaceRole } from "../lib/workspace-permissions.js";
 import type { AppEnv } from "../app.js";
 
 export const settingsRouter = new Hono<AppEnv>();
@@ -18,7 +19,7 @@ settingsRouter.get("/", async (c) => {
   return c.json({ settings: (row?.settings as Record<string, unknown> | undefined) ?? {} });
 });
 
-settingsRouter.patch("/", async (c) => {
+settingsRouter.patch("/", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
@@ -55,7 +56,7 @@ settingsRouter.patch("/", async (c) => {
   return c.json({ settings: merged });
 });
 
-settingsRouter.post("/ical/reset-token", async (c) => {
+settingsRouter.post("/ical/reset-token", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
@@ -96,7 +97,7 @@ settingsRouter.get("/category-channels", async (c) => {
   return c.json({ categoryDefaultChannels: categoryDefaults });
 });
 
-settingsRouter.put("/category-channels", async (c) => {
+settingsRouter.put("/category-channels", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
@@ -135,11 +136,12 @@ settingsRouter.put("/category-channels", async (c) => {
   return c.json({ ok: true });
 });
 
-settingsRouter.delete("/category-channels/:category", async (c) => {
+settingsRouter.delete("/category-channels/:category", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const category = c.req.param("category");
-  const [existing] = await db.select().from(settings).where(eq(settings.user, userId));
+  const [existing] = await db.select().from(settings).where(and(eq(settings.user, userId), eq(settings.workspaceId, workspaceId)));
   if (!existing) return c.json({ ok: true });
 
   const current = (existing.settings ?? {}) as Record<string, unknown>;
@@ -157,14 +159,16 @@ settingsRouter.delete("/category-channels/:category", async (c) => {
 settingsRouter.get("/tag-channels", async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
-  const [row] = await db.select().from(settings).where(eq(settings.user, userId));
+  const workspaceId = c.get("workspaceId");
+  const [row] = await db.select().from(settings).where(and(eq(settings.user, userId), eq(settings.workspaceId, workspaceId)));
   const tagDefaults = ((row?.settings as Record<string, unknown> | undefined)?.["tagDefaultChannels"] ?? {}) as Record<string, string[]>;
   return c.json({ tagDefaultChannels: tagDefaults });
 });
 
-settingsRouter.put("/tag-channels", async (c) => {
+settingsRouter.put("/tag-channels", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const body = await c.req.json().catch(() => null);
   if (!body || typeof body !== "object" || !("tag" in body) || !("channels" in body)) {
     return c.json({ error: "validation_error" }, 400);
@@ -175,7 +179,7 @@ settingsRouter.put("/tag-channels", async (c) => {
   }
 
   const now = new Date().toISOString();
-  const [existing] = await db.select().from(settings).where(eq(settings.user, userId));
+  const [existing] = await db.select().from(settings).where(and(eq(settings.user, userId), eq(settings.workspaceId, workspaceId)));
   const current = (existing?.settings ?? {}) as Record<string, unknown>;
   const tagDefaults = (current["tagDefaultChannels"] ?? {}) as Record<string, string[]>;
   tagDefaults[tag] = channels;
@@ -186,6 +190,7 @@ settingsRouter.put("/tag-channels", async (c) => {
     await db.insert(settings).values({
       id,
       user: userId,
+      workspaceId,
       settings: merged,
       createdAt: now,
       updatedAt: now,
@@ -199,11 +204,12 @@ settingsRouter.put("/tag-channels", async (c) => {
   return c.json({ ok: true });
 });
 
-settingsRouter.delete("/tag-channels/:tag", async (c) => {
+settingsRouter.delete("/tag-channels/:tag", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const tag = c.req.param("tag");
-  const [existing] = await db.select().from(settings).where(eq(settings.user, userId));
+  const [existing] = await db.select().from(settings).where(and(eq(settings.user, userId), eq(settings.workspaceId, workspaceId)));
   if (!existing) return c.json({ ok: true });
 
   const current = (existing.settings ?? {}) as Record<string, unknown>;

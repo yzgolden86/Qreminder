@@ -50,8 +50,15 @@ export function BillingCycleChart({ subscriptions }: BillingCycleChartProps) {
 
   return (
     <div className="grid gap-2">
-      <div className="h-[160px] w-full">
-        <ResponsiveContainer width="100%" height="100%" debounce={50}>
+      <div className="h-[160px] min-h-[160px] min-w-0 w-full">
+        <ResponsiveContainer
+          width="100%"
+          height="100%"
+          debounce={50}
+          minWidth={1}
+          minHeight={160}
+          initialDimension={{ width: 320, height: 160 }}
+        >
           <PieChart margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
             <Pie
               data={data}

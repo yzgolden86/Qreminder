@@ -131,8 +131,15 @@ export function SpendingChart({ subscriptions }: SpendingChartProps) {
 
   return (
     <div className="grid gap-2">
-      <div className="h-[190px] w-full">
-        <ResponsiveContainer width="100%" height="100%" debounce={50}>
+      <div className="h-[190px] min-h-[190px] min-w-0 w-full">
+        <ResponsiveContainer
+          width="100%"
+          height="100%"
+          debounce={50}
+          minWidth={1}
+          minHeight={190}
+          initialDimension={{ width: 320, height: 190 }}
+        >
           <PieChart margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
             <Pie
               data={data}

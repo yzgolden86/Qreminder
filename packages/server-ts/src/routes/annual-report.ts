@@ -23,7 +23,7 @@ annualReportRouter.use("*", requireSession);
 
 annualReportRouter.get("/", async (c) => {
   const db = c.get("deps").db;
-  const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
 
   const yearParam = c.req.query("year");
   const yearStr = /^\d{4}$/.test(yearParam ?? "")
@@ -35,12 +35,12 @@ annualReportRouter.get("/", async (c) => {
   const allPayments = await db
     .select()
     .from(subscriptionPayments)
-    .where(eq(subscriptionPayments.user, userId));
+    .where(eq(subscriptionPayments.workspaceId, workspaceId));
 
   const userSubs = await db
     .select()
     .from(subscriptions)
-    .where(eq(subscriptions.user, userId));
+    .where(eq(subscriptions.workspaceId, workspaceId));
   const subMap = new Map(userSubs.map((s) => [s.id, s]));
 
   const thisYearPayments = allPayments.filter((p) => p.paidAt.slice(0, 4) === yearStr);

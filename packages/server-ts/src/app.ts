@@ -101,6 +101,8 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   app.use("/api/payments/*", resolveWorkspace);
   app.use("/api/budgets/*", resolveWorkspace);
   app.use("/api/notification-strategy/*", resolveWorkspace);
+  app.use("/api/app/notifications/*", resolveWorkspace);
+  app.use("/api/backup/*", resolveWorkspace);
   app.use("/api/export/*", resolveWorkspace);
   app.use("/api/import/*", resolveWorkspace);
   app.use("/api/ai/*", resolveWorkspace);

@@ -19,7 +19,17 @@ declare module "hono" {
  */
 export const resolveWorkspace = createMiddleware<AppEnv>(async (c, next) => {
   const db = c.get("deps").db;
-  const userId = c.get("user").id;
+  let user = c.get("user") as { id: string } | undefined;
+  if (!user) {
+    const session = await c.get("auth").api.getSession({ headers: c.req.raw.headers });
+    if (!session) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+    c.set("session", session.session);
+    c.set("user", session.user);
+    user = session.user;
+  }
+  const userId = user.id;
 
   let wsId = c.req.header(WORKSPACE_HEADER) ?? "";
 

@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { eq, and, desc } from "drizzle-orm";
 import { assets } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
+import { requireActiveWorkspaceRole } from "../lib/workspace-permissions.js";
 import type { AppEnv } from "../app.js";
 
 const allowedMimeTypes = new Set([
@@ -19,7 +20,7 @@ const fetchTimeoutMs = 10_000;
 
 export const assetsRouter = new Hono<AppEnv>();
 
-assetsRouter.post("/", requireSession, async (c) => {
+assetsRouter.post("/", requireSession, requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const storage = c.get("deps").storage;
   const userId = c.get("user").id;
@@ -80,14 +81,13 @@ assetsRouter.post("/", requireSession, async (c) => {
 assetsRouter.get("/:id", requireSession, async (c) => {
   const db = c.get("deps").db;
   const storage = c.get("deps").storage;
-  const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
   const id = c.req.param("id");
 
   const [row] = await db
     .select()
     .from(assets)
-    .where(and(eq(assets.id, id), eq(assets.user, userId), eq(assets.workspaceId, workspaceId)));
+    .where(and(eq(assets.id, id), eq(assets.workspaceId, workspaceId)));
   if (!row) return c.json({ error: "not_found" }, 404);
 
   const obj = await storage.get(row.file);
@@ -106,7 +106,6 @@ assetsRouter.get("/:id", requireSession, async (c) => {
 // instead of re-uploading the same file.
 assetsRouter.get("/", requireSession, async (c) => {
   const db = c.get("deps").db;
-  const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
   const kind = c.req.query("kind");
   if (kind && !allowedKinds.has(kind)) {
@@ -118,8 +117,8 @@ assetsRouter.get("/", requireSession, async (c) => {
     .from(assets)
     .where(
       kind
-        ? and(eq(assets.user, userId), eq(assets.workspaceId, workspaceId), eq(assets.kind, kind as "logo" | "icon"))
-        : and(eq(assets.user, userId), eq(assets.workspaceId, workspaceId)),
+        ? and(eq(assets.workspaceId, workspaceId), eq(assets.kind, kind as "logo" | "icon"))
+        : eq(assets.workspaceId, workspaceId),
     )
     .orderBy(desc(assets.createdAt))
     .limit(200);
@@ -137,17 +136,16 @@ assetsRouter.get("/", requireSession, async (c) => {
 });
 
 // DELETE /assets/:id — remove a logo from the library + R2.
-assetsRouter.delete("/:id", requireSession, async (c) => {
+assetsRouter.delete("/:id", requireSession, requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const storage = c.get("deps").storage;
-  const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
   const id = c.req.param("id");
 
   const [row] = await db
     .select()
     .from(assets)
-    .where(and(eq(assets.id, id), eq(assets.user, userId), eq(assets.workspaceId, workspaceId)));
+    .where(and(eq(assets.id, id), eq(assets.workspaceId, workspaceId)));
   if (!row) return c.json({ error: "not_found" }, 404);
 
   await storage.delete(row.file);
@@ -159,7 +157,7 @@ assetsRouter.delete("/:id", requireSession, async (c) => {
 // from a subscription's website (favicon, og:image, or a direct image URL).
 // Why server-side: storing in R2 means the logo survives even if the source goes
 // away later, and clients don't have to deal with CORS for arbitrary domains.
-assetsRouter.post("/fetch-from-url", requireSession, async (c) => {
+assetsRouter.post("/fetch-from-url", requireSession, requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const storage = c.get("deps").storage;
   const userId = c.get("user").id;

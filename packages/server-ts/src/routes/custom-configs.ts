@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { eq, and } from "drizzle-orm";
 import { customConfigs } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
+import { requireActiveWorkspaceRole } from "../lib/workspace-permissions.js";
 import type { AppEnv } from "../app.js";
 
 export const customConfigsRouter = new Hono<AppEnv>();
@@ -16,7 +17,7 @@ customConfigsRouter.get("/", async (c) => {
   return c.json({ config: (row?.config as Record<string, unknown> | undefined) ?? {} });
 });
 
-customConfigsRouter.patch("/", async (c) => {
+customConfigsRouter.patch("/", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");

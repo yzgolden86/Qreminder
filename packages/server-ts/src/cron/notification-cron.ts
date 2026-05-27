@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import {
   getLocalScheduleDecision,
   matchReminderHits,
@@ -12,6 +12,7 @@ import {
   subscriptions as subscriptionsTable,
   notificationTemplates,
   users,
+  workspaceMembers,
 } from "../db/schema.js";
 import type { Database } from "../db/types.js";
 import type { MailerAdapter } from "../adapters/mailer.js";
@@ -33,6 +34,7 @@ export interface NotificationCronOptions {
 
 export interface NotificationCronUserResult {
   userId: string;
+  workspaceId?: string | null;
   action: "sent" | "skipped" | "failed";
   reason?: string;
   hits?: NotificationHit[];
@@ -104,6 +106,10 @@ function rowToSubscription(row: typeof subscriptionsTable.$inferSelect): Subscri
   };
 }
 
+function workspaceKey(workspaceId: string | null, userId: string): string {
+  return workspaceId ?? `legacy-user:${userId}`;
+}
+
 export async function runNotificationCron(
   deps: CronDeps,
   options: NotificationCronOptions = {},
@@ -112,25 +118,61 @@ export async function runNotificationCron(
   const allUsers = await deps.db.select().from(users);
   const allSettingsRows = await deps.db.select().from(settingsTable);
   const allSubscriptions = await deps.db.select().from(subscriptionsTable);
+  const allMemberships = await deps.db.select().from(workspaceMembers);
 
-  const settingsByUser = new Map<string, Settings>();
-  for (const row of allSettingsRows) {
-    settingsByUser.set(row.user, mergeSettings((row.settings as Record<string, unknown>) ?? {}));
-  }
-  const subsByUser = new Map<string, Subscription[]>();
+  const usersById = new Map(allUsers.map((user) => [user.id, user]));
+  const membershipKeys = new Set(allMemberships.map((m) => `${m.workspaceId}:${m.userId}`));
+  const usersWithSettings = new Set(allSettingsRows.map((row) => row.user));
+
+  const subsByWorkspace = new Map<string, Subscription[]>();
   for (const row of allSubscriptions) {
-    const existing = subsByUser.get(row.user) ?? [];
+    const key = workspaceKey(row.workspaceId ?? null, row.user);
+    const existing = subsByWorkspace.get(key) ?? [];
     existing.push(rowToSubscription(row));
-    subsByUser.set(row.user, existing);
+    subsByWorkspace.set(key, existing);
   }
 
   const results: NotificationCronUserResult[] = [];
-  for (const userRow of allUsers) {
-    if (userRow.banned) {
-      results.push({ userId: userRow.id, action: "skipped", reason: "user_banned" });
+  const contexts = [
+    ...allSettingsRows.map((row) => ({
+      userId: row.user,
+      workspaceId: row.workspaceId ?? null,
+      settings: mergeSettings((row.settings as Record<string, unknown>) ?? {}),
+    })),
+    ...allUsers
+      .filter((user) => !usersWithSettings.has(user.id))
+      .map((user) => ({
+        userId: user.id,
+        workspaceId: null,
+        settings: defaultSettings,
+      })),
+  ];
+
+  for (const context of contexts) {
+    const userRow = usersById.get(context.userId);
+    if (!userRow) {
+      results.push({
+        userId: context.userId,
+        workspaceId: context.workspaceId,
+        action: "skipped",
+        reason: "user_not_found",
+      });
       continue;
     }
-    const settings = settingsByUser.get(userRow.id) ?? defaultSettings;
+    if (userRow.banned) {
+      results.push({ userId: userRow.id, workspaceId: context.workspaceId, action: "skipped", reason: "user_banned" });
+      continue;
+    }
+    if (context.workspaceId && !membershipKeys.has(`${context.workspaceId}:${userRow.id}`)) {
+      results.push({
+        userId: userRow.id,
+        workspaceId: context.workspaceId,
+        action: "skipped",
+        reason: "workspace_access_removed",
+      });
+      continue;
+    }
+    const settings = context.settings;
     const decision = getLocalScheduleDecision(
       opts.now,
       settings.timezone,
@@ -139,33 +181,34 @@ export async function runNotificationCron(
       opts.force,
     );
     if (!decision.due) {
-      results.push({ userId: userRow.id, action: "skipped", reason: decision.reason });
+      results.push({ userId: userRow.id, workspaceId: context.workspaceId, action: "skipped", reason: decision.reason });
       continue;
     }
     if (settings.enabledChannels.length === 0) {
-      results.push({ userId: userRow.id, action: "skipped", reason: "no_enabled_channels" });
+      results.push({ userId: userRow.id, workspaceId: context.workspaceId, action: "skipped", reason: "no_enabled_channels" });
       continue;
     }
 
-    const userSubs = subsByUser.get(userRow.id) ?? [];
+    const userSubs = subsByWorkspace.get(workspaceKey(context.workspaceId, userRow.id)) ?? [];
     const hits = matchReminderHits({
       subscriptions: userSubs,
       todayLocal: decision.scheduledLocalDate,
     });
     if (hits.length === 0 && !opts.force) {
-      results.push({ userId: userRow.id, action: "skipped", reason: "no_due_items" });
+      results.push({ userId: userRow.id, workspaceId: context.workspaceId, action: "skipped", reason: "no_due_items" });
       continue;
     }
 
     if (opts.dryRun) {
-      results.push({ userId: userRow.id, action: "sent", reason: "dry_run", hits });
+      results.push({ userId: userRow.id, workspaceId: context.workspaceId, action: "sent", reason: "dry_run", hits });
       continue;
     }
 
-    const existingJob = await findJob(deps.db, userRow.id, decision);
+    const existingJob = await findJob(deps.db, userRow.id, context.workspaceId, decision);
     if (existingJob && (existingJob.status === "sent" || existingJob.status === "skipped")) {
       results.push({
         userId: userRow.id,
+        workspaceId: context.workspaceId,
         action: "skipped",
         reason: existingJob.status === "sent" ? "already_sent" : "already_skipped",
       });
@@ -177,7 +220,7 @@ export async function runNotificationCron(
       !opts.force &&
       existingJob.attempts >= opts.maxRetries
     ) {
-      results.push({ userId: userRow.id, action: "skipped", reason: "max_retries_reached" });
+      results.push({ userId: userRow.id, workspaceId: context.workspaceId, action: "skipped", reason: "max_retries_reached" });
       continue;
     }
 
@@ -205,6 +248,7 @@ export async function runNotificationCron(
       const resolution = await resolveChannelsForSubscription(
         deps.db,
         userRow.id,
+        context.workspaceId,
         hit.subscriptionId,
         sub?.category ?? "",
         sub?.tags ?? [],
@@ -221,15 +265,19 @@ export async function runNotificationCron(
     if (groups.size === 0) {
       // Every hit resolved to zero channels (defensive — shouldn't happen because
       // we already skipped when enabledChannels is empty).
-      results.push({ userId: userRow.id, action: "skipped", reason: "no_resolved_channels" });
+      results.push({ userId: userRow.id, workspaceId: context.workspaceId, action: "skipped", reason: "no_resolved_channels" });
       continue;
     }
 
-    // Load templates once per user — we pick the best match per hit below.
+    // Load templates once per workspace — we pick the best match per hit below.
     const userTemplates = await deps.db
       .select()
       .from(notificationTemplates)
-      .where(eq(notificationTemplates.user, userRow.id));
+      .where(
+        context.workspaceId
+          ? eq(notificationTemplates.workspaceId, context.workspaceId)
+          : and(eq(notificationTemplates.user, userRow.id), sql`${notificationTemplates.workspaceId} IS NULL`),
+      );
 
     const allDispatchResults: ChannelSendResult[] = [];
     let anySuccessAcross = false;
@@ -278,22 +326,24 @@ export async function runNotificationCron(
         .map((r) => `${r.channel}: ${r.error}`)
         .join("; ");
       await upsertJob(deps.db, userRow.id, {
+        workspaceId: context.workspaceId,
         ...jobPayload,
         status: "failed",
         lastError: errors,
         result: { hits, channelResults: allDispatchResults },
       });
-      results.push({ userId: userRow.id, action: "failed", reason: "all_channels_failed", hits });
+      results.push({ userId: userRow.id, workspaceId: context.workspaceId, action: "failed", reason: "all_channels_failed", hits });
       continue;
     }
 
     await upsertJob(deps.db, userRow.id, {
+      workspaceId: context.workspaceId,
       ...jobPayload,
       status: "sent",
       lastError: "",
       result: { hits, channelResults: allDispatchResults },
     });
-    results.push({ userId: userRow.id, action: "sent", hits });
+    results.push({ userId: userRow.id, workspaceId: context.workspaceId, action: "sent", hits });
   }
 
   return summarize(results);
@@ -400,6 +450,7 @@ export function buildChannelMessage(
 async function findJob(
   db: Database,
   userId: string,
+  workspaceId: string | null,
   decision: { scheduledLocalDate: string; scheduledLocalTime: string; timeZone: string },
 ) {
   const [row] = await db
@@ -408,6 +459,9 @@ async function findJob(
     .where(
       and(
         eq(notificationJobs.user, userId),
+        workspaceId
+          ? eq(notificationJobs.workspaceId, workspaceId)
+          : sql`${notificationJobs.workspaceId} IS NULL`,
         eq(notificationJobs.scheduledLocalDate, decision.scheduledLocalDate),
         eq(notificationJobs.scheduledLocalTime, decision.scheduledLocalTime),
         eq(notificationJobs.timeZone, decision.timeZone),
@@ -417,6 +471,7 @@ async function findJob(
 }
 
 interface JobUpsertPayload {
+  workspaceId: string | null;
   scheduledLocalDate: string;
   scheduledLocalTime: string;
   timeZone: string;
@@ -429,7 +484,7 @@ interface JobUpsertPayload {
 }
 
 async function upsertJob(db: Database, userId: string, payload: JobUpsertPayload) {
-  const existing = await findJob(db, userId, payload);
+  const existing = await findJob(db, userId, payload.workspaceId, payload);
   if (existing) {
     await db
       .update(notificationJobs)
@@ -447,6 +502,7 @@ async function upsertJob(db: Database, userId: string, payload: JobUpsertPayload
   await db.insert(notificationJobs).values({
     id: crypto.randomUUID(),
     user: userId,
+    workspaceId: payload.workspaceId,
     scheduledLocalDate: payload.scheduledLocalDate,
     scheduledLocalTime: payload.scheduledLocalTime,
     timeZone: payload.timeZone,

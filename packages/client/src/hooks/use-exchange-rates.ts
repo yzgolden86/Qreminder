@@ -60,6 +60,7 @@ const FALLBACK_RATES: ExchangeRates = {
 const FRANKFURTER_API = 'https://api.frankfurter.dev';
 const FLOATRATES_USD_FEED = 'https://www.floatrates.com/daily/usd.json';
 const DEFAULT_EXCHANGE_RATE_PROVIDER: ExchangeRateProvider = "floatrates";
+const DISABLE_REMOTE_FETCH = import.meta.env["VITE_DISABLE_EXCHANGE_RATE_FETCH"] === "true";
 
 type ExchangeRateSource = ExchangeRateProvider | "builtin";
 type ExchangeRateErrorKind = "timeout" | "contract" | "network";
@@ -311,6 +312,15 @@ export const useExchangeRates = (preferredProvider: ExchangeRateProvider = DEFAU
 
     setLoading(true);
     setError(null);
+
+    if (DISABLE_REMOTE_FETCH) {
+      setRates(FALLBACK_RATES);
+      setBaseRate("USD");
+      setActiveProvider("builtin");
+      setLastUpdated(new Date());
+      setLoading(false);
+      return Promise.resolve();
+    }
 
     // 优先读缓存（除非强制刷新）
     if (!forceRefresh) {

@@ -5,6 +5,7 @@ import { subscriptions, subscriptionPriceHistory } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
 import { subscriptionDraftSchema } from "@qreminder/shared";
 import { writeAuditLog } from "./audit-logs.js";
+import { requireActiveWorkspaceRole } from "../lib/workspace-permissions.js";
 import type { AppEnv } from "../app.js";
 
 export const subscriptionsRouter = new Hono<AppEnv>();
@@ -68,29 +69,27 @@ function toDto(row: SubscriptionRow): ApiSubscriptionDTO {
 
 subscriptionsRouter.get("/", async (c) => {
   const db = c.get("deps").db;
-  const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
   const rows = await db
     .select()
     .from(subscriptions)
-    .where(and(eq(subscriptions.workspaceId, workspaceId), eq(subscriptions.user, userId)));
+    .where(eq(subscriptions.workspaceId, workspaceId));
   return c.json({ subscriptions: rows.map(toDto) });
 });
 
 subscriptionsRouter.get("/:id", async (c) => {
   const db = c.get("deps").db;
-  const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
   const id = c.req.param("id");
   const [row] = await db
     .select()
     .from(subscriptions)
-    .where(and(eq(subscriptions.id, id), eq(subscriptions.workspaceId, workspaceId), eq(subscriptions.user, userId)));
+    .where(and(eq(subscriptions.id, id), eq(subscriptions.workspaceId, workspaceId)));
   if (!row) return c.json({ error: "not_found" }, 404);
   return c.json({ subscription: toDto(row) });
 });
 
-subscriptionsRouter.post("/", async (c) => {
+subscriptionsRouter.post("/", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
@@ -140,7 +139,7 @@ subscriptionsRouter.post("/", async (c) => {
   return c.json({ subscription: toDto(inserted!) }, 201);
 });
 
-subscriptionsRouter.patch("/:id", async (c) => {
+subscriptionsRouter.patch("/:id", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
@@ -157,7 +156,7 @@ subscriptionsRouter.patch("/:id", async (c) => {
   const [existing] = await db
     .select()
     .from(subscriptions)
-    .where(and(eq(subscriptions.id, id), eq(subscriptions.workspaceId, workspaceId), eq(subscriptions.user, userId)));
+    .where(and(eq(subscriptions.id, id), eq(subscriptions.workspaceId, workspaceId)));
   if (!existing) return c.json({ error: "not_found" }, 404);
 
   // Log price/currency change before applying the update. Only insert when
@@ -195,25 +194,25 @@ subscriptionsRouter.patch("/:id", async (c) => {
 
 subscriptionsRouter.get("/:id/price-history", async (c) => {
   const db = c.get("deps").db;
-  const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const id = c.req.param("id");
 
   const [existing] = await db
     .select({ id: subscriptions.id })
     .from(subscriptions)
-    .where(and(eq(subscriptions.id, id), eq(subscriptions.user, userId)));
+    .where(and(eq(subscriptions.id, id), eq(subscriptions.workspaceId, workspaceId)));
   if (!existing) return c.json({ error: "not_found" }, 404);
 
   const history = await db
     .select()
     .from(subscriptionPriceHistory)
-    .where(eq(subscriptionPriceHistory.subscriptionId, id))
+    .where(and(eq(subscriptionPriceHistory.subscriptionId, id), eq(subscriptionPriceHistory.workspaceId, workspaceId)))
     .orderBy(desc(subscriptionPriceHistory.changedAt));
 
   return c.json({ history });
 });
 
-subscriptionsRouter.delete("/:id", async (c) => {
+subscriptionsRouter.delete("/:id", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
@@ -221,7 +220,7 @@ subscriptionsRouter.delete("/:id", async (c) => {
   const [existing] = await db
     .select({ id: subscriptions.id })
     .from(subscriptions)
-    .where(and(eq(subscriptions.id, id), eq(subscriptions.workspaceId, workspaceId), eq(subscriptions.user, userId)));
+    .where(and(eq(subscriptions.id, id), eq(subscriptions.workspaceId, workspaceId)));
   if (!existing) return c.json({ error: "not_found" }, 404);
   await db.delete(subscriptions).where(eq(subscriptions.id, id));
   await writeAuditLog(db, {
@@ -240,7 +239,7 @@ const snoozeSchema = z.object({
   days: z.number().int().min(0).max(365),
 });
 
-subscriptionsRouter.post("/:id/snooze", async (c) => {
+subscriptionsRouter.post("/:id/snooze", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
@@ -254,7 +253,7 @@ subscriptionsRouter.post("/:id/snooze", async (c) => {
   const [existing] = await db
     .select({ id: subscriptions.id })
     .from(subscriptions)
-    .where(and(eq(subscriptions.id, id), eq(subscriptions.workspaceId, workspaceId), eq(subscriptions.user, userId)));
+    .where(and(eq(subscriptions.id, id), eq(subscriptions.workspaceId, workspaceId)));
   if (!existing) return c.json({ error: "not_found" }, 404);
 
   let snoozedUntil: string | null = null;
@@ -275,7 +274,7 @@ subscriptionsRouter.post("/:id/snooze", async (c) => {
 // POST /subscriptions/:id/track-usage — mark "I just used this".
 // Why: drives the inactive-subscription detection (Phase 2.1) without
 // needing automatic usage tracking integrations.
-subscriptionsRouter.post("/:id/track-usage", async (c) => {
+subscriptionsRouter.post("/:id/track-usage", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
@@ -284,7 +283,7 @@ subscriptionsRouter.post("/:id/track-usage", async (c) => {
   const [existing] = await db
     .select({ id: subscriptions.id })
     .from(subscriptions)
-    .where(and(eq(subscriptions.id, id), eq(subscriptions.workspaceId, workspaceId), eq(subscriptions.user, userId)));
+    .where(and(eq(subscriptions.id, id), eq(subscriptions.workspaceId, workspaceId)));
   if (!existing) return c.json({ error: "not_found" }, 404);
 
   const today = new Date();

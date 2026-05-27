@@ -16,6 +16,7 @@ import { Hono } from "hono";
 import { eq } from "drizzle-orm";
 import { subscriptions } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
+import { requireActiveWorkspaceRole } from "../lib/workspace-permissions.js";
 import type { AppEnv } from "../app.js";
 
 export const externalImportRouter = new Hono<AppEnv>();
@@ -255,9 +256,10 @@ function mapSubTrackerSubscription(
   };
 }
 
-externalImportRouter.post("/wallos", async (c) => {
+externalImportRouter.post("/wallos", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const body = await c.req.json().catch(() => null);
   if (!body || typeof body !== "object") {
     return c.json({ error: "invalid_json" }, 400);
@@ -278,7 +280,7 @@ externalImportRouter.post("/wallos", async (c) => {
   const existing = await db
     .select({ name: subscriptions.name })
     .from(subscriptions)
-    .where(eq(subscriptions.user, userId));
+    .where(eq(subscriptions.workspaceId, workspaceId));
   const existingNames = new Set(existing.map((s) => s.name.trim().toLowerCase()));
 
   const now = new Date().toISOString();
@@ -294,7 +296,7 @@ externalImportRouter.post("/wallos", async (c) => {
         result.skipped += 1;
         continue;
       }
-      await db.insert(subscriptions).values(mapped);
+      await db.insert(subscriptions).values({ ...mapped, workspaceId });
       existingNames.add(mapped.name.trim().toLowerCase());
       result.imported += 1;
     } catch (err) {
@@ -305,9 +307,10 @@ externalImportRouter.post("/wallos", async (c) => {
   return c.json(result);
 });
 
-externalImportRouter.post("/subtracker", async (c) => {
+externalImportRouter.post("/subtracker", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const body = await c.req.json().catch(() => null);
   if (!body || typeof body !== "object") {
     return c.json({ error: "invalid_json" }, 400);
@@ -327,7 +330,7 @@ externalImportRouter.post("/subtracker", async (c) => {
   const existing = await db
     .select({ name: subscriptions.name })
     .from(subscriptions)
-    .where(eq(subscriptions.user, userId));
+    .where(eq(subscriptions.workspaceId, workspaceId));
   const existingNames = new Set(existing.map((s) => s.name.trim().toLowerCase()));
 
   const now = new Date().toISOString();
@@ -343,7 +346,7 @@ externalImportRouter.post("/subtracker", async (c) => {
         result.skipped += 1;
         continue;
       }
-      await db.insert(subscriptions).values(mapped);
+      await db.insert(subscriptions).values({ ...mapped, workspaceId });
       existingNames.add(mapped.name.trim().toLowerCase());
       result.imported += 1;
     } catch (err) {

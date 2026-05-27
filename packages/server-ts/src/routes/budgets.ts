@@ -8,6 +8,7 @@ import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { budgets, subscriptions, subscriptionPayments } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
+import { requireActiveWorkspaceRole } from "../lib/workspace-permissions.js";
 import type { AppEnv } from "../app.js";
 
 export const budgetsRouter = new Hono<AppEnv>();
@@ -28,17 +29,16 @@ const updateBudgetSchema = createBudgetSchema.partial();
 // GET /budgets — list all budgets for user
 budgetsRouter.get("/", async (c) => {
   const db = c.get("deps").db;
-  const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
   const rows = await db
     .select()
     .from(budgets)
-    .where(and(eq(budgets.user, userId), eq(budgets.workspaceId, workspaceId)));
+    .where(eq(budgets.workspaceId, workspaceId));
   return c.json({ budgets: rows });
 });
 
 // POST /budgets — create budget
-budgetsRouter.post("/", async (c) => {
+budgetsRouter.post("/", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
@@ -68,9 +68,8 @@ budgetsRouter.post("/", async (c) => {
 });
 
 // PATCH /budgets/:id — update budget
-budgetsRouter.patch("/:id", async (c) => {
+budgetsRouter.patch("/:id", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
-  const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
   const budgetId = c.req.param("id");
   const body = await c.req.json().catch(() => null);
@@ -82,7 +81,7 @@ budgetsRouter.patch("/:id", async (c) => {
   const [existing] = await db
     .select()
     .from(budgets)
-    .where(and(eq(budgets.id, budgetId), eq(budgets.user, userId), eq(budgets.workspaceId, workspaceId)));
+    .where(and(eq(budgets.id, budgetId), eq(budgets.workspaceId, workspaceId)));
   if (!existing) return c.json({ error: "not_found" }, 404);
 
   const now = new Date().toISOString();
@@ -99,16 +98,15 @@ budgetsRouter.patch("/:id", async (c) => {
 });
 
 // DELETE /budgets/:id — delete budget
-budgetsRouter.delete("/:id", async (c) => {
+budgetsRouter.delete("/:id", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
-  const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
   const budgetId = c.req.param("id");
 
   const [existing] = await db
     .select()
     .from(budgets)
-    .where(and(eq(budgets.id, budgetId), eq(budgets.user, userId), eq(budgets.workspaceId, workspaceId)));
+    .where(and(eq(budgets.id, budgetId), eq(budgets.workspaceId, workspaceId)));
   if (!existing) return c.json({ error: "not_found" }, 404);
 
   await db.delete(budgets).where(eq(budgets.id, budgetId));
@@ -118,13 +116,12 @@ budgetsRouter.delete("/:id", async (c) => {
 // GET /budgets/usage — budget usage statistics
 budgetsRouter.get("/usage", async (c) => {
   const db = c.get("deps").db;
-  const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
 
   const [userBudgets, allPayments, allSubs] = await Promise.all([
-    db.select().from(budgets).where(and(eq(budgets.user, userId), eq(budgets.workspaceId, workspaceId))),
-    db.select().from(subscriptionPayments).where(and(eq(subscriptionPayments.user, userId), eq(subscriptionPayments.workspaceId, workspaceId))),
-    db.select().from(subscriptions).where(and(eq(subscriptions.user, userId), eq(subscriptions.workspaceId, workspaceId))),
+    db.select().from(budgets).where(eq(budgets.workspaceId, workspaceId)),
+    db.select().from(subscriptionPayments).where(eq(subscriptionPayments.workspaceId, workspaceId)),
+    db.select().from(subscriptions).where(eq(subscriptions.workspaceId, workspaceId)),
   ]);
 
   const now = new Date();

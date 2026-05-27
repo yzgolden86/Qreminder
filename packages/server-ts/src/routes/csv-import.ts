@@ -8,6 +8,7 @@ import { Hono } from "hono";
 import { eq } from "drizzle-orm";
 import { subscriptions } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
+import { requireActiveWorkspaceRole } from "../lib/workspace-permissions.js";
 import type { AppEnv } from "../app.js";
 
 export const csvImportRouter = new Hono<AppEnv>();
@@ -120,9 +121,9 @@ csvImportRouter.post("/csv/preview", async (c) => {
   }
 
   const db = c.get("deps").db;
-  const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const existingNames = new Set(
-    (await db.select({ name: subscriptions.name }).from(subscriptions).where(eq(subscriptions.user, userId)))
+    (await db.select({ name: subscriptions.name }).from(subscriptions).where(eq(subscriptions.workspaceId, workspaceId)))
       .map((s) => s.name.toLowerCase()),
   );
 
@@ -148,7 +149,7 @@ csvImportRouter.post("/csv/preview", async (c) => {
   });
 });
 
-csvImportRouter.post("/csv/confirm", async (c) => {
+csvImportRouter.post("/csv/confirm", requireActiveWorkspaceRole("editor"), async (c) => {
   const text = await c.req.text();
   if (!text.trim()) {
     return c.json({ error: "empty_file" }, 400);
@@ -172,10 +173,11 @@ csvImportRouter.post("/csv/confirm", async (c) => {
 
   const db = c.get("deps").db;
   const userId = c.get("user").id;
+  const workspaceId = c.get("workspaceId");
   const now = new Date().toISOString();
 
   const existingNames = new Set(
-    (await db.select({ name: subscriptions.name }).from(subscriptions).where(eq(subscriptions.user, userId)))
+    (await db.select({ name: subscriptions.name }).from(subscriptions).where(eq(subscriptions.workspaceId, workspaceId)))
       .map((s) => s.name.toLowerCase()),
   );
 
@@ -197,6 +199,7 @@ csvImportRouter.post("/csv/confirm", async (c) => {
     await db.insert(subscriptions).values({
       id: crypto.randomUUID(),
       user: userId,
+      workspaceId,
       name,
       logo: "",
       price: parseFloat(getValue("price")) || 0,

@@ -1,14 +1,14 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { MainLayout } from "@/components/main-layout";
-import Dashboard from "@/pages/dashboard";
-import Login from "@/pages/login";
 
+const Dashboard = lazy(() => import("@/pages/dashboard"));
 const Calendar = lazy(() => import("@/pages/calendar"));
 const Settings = lazy(() => import("@/pages/settings"));
 const AdminUsers = lazy(() => import("@/pages/admin/users"));
 const Diagnostics = lazy(() => import("@/pages/admin/diagnostics"));
 const AuditLogs = lazy(() => import("@/pages/admin/audit-logs"));
+const Login = lazy(() => import("@/pages/login"));
 const ForgotPassword = lazy(() => import("@/pages/forgot-password"));
 const ResetPassword = lazy(() => import("@/pages/reset-password"));
 const ChangeCredentials = lazy(() => import("@/pages/change-credentials"));
