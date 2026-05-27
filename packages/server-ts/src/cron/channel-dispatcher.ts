@@ -8,6 +8,7 @@
  * 渠道；本函数本身保持单层语义，由 notification-cron 编排两段调用。
  */
 import type { MailerAdapter } from "../adapters/mailer.js";
+import { assertExternalHttpUrl } from "../lib/external-url.js";
 
 export interface ChannelMessage {
   title: string;
@@ -132,6 +133,15 @@ async function sendTelegram(
   }
 }
 
+async function fetchExternal(url: string, init: RequestInit = {}): Promise<Response> {
+  const safeUrl = assertExternalHttpUrl(url).toString();
+  const response = await fetch(safeUrl, { ...init, redirect: "manual" });
+  if (response.status >= 300 && response.status < 400) {
+    throw new Error("External URL redirects are not allowed");
+  }
+  return response;
+}
+
 async function sendWechat(
   settings: Record<string, unknown>,
   message: ChannelMessage,
@@ -162,7 +172,7 @@ async function sendWechat(
     };
   }
 
-  const res = await fetch(webhookUrl, {
+  const res = await fetchExternal(webhookUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -174,12 +184,15 @@ async function sendBark(
   settings: Record<string, unknown>,
   message: ChannelMessage,
 ): Promise<void> {
-  const serverUrl = String(settings["barkServerUrl"] ?? "https://api.day.app").trim().replace(/\/$/, "");
+  const serverUrl = String(settings["barkServerUrl"] ?? "https://api.day.app").trim() || "https://api.day.app";
   const deviceKey = String(settings["barkDeviceKey"] ?? "").trim();
   if (!deviceKey) throw new Error("Bark: missing deviceKey");
   const silent = Boolean(settings["barkSilentPush"]);
-  const url = `${serverUrl}/${deviceKey}/${encodeURIComponent(message.title)}/${encodeURIComponent(message.body)}${silent ? "?level=passive" : ""}`;
-  const res = await fetch(url);
+  const url = assertExternalHttpUrl(serverUrl);
+  const basePath = url.pathname.replace(/\/+$/, "");
+  url.pathname = `${basePath}/${[deviceKey, message.title, message.body].map(encodeURIComponent).join("/")}`;
+  if (silent) url.searchParams.set("level", "passive");
+  const res = await fetchExternal(url.toString());
   if (!res.ok) throw new Error(`Bark HTTP ${res.status}`);
 }
 
@@ -223,7 +236,7 @@ async function sendWebhook(
     payload = JSON.stringify({ title: message.title, content: message.body, timestamp: new Date().toISOString() });
   }
 
-  const res = await fetch(webhookUrl, {
+  const res = await fetchExternal(webhookUrl, {
     method,
     headers,
     ...(method !== "GET" ? { body: payload } : {}),

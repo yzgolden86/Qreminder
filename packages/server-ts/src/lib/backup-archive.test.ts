@@ -207,6 +207,93 @@ describe("workspace backup archive", () => {
     expect(restoredHistory?.newPrice).toBe(20);
   });
 
+  it("does not duplicate payments, budgets, or templates when restoring the same archive twice", async () => {
+    const targetUser = await seedUser(testDb.db, "backup-idempotent-target-user");
+    await seedWorkspace(testDb, targetUser, "ws-idempotent-target");
+
+    const archive = zipSync({
+      "metadata.json": strToU8(JSON.stringify({ app: "Qreminder", schemaVersion: 2 })),
+      "subscriptions.json": strToU8(JSON.stringify([
+        {
+          id: "source-sub-idempotent",
+          name: "Idempotent Plan",
+          price: 12,
+          currency: "USD",
+          billingCycle: "monthly",
+          category: "SaaS",
+          status: "active",
+          startDate: "2026-01-01",
+          nextBillingDate: "2026-06-01",
+          autoCalculateNextBillingDate: true,
+          reminderOffsets: [3],
+        },
+      ])),
+      "payments.json": strToU8(JSON.stringify([
+        {
+          subscriptionId: "source-sub-idempotent",
+          subscriptionName: "Idempotent Plan",
+          paidAt: "2026-05-01",
+          amount: 12,
+          currency: "USD",
+          billingPeriod: "monthly",
+          paymentMethod: "Visa",
+          note: "May",
+        },
+      ])),
+      "budgets.json": strToU8(JSON.stringify([
+        {
+          scopeType: "category",
+          scopeId: "SaaS",
+          period: "monthly",
+          amount: 100,
+          currency: "USD",
+          enabled: true,
+        },
+      ])),
+      "templates.json": strToU8(JSON.stringify([
+        {
+          scope: "subscription",
+          scopeId: "source-sub-idempotent",
+          titleTemplate: "{{subscription.name}} due",
+          bodyTemplate: "Pay {{subscription.amount}}",
+        },
+      ])),
+    });
+
+    const first = await restoreWorkspaceBackupArchive(testDb.db, targetUser, "ws-idempotent-target", archive);
+    const second = await restoreWorkspaceBackupArchive(testDb.db, targetUser, "ws-idempotent-target", archive);
+
+    expect(first).toMatchObject({
+      subscriptions: 1,
+      payments: 1,
+      budgets: 1,
+      templates: 1,
+    });
+    expect(second).toMatchObject({
+      subscriptions: 0,
+      payments: 0,
+      budgets: 0,
+      templates: 0,
+    });
+
+    const restoredPayments = await testDb.db
+      .select()
+      .from(subscriptionPayments)
+      .where(eq(subscriptionPayments.workspaceId, "ws-idempotent-target"));
+    const restoredBudgets = await testDb.db
+      .select()
+      .from(budgets)
+      .where(eq(budgets.workspaceId, "ws-idempotent-target"));
+    const restoredTemplates = await testDb.db
+      .select()
+      .from(notificationTemplates)
+      .where(eq(notificationTemplates.workspaceId, "ws-idempotent-target"));
+
+    expect(restoredPayments).toHaveLength(1);
+    expect(restoredBudgets).toHaveLength(1);
+    expect(restoredTemplates).toHaveLength(1);
+  });
+
   it("rejects malformed optional files before writing any restore rows", async () => {
     const targetUser = await seedUser(testDb.db, "backup-malformed-target-user");
     await seedWorkspace(testDb, targetUser, "ws-malformed-target");

@@ -18,6 +18,7 @@ import {
   restoreWorkspaceBackupArchive,
   totalRestoredCount,
 } from "../lib/backup-archive.js";
+import { assertExternalHttpUrl } from "../lib/external-url.js";
 import type { AppEnv } from "../app.js";
 
 export const webdavRouter = new Hono<AppEnv>();
@@ -35,11 +36,20 @@ interface WebdavConfig {
 function getWebdavConfig(userSettings: Record<string, unknown>): WebdavConfig {
   return {
     enabled: Boolean(userSettings["webdavEnabled"]),
-    url: String(userSettings["webdavUrl"] ?? "").trim().replace(/\/$/, ""),
+    url: normalizeWebdavUrl(String(userSettings["webdavUrl"] ?? "")),
     username: String(userSettings["webdavUsername"] ?? "").trim(),
     password: String(userSettings["webdavPassword"] ?? "").trim(),
     path: normalizeWebdavPath(String(userSettings["webdavPath"] ?? "/qreminder-backup/")),
   };
+}
+
+function normalizeWebdavUrl(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  const url = assertExternalHttpUrl(trimmed);
+  url.search = "";
+  url.hash = "";
+  return url.toString().replace(/\/+$/, "");
 }
 
 function normalizeWebdavPath(path: string): string {
@@ -63,6 +73,28 @@ function backupFilenameFromPath(path: string): string {
   }
 }
 
+async function webdavFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  const safeUrl = assertExternalHttpUrl(url).toString();
+  const response = await fetch(safeUrl, { ...init, redirect: "manual" });
+  if (response.status >= 300 && response.status < 400) {
+    throw new Error("WebDAV redirects are not allowed");
+  }
+  return response;
+}
+
+function resolveWebdavHref(href: string, config: WebdavConfig): string {
+  const resolved = assertExternalHttpUrl(new URL(href, `${config.url}${config.path}`).toString());
+  const configuredOrigin = new URL(config.url).origin;
+  if (resolved.origin !== configuredOrigin) {
+    throw new Error("WebDAV backup URL must stay on the configured host");
+  }
+  return resolved.toString();
+}
+
+function invalidWebdavUrlResponse() {
+  return { error: "invalid_webdav_url", message: "WebDAV URL must be a public http/https URL" };
+}
+
 webdavRouter.post("/webdav", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
@@ -70,7 +102,12 @@ webdavRouter.post("/webdav", requireActiveWorkspaceRole("editor"), async (c) => 
 
   const [settingsRow] = await db.select().from(settings).where(and(eq(settings.user, userId), eq(settings.workspaceId, workspaceId)));
   const userSettings = (settingsRow?.settings ?? {}) as Record<string, unknown>;
-  const config = getWebdavConfig(userSettings);
+  let config: WebdavConfig;
+  try {
+    config = getWebdavConfig(userSettings);
+  } catch {
+    return c.json(invalidWebdavUrlResponse(), 400);
+  }
 
   if (!config.enabled || !config.url || !config.username) {
     return c.json({ error: "webdav_not_configured", message: "Please configure WebDAV in settings" }, 400);
@@ -84,12 +121,12 @@ webdavRouter.post("/webdav", requireActiveWorkspaceRole("editor"), async (c) => 
   const remotePath = `${config.url}${config.path}${filename}`;
 
   try {
-    await fetch(`${config.url}${config.path}`, {
+    await webdavFetch(`${config.url}${config.path}`, {
       method: "MKCOL",
       headers: webdavHeaders(config),
     }).catch(() => {});
 
-    const uploadRes = await fetch(remotePath, {
+    const uploadRes = await webdavFetch(remotePath, {
       method: "PUT",
       headers: {
         ...webdavHeaders(config),
@@ -125,6 +162,8 @@ webdavRouter.post("/webdav", requireActiveWorkspaceRole("editor"), async (c) => 
 
 export const __testing__ = {
   normalizeWebdavPath,
+  normalizeWebdavUrl,
+  resolveWebdavHref,
 };
 
 webdavRouter.post("/webdav/restore", requireActiveWorkspaceRole("editor"), async (c) => {
@@ -134,14 +173,19 @@ webdavRouter.post("/webdav/restore", requireActiveWorkspaceRole("editor"), async
 
   const [settingsRow] = await db.select().from(settings).where(and(eq(settings.user, userId), eq(settings.workspaceId, workspaceId)));
   const userSettings = (settingsRow?.settings ?? {}) as Record<string, unknown>;
-  const config = getWebdavConfig(userSettings);
+  let config: WebdavConfig;
+  try {
+    config = getWebdavConfig(userSettings);
+  } catch {
+    return c.json(invalidWebdavUrlResponse(), 400);
+  }
 
   if (!config.enabled || !config.url || !config.username) {
     return c.json({ error: "webdav_not_configured" }, 400);
   }
 
   try {
-    const listRes = await fetch(`${config.url}${config.path}`, {
+    const listRes = await webdavFetch(`${config.url}${config.path}`, {
       method: "PROPFIND",
       headers: { ...webdavHeaders(config), Depth: "1" },
     });
@@ -160,11 +204,9 @@ webdavRouter.post("/webdav/restore", requireActiveWorkspaceRole("editor"), async
       return c.json({ error: "no_backup_found", message: "No ZIP backups found on WebDAV" }, 404);
     }
 
-    const latestPath = zipFiles[0]!.startsWith("http")
-      ? zipFiles[0]!
-      : `${config.url}${zipFiles[0]}`;
+    const latestPath = resolveWebdavHref(zipFiles[0]!, config);
 
-    const downloadRes = await fetch(latestPath, {
+    const downloadRes = await webdavFetch(latestPath, {
       headers: webdavHeaders(config),
     });
 
@@ -217,14 +259,19 @@ webdavRouter.get("/webdav/status", async (c) => {
 
   const [settingsRow] = await db.select().from(settings).where(and(eq(settings.user, userId), eq(settings.workspaceId, workspaceId)));
   const userSettings = (settingsRow?.settings ?? {}) as Record<string, unknown>;
-  const config = getWebdavConfig(userSettings);
+  let config: WebdavConfig;
+  try {
+    config = getWebdavConfig(userSettings);
+  } catch {
+    return c.json({ configured: true, reachable: false, error: invalidWebdavUrlResponse().message });
+  }
 
   if (!config.enabled || !config.url) {
     return c.json({ configured: false });
   }
 
   try {
-    const res = await fetch(`${config.url}${config.path}`, {
+    const res = await webdavFetch(`${config.url}${config.path}`, {
       method: "PROPFIND",
       headers: { ...webdavHeaders(config), Depth: "1" },
     });

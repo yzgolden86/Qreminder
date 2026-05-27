@@ -11,19 +11,18 @@ import {
   subscriptions,
 } from "../db/schema.js";
 import type { Database } from "../db/types.js";
+import {
+  budgetRestoreKey,
+  normalizeCycle,
+  normalizeScopeType,
+  normalizeStatus,
+  normalizeTemplateScope,
+  paymentRestoreKey,
+  stripSensitiveSettings,
+  templateRestoreKey,
+} from "./backup-archive-helpers.js";
 
-export const SENSITIVE_SETTING_KEYS = [
-  "aiApiKey",
-  "telegramBotToken",
-  "notifyxApiKey",
-  "webhookHeaders",
-  "wechatWebhookUrl",
-  "barkDeviceKey",
-  "serverchanSendKey",
-  "smtpPassword",
-  "webdavPassword",
-  "icalToken",
-] as const;
+export { SENSITIVE_SETTING_KEYS, stripSensitiveSettings } from "./backup-archive-helpers.js";
 
 export class BackupArchiveError extends Error {
   constructor(
@@ -49,14 +48,6 @@ export interface BackupRestoreResult {
   priceHistory: number;
   settings: number;
   customConfig: number;
-}
-
-export function stripSensitiveSettings(value: Record<string, unknown>): Record<string, unknown> {
-  const out = { ...value };
-  for (const key of SENSITIVE_SETTING_KEYS) {
-    delete out[key];
-  }
-  return out;
 }
 
 export async function buildWorkspaceBackupArchive(
@@ -378,13 +369,16 @@ async function restorePayments(
   subIdMap: Map<string, string>,
 ) {
   const payments = readJsonFile<Array<Record<string, unknown>>>(files, "payments.json") ?? [];
+  const existing = await db
+    .select()
+    .from(subscriptionPayments)
+    .where(eq(subscriptionPayments.workspaceId, workspaceId));
+  const existingKeys = new Set(existing.map(paymentRestoreKey));
+
   for (const p of payments) {
     const rawSubId = String(p["subscriptionId"] ?? p["subscription_id"] ?? "");
     const mappedSubId = subIdMap.get(rawSubId) ?? null;
-    await db.insert(subscriptionPayments).values({
-      id: crypto.randomUUID(),
-      user: userId,
-      workspaceId,
+    const payment = {
       subscriptionId: mappedSubId,
       subscriptionName: String(p["subscriptionName"] ?? p["subscription_name"] ?? ""),
       paidAt: String(p["paidAt"] ?? p["paid_at"] ?? now.slice(0, 10)),
@@ -393,9 +387,19 @@ async function restorePayments(
       billingPeriod: p["billingPeriod"] ? String(p["billingPeriod"]) : null,
       paymentMethod: p["paymentMethod"] ? String(p["paymentMethod"]) : null,
       note: String(p["note"] ?? ""),
+    };
+    const key = paymentRestoreKey(payment);
+    if (existingKeys.has(key)) continue;
+
+    await db.insert(subscriptionPayments).values({
+      id: crypto.randomUUID(),
+      user: userId,
+      workspaceId,
+      ...payment,
       createdAt: now,
       updatedAt: now,
     });
+    existingKeys.add(key);
     imported.payments++;
   }
 }
@@ -409,20 +413,30 @@ async function restoreBudgets(
   imported: BackupRestoreResult,
 ) {
   const budgetList = readJsonFile<Array<Record<string, unknown>>>(files, "budgets.json") ?? [];
+  const existing = await db.select().from(budgets).where(eq(budgets.workspaceId, workspaceId));
+  const existingKeys = new Set(existing.map(budgetRestoreKey));
+
   for (const b of budgetList) {
-    await db.insert(budgets).values({
-      id: crypto.randomUUID(),
-      user: userId,
-      workspaceId,
+    const budget = {
       scopeType: normalizeScopeType(b["scopeType"] ?? b["scope_type"]),
       scopeId: String(b["scopeId"] ?? b["scope_id"] ?? ""),
       period: (b["period"] === "yearly" ? "yearly" : "monthly") as "monthly" | "yearly",
       amount: Number(b["amount"] ?? 0),
       currency: String(b["currency"] ?? "CNY"),
       enabled: Boolean(b["enabled"] ?? true),
+    };
+    const key = budgetRestoreKey(budget);
+    if (existingKeys.has(key)) continue;
+
+    await db.insert(budgets).values({
+      id: crypto.randomUUID(),
+      user: userId,
+      workspaceId,
+      ...budget,
       createdAt: now,
       updatedAt: now,
     });
+    existingKeys.add(key);
     imported.budgets++;
   }
 }
@@ -437,21 +451,34 @@ async function restoreTemplates(
   subIdMap: Map<string, string>,
 ) {
   const tpls = readJsonFile<Array<Record<string, unknown>>>(files, "templates.json") ?? [];
+  const existing = await db
+    .select()
+    .from(notificationTemplates)
+    .where(eq(notificationTemplates.workspaceId, workspaceId));
+  const existingKeys = new Set(existing.map(templateRestoreKey));
+
   for (const tpl of tpls) {
     const scope = normalizeTemplateScope(tpl["scope"]);
     const rawScopeId = String(tpl["scopeId"] ?? tpl["scope_id"] ?? "");
     const scopeId = scope === "subscription" ? (subIdMap.get(rawScopeId) ?? rawScopeId) : rawScopeId;
-    await db.insert(notificationTemplates).values({
-      id: crypto.randomUUID(),
-      user: userId,
-      workspaceId,
+    const template = {
       scope,
       scopeId,
       titleTemplate: String(tpl["titleTemplate"] ?? tpl["title_template"] ?? ""),
       bodyTemplate: String(tpl["bodyTemplate"] ?? tpl["body_template"] ?? ""),
+    };
+    const key = templateRestoreKey(template);
+    if (existingKeys.has(key)) continue;
+
+    await db.insert(notificationTemplates).values({
+      id: crypto.randomUUID(),
+      user: userId,
+      workspaceId,
+      ...template,
       createdAt: now,
       updatedAt: now,
     });
+    existingKeys.add(key);
     imported.templates++;
   }
 }
@@ -543,32 +570,4 @@ async function restorePriceHistory(
     existingKeys.add(key);
     imported.priceHistory++;
   }
-}
-
-function normalizeCycle(value: unknown): "weekly" | "monthly" | "quarterly" | "semi-annual" | "annual" | "custom" {
-  const valid = ["weekly", "monthly", "quarterly", "semi-annual", "annual", "custom"] as const;
-  const s = String(value ?? "monthly");
-  if ((valid as readonly string[]).includes(s)) return s as typeof valid[number];
-  return "monthly";
-}
-
-function normalizeStatus(value: unknown): "trial" | "active" | "paused" | "cancelled" {
-  const valid = ["trial", "active", "paused", "cancelled"] as const;
-  const s = String(value ?? "active");
-  if ((valid as readonly string[]).includes(s)) return s as typeof valid[number];
-  return "active";
-}
-
-function normalizeScopeType(value: unknown): "global" | "category" | "tag" | "payment_method" {
-  const valid = ["global", "category", "tag", "payment_method"] as const;
-  const s = String(value ?? "global");
-  if ((valid as readonly string[]).includes(s)) return s as typeof valid[number];
-  return "global";
-}
-
-function normalizeTemplateScope(value: unknown): "global" | "channel" | "subscription" {
-  const valid = ["global", "channel", "subscription"] as const;
-  const s = String(value ?? "global");
-  if ((valid as readonly string[]).includes(s)) return s as typeof valid[number];
-  return "global";
 }

@@ -60,13 +60,51 @@ interface ImportSubscription {
 }
 
 function validateExport(data: unknown): { ok: true; parsed: QreminderExport } | { ok: false; reason: string } {
-  if (!data || typeof data !== "object") return { ok: false, reason: "Invalid JSON" };
-  const obj = data as Record<string, unknown>;
+  if (!isRecord(data)) return { ok: false, reason: "Invalid JSON" };
+  const obj = data;
   if (obj["app"] !== "Qreminder") return { ok: false, reason: "Not a Qreminder export file" };
-  if (typeof obj["schemaVersion"] !== "number") return { ok: false, reason: "Missing schemaVersion" };
+  if (typeof obj["schemaVersion"] !== "number" || !Number.isFinite(obj["schemaVersion"])) {
+    return { ok: false, reason: "Missing schemaVersion" };
+  }
   if (obj["schemaVersion"] > 2) return { ok: false, reason: `Unsupported schema version: ${obj["schemaVersion"]}` };
-  if (!obj["data"] || typeof obj["data"] !== "object") return { ok: false, reason: "Missing data field" };
+  if (!isRecord(obj["data"])) return { ok: false, reason: "Missing data field" };
+
+  const dataObj = obj["data"];
+  const arrayFields = [
+    "subscriptions",
+    "payments",
+    "budgets",
+    "templates",
+    "notificationChannels",
+    "priceHistory",
+  ] as const;
+  for (const field of arrayFields) {
+    const value = dataObj[field];
+    if (value == null) continue;
+    if (!Array.isArray(value)) return { ok: false, reason: `${field} must be an array` };
+    for (const item of value) {
+      if (!isRecord(item)) return { ok: false, reason: `${field} must contain objects` };
+    }
+  }
+
+  for (const field of ["settings", "customConfig"] as const) {
+    const value = dataObj[field];
+    if (value != null && !isRecord(value)) return { ok: false, reason: `${field} must be an object` };
+  }
+
+  const importSubs = dataObj["subscriptions"];
+  if (Array.isArray(importSubs)) {
+    for (const sub of importSubs) {
+      if (typeof sub["name"] !== "string" || !sub["name"].trim()) {
+        return { ok: false, reason: "subscriptions must include a non-empty name" };
+      }
+    }
+  }
   return { ok: true, parsed: obj as unknown as QreminderExport };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 importRouter.post("/json/preview", async (c) => {
@@ -179,3 +217,7 @@ function jsonExportToArchive(parsed: QreminderExport): Uint8Array {
     "price-history.json": strToU8(JSON.stringify(parsed.data.priceHistory ?? [], null, 2)),
   }, { level: 6 });
 }
+
+export const __testing__ = {
+  validateExport,
+};

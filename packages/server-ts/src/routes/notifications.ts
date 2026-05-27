@@ -4,6 +4,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { notificationJobs } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
 import { requireActiveWorkspaceRole } from "../lib/workspace-permissions.js";
+import { assertExternalHttpUrl, ExternalUrlError } from "../lib/external-url.js";
 import type { AppEnv } from "../app.js";
 
 export const notificationsRouter = new Hono<AppEnv>();
@@ -53,34 +54,37 @@ notificationsRouter.get("/recent-failures", async (c) => {
   });
 });
 
-function isPrivateHost(hostname: string): boolean {
-  if (hostname === "localhost" || hostname === "[::1]") return true;
-  const parts = hostname.split(".");
-  if (parts.length !== 4 || parts.some((p) => !/^\d+$/.test(p))) return false;
-  const octets = parts.map(Number);
-  if (octets[0] === 10) return true;
-  if (octets[0] === 172 && octets[1]! >= 16 && octets[1]! <= 31) return true;
-  if (octets[0] === 192 && octets[1] === 168) return true;
-  if (octets[0] === 127) return true;
-  if (octets[0] === 169 && octets[1] === 254) return true;
-  if (octets[0] === 0) return true;
-  return false;
+function validateExternalUrl(raw: string): { ok: true; url: string } | { ok: false; reason: string } {
+  try {
+    return { ok: true, url: assertExternalHttpUrl(raw).toString() };
+  } catch (err) {
+    return { ok: false, reason: externalUrlErrorMessage(err) };
+  }
 }
 
-function validateExternalUrl(raw: string): { ok: true; url: string } | { ok: false; reason: string } {
-  let parsed: URL;
-  try {
-    parsed = new URL(raw);
-  } catch {
-    return { ok: false, reason: "Invalid URL" };
+async function fetchExternalUrl(raw: string, init: RequestInit = {}): Promise<Response> {
+  const url = assertExternalHttpUrl(raw).toString();
+  const res = await fetch(url, { ...init, redirect: "manual" });
+  if (res.status >= 300 && res.status < 400) {
+    throw new Error("External URL redirects are not allowed");
   }
-  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-    return { ok: false, reason: "Only http/https URLs are allowed" };
-  }
-  if (isPrivateHost(parsed.hostname)) {
-    return { ok: false, reason: "Requests to private/internal networks are not allowed" };
-  }
-  return { ok: true, url: parsed.toString() };
+  return res;
+}
+
+function buildBarkTestUrl(serverUrl: string, deviceKey: string): string {
+  const url = assertExternalHttpUrl(serverUrl.trim() || "https://api.day.app");
+  const basePath = url.pathname.replace(/\/+$/, "");
+  const segments = [
+    deviceKey,
+    "Qreminder Test",
+    "If you see this, Bark is configured correctly.",
+  ].map(encodeURIComponent);
+  url.pathname = `${basePath}/${segments.join("/")}`;
+  return url.toString();
+}
+
+function externalUrlErrorMessage(err: unknown): string {
+  return err instanceof ExternalUrlError || err instanceof Error ? err.message : "Invalid URL";
 }
 
 const testSchema = z.object({
@@ -148,12 +152,13 @@ notificationsRouter.post("/test", requireActiveWorkspaceRole("editor"), async (c
         if (!deviceKey) {
           return c.json({ error: "missing_config", message: "Device Key is required" }, 400);
         }
-        const barkTarget = `${serverUrl.replace(/\/$/, "")}/${deviceKey}/Qreminder Test/If you see this, Bark is configured correctly.`;
-        const barkCheck = validateExternalUrl(barkTarget);
-        if (!barkCheck.ok) {
-          return c.json({ error: "invalid_url", message: barkCheck.reason }, 400);
+        let barkTarget: string;
+        try {
+          barkTarget = buildBarkTestUrl(serverUrl, deviceKey);
+        } catch (err) {
+          return c.json({ error: "invalid_url", message: externalUrlErrorMessage(err) }, 400);
         }
-        const res = await fetch(barkCheck.url);
+        const res = await fetchExternalUrl(barkTarget);
         if (!res.ok) {
           return c.json({ error: "bark_error", message: `HTTP ${res.status}` }, 400);
         }
@@ -178,7 +183,7 @@ notificationsRouter.post("/test", requireActiveWorkspaceRole("editor"), async (c
           } catch { /* ignore invalid headers */ }
         }
         const payload = JSON.stringify({ event: "test", message: "Qreminder test notification" });
-        const res = await fetch(webhookCheck.url, {
+        const res = await fetchExternalUrl(webhookCheck.url, {
           method,
           headers,
           ...(method !== "GET" ? { body: payload } : {}),
@@ -202,7 +207,7 @@ notificationsRouter.post("/test", requireActiveWorkspaceRole("editor"), async (c
         const content = msgType === "markdown"
           ? { msgtype: "markdown", markdown: { content: "**Qreminder** test notification\n> If you see this, WeCom is configured correctly." } }
           : { msgtype: "text", text: { content: "Qreminder test notification\nIf you see this, WeCom is configured correctly." } };
-        const res = await fetch(wechatCheck.url, {
+        const res = await fetchExternalUrl(wechatCheck.url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(content),
@@ -281,3 +286,9 @@ notificationsRouter.post("/test", requireActiveWorkspaceRole("editor"), async (c
     return c.json({ error: "send_failed", channel, message }, 500);
   }
 });
+
+export const __testing__ = {
+  buildBarkTestUrl,
+  fetchExternalUrl,
+  validateExternalUrl,
+};
