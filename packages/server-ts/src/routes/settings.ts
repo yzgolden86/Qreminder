@@ -40,6 +40,14 @@ settingsRouter.patch("/", requireActiveWorkspaceRole("editor"), async (c) => {
       createdAt: now,
       updatedAt: now,
     });
+    await writeAuditLog(db, {
+      userId,
+      workspaceId,
+      action: "settings.update",
+      targetType: "settings",
+      targetId: id,
+      metadata: { fields: Object.keys(parsed.data), created: true },
+    });
     return c.json({ settings: parsed.data });
   }
   const merged = { ...(existing.settings ?? {}), ...parsed.data };
@@ -49,8 +57,10 @@ settingsRouter.patch("/", requireActiveWorkspaceRole("editor"), async (c) => {
     .where(eq(settings.id, existing.id));
   await writeAuditLog(db, {
     userId,
+    workspaceId,
     action: "settings.update",
     targetType: "settings",
+    targetId: existing.id,
     metadata: { fields: Object.keys(parsed.data) },
   });
   return c.json({ settings: merged });
@@ -74,6 +84,14 @@ settingsRouter.post("/ical/reset-token", requireActiveWorkspaceRole("editor"), a
       createdAt: now,
       updatedAt: now,
     });
+    await writeAuditLog(db, {
+      userId,
+      workspaceId,
+      action: "settings.ical.resetToken",
+      targetType: "settings",
+      targetId: id,
+      metadata: { created: true },
+    });
     return c.json({ icalToken: newToken });
   }
 
@@ -83,6 +101,13 @@ settingsRouter.post("/ical/reset-token", requireActiveWorkspaceRole("editor"), a
     .update(settings)
     .set({ settings: merged, updatedAt: now })
     .where(eq(settings.id, existing.id));
+  await writeAuditLog(db, {
+    userId,
+    workspaceId,
+    action: "settings.ical.resetToken",
+    targetType: "settings",
+    targetId: existing.id,
+  });
   return c.json({ icalToken: newToken });
 });
 
@@ -127,11 +152,27 @@ settingsRouter.put("/category-channels", requireActiveWorkspaceRole("editor"), a
       createdAt: now,
       updatedAt: now,
     });
+    await writeAuditLog(db, {
+      userId,
+      workspaceId,
+      action: "settings.categoryChannels.set",
+      targetType: "settings",
+      targetId: id,
+      metadata: { channelCount: channels.length, created: true },
+    });
   } else {
     await db
       .update(settings)
       .set({ settings: merged, updatedAt: now })
       .where(eq(settings.id, existing.id));
+    await writeAuditLog(db, {
+      userId,
+      workspaceId,
+      action: "settings.categoryChannels.set",
+      targetType: "settings",
+      targetId: existing.id,
+      metadata: { channelCount: channels.length },
+    });
   }
   return c.json({ ok: true });
 });
@@ -153,6 +194,13 @@ settingsRouter.delete("/category-channels/:category", requireActiveWorkspaceRole
     .update(settings)
     .set({ settings: merged, updatedAt: now })
     .where(eq(settings.id, existing.id));
+  await writeAuditLog(db, {
+    userId,
+    workspaceId,
+    action: "settings.categoryChannels.clear",
+    targetType: "settings",
+    targetId: existing.id,
+  });
   return c.json({ ok: true });
 });
 
@@ -195,11 +243,27 @@ settingsRouter.put("/tag-channels", requireActiveWorkspaceRole("editor"), async 
       createdAt: now,
       updatedAt: now,
     });
+    await writeAuditLog(db, {
+      userId,
+      workspaceId,
+      action: "settings.tagChannels.set",
+      targetType: "settings",
+      targetId: id,
+      metadata: { channelCount: channels.length, created: true },
+    });
   } else {
     await db
       .update(settings)
       .set({ settings: merged, updatedAt: now })
       .where(eq(settings.id, existing.id));
+    await writeAuditLog(db, {
+      userId,
+      workspaceId,
+      action: "settings.tagChannels.set",
+      targetType: "settings",
+      targetId: existing.id,
+      metadata: { channelCount: channels.length },
+    });
   }
   return c.json({ ok: true });
 });
@@ -221,5 +285,12 @@ settingsRouter.delete("/tag-channels/:tag", requireActiveWorkspaceRole("editor")
     .update(settings)
     .set({ settings: merged, updatedAt: now })
     .where(eq(settings.id, existing.id));
+  await writeAuditLog(db, {
+    userId,
+    workspaceId,
+    action: "settings.tagChannels.clear",
+    targetType: "settings",
+    targetId: existing.id,
+  });
   return c.json({ ok: true });
 });

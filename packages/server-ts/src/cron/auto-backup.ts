@@ -19,6 +19,7 @@ import {
   subscriptionPriceHistory,
 } from "../db/schema.js";
 import type { Database } from "../db/types.js";
+import { stripSensitiveSettings } from "../lib/backup-archive.js";
 
 export interface BackupStore {
   putBackup(key: string, body: Uint8Array): Promise<void>;
@@ -38,27 +39,6 @@ export interface AutoBackupResult {
   deletedOldBackups: number;
   exportedAt: string;
   rowCounts: Record<string, number>;
-}
-
-const SENSITIVE_SETTING_KEYS = [
-  "aiApiKey",
-  "telegramBotToken",
-  "notifyxApiKey",
-  "webhookHeaders",
-  "wechatWebhookUrl",
-  "barkDeviceKey",
-  "serverchanSendKey",
-  "smtpPassword",
-  "webdavPassword",
-  "icalToken",
-];
-
-function stripSensitive(value: Record<string, unknown>): Record<string, unknown> {
-  const out = { ...value };
-  for (const key of SENSITIVE_SETTING_KEYS) {
-    delete out[key];
-  }
-  return out;
 }
 
 function pad(n: number): string {
@@ -100,7 +80,7 @@ export async function runAutoBackup(
 
   const safeSettings = allSettings.map((row) => ({
     ...row,
-    settings: stripSensitive((row.settings as Record<string, unknown>) ?? {}),
+    settings: stripSensitiveSettings((row.settings as Record<string, unknown>) ?? {}),
   }));
 
   const metadata = {

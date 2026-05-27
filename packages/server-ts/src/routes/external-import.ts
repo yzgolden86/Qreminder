@@ -17,6 +17,7 @@ import { eq } from "drizzle-orm";
 import { subscriptions } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
 import { requireActiveWorkspaceRole } from "../lib/workspace-permissions.js";
+import { writeAuditLog } from "./audit-logs.js";
 import type { AppEnv } from "../app.js";
 
 export const externalImportRouter = new Hono<AppEnv>();
@@ -304,6 +305,20 @@ externalImportRouter.post("/wallos", requireActiveWorkspaceRole("editor"), async
     }
   }
 
+  await writeAuditLog(db, {
+    userId,
+    workspaceId,
+    action: "import.wallos",
+    targetType: "import",
+    summary: `Imported ${result.imported} subscription(s) from Wallos`,
+    metadata: {
+      imported: result.imported,
+      skipped: result.skipped,
+      errorCount: result.errors.length,
+      total: subs.length,
+    },
+  });
+
   return c.json(result);
 });
 
@@ -353,6 +368,20 @@ externalImportRouter.post("/subtracker", requireActiveWorkspaceRole("editor"), a
       result.errors.push(err instanceof Error ? err.message : String(err));
     }
   }
+
+  await writeAuditLog(db, {
+    userId,
+    workspaceId,
+    action: "import.subtracker",
+    targetType: "import",
+    summary: `Imported ${result.imported} subscription(s) from SubTracker`,
+    metadata: {
+      imported: result.imported,
+      skipped: result.skipped,
+      errorCount: result.errors.length,
+      total: subs.length,
+    },
+  });
 
   return c.json(result);
 });

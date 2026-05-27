@@ -9,6 +9,7 @@ import { eq } from "drizzle-orm";
 import { subscriptions } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
 import { requireActiveWorkspaceRole } from "../lib/workspace-permissions.js";
+import { writeAuditLog } from "./audit-logs.js";
 import type { AppEnv } from "../app.js";
 
 export const csvImportRouter = new Hono<AppEnv>();
@@ -224,6 +225,19 @@ csvImportRouter.post("/csv/confirm", requireActiveWorkspaceRole("editor"), async
     });
     imported++;
   }
+
+  await writeAuditLog(db, {
+    userId,
+    workspaceId,
+    action: "import.csv.confirm",
+    targetType: "import",
+    summary: `Imported ${imported} subscription(s) from CSV`,
+    metadata: {
+      imported,
+      skipped,
+      total: rows.length,
+    },
+  });
 
   return c.json({ imported, skipped });
 });

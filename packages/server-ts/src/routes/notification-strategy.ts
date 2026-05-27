@@ -9,6 +9,7 @@ import { z } from "zod";
 import { subscriptionNotificationChannels, notificationTemplates, subscriptions } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
 import { requireActiveWorkspaceRole } from "../lib/workspace-permissions.js";
+import { writeAuditLog } from "./audit-logs.js";
 import type { AppEnv } from "../app.js";
 
 export const notificationStrategyRouter = new Hono<AppEnv>();
@@ -81,12 +82,23 @@ notificationStrategyRouter.put("/channels", requireActiveWorkspaceRole("editor")
     });
   }
 
+  await writeAuditLog(db, {
+    userId,
+    workspaceId,
+    action: "notification.channels.set",
+    targetType: "subscription",
+    targetId: parsed.data.subscriptionId,
+    summary: `Set ${parsed.data.channels.length} notification channel(s) for "${sub.name}"`,
+    metadata: { channelCount: parsed.data.channels.length },
+  });
+
   return c.json({ ok: true });
 });
 
 // DELETE /strategy/channels/:subscriptionId — clear custom channels (fall back to defaults)
 notificationStrategyRouter.delete("/channels/:subscriptionId", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
+  const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
   const subId = c.req.param("subscriptionId");
 
@@ -98,6 +110,14 @@ notificationStrategyRouter.delete("/channels/:subscriptionId", requireActiveWork
         eq(subscriptionNotificationChannels.subscriptionId, subId),
       ),
     );
+
+  await writeAuditLog(db, {
+    userId,
+    workspaceId,
+    action: "notification.channels.clear",
+    targetType: "subscription",
+    targetId: subId,
+  });
 
   return c.json({ ok: true });
 });
@@ -173,6 +193,21 @@ notificationStrategyRouter.put("/channels/bulk", requireActiveWorkspaceRole("edi
     }
   }
 
+  await writeAuditLog(db, {
+    userId,
+    workspaceId,
+    action: "notification.channels.bulkSet",
+    targetType: "subscription",
+    summary: `Applied notification channels to ${idsToApply.length} subscription(s)`,
+    metadata: {
+      requested: parsed.data.subscriptionIds.length,
+      applied: idsToApply.length,
+      skipped: targetIds.length - idsToApply.length + (parsed.data.subscriptionIds.length - targetIds.length),
+      channelCount: parsed.data.channels.length,
+      overwrite: Boolean(parsed.data.overwrite),
+    },
+  });
+
   return c.json({
     ok: true,
     applied: idsToApply.length,
@@ -227,12 +262,22 @@ notificationStrategyRouter.post("/templates", requireActiveWorkspaceRole("editor
     updatedAt: now,
   });
 
+  await writeAuditLog(db, {
+    userId,
+    workspaceId,
+    action: "notification.template.create",
+    targetType: "notification_template",
+    targetId: id,
+    metadata: { scope: parsed.data.scope, hasScopeId: Boolean(parsed.data.scopeId) },
+  });
+
   return c.json({ id }, 201);
 });
 
 // PATCH /strategy/templates/:id
 notificationStrategyRouter.patch("/templates/:id", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
+  const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
   const templateId = c.req.param("id");
   const body = await c.req.json().catch(() => null);
@@ -255,12 +300,21 @@ notificationStrategyRouter.patch("/templates/:id", requireActiveWorkspaceRole("e
   if (parsed.data.bodyTemplate !== undefined) updates.bodyTemplate = parsed.data.bodyTemplate;
 
   await db.update(notificationTemplates).set(updates).where(eq(notificationTemplates.id, templateId));
+  await writeAuditLog(db, {
+    userId,
+    workspaceId,
+    action: "notification.template.update",
+    targetType: "notification_template",
+    targetId: templateId,
+    metadata: { fields: Object.keys(parsed.data) },
+  });
   return c.json({ ok: true });
 });
 
 // DELETE /strategy/templates/:id
 notificationStrategyRouter.delete("/templates/:id", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
+  const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
   const templateId = c.req.param("id");
 
@@ -271,5 +325,13 @@ notificationStrategyRouter.delete("/templates/:id", requireActiveWorkspaceRole("
   if (!existing) return c.json({ error: "not_found" }, 404);
 
   await db.delete(notificationTemplates).where(eq(notificationTemplates.id, templateId));
+  await writeAuditLog(db, {
+    userId,
+    workspaceId,
+    action: "notification.template.delete",
+    targetType: "notification_template",
+    targetId: templateId,
+    metadata: { scope: existing.scope },
+  });
   return c.json({ ok: true });
 });

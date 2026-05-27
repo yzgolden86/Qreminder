@@ -9,6 +9,7 @@ import { z } from "zod";
 import { budgets, subscriptions, subscriptionPayments } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
 import { requireActiveWorkspaceRole } from "../lib/workspace-permissions.js";
+import { writeAuditLog } from "./audit-logs.js";
 import type { AppEnv } from "../app.js";
 
 export const budgetsRouter = new Hono<AppEnv>();
@@ -64,12 +65,27 @@ budgetsRouter.post("/", requireActiveWorkspaceRole("editor"), async (c) => {
     updatedAt: now,
   });
 
+  await writeAuditLog(db, {
+    userId,
+    workspaceId,
+    action: "budget.create",
+    targetType: "budget",
+    targetId: id,
+    summary: `Created ${parsed.data.period} ${parsed.data.scopeType} budget`,
+    metadata: {
+      scopeType: parsed.data.scopeType,
+      period: parsed.data.period,
+      currency: parsed.data.currency,
+    },
+  });
+
   return c.json({ id }, 201);
 });
 
 // PATCH /budgets/:id — update budget
 budgetsRouter.patch("/:id", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
+  const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
   const budgetId = c.req.param("id");
   const body = await c.req.json().catch(() => null);
@@ -94,12 +110,21 @@ budgetsRouter.patch("/:id", requireActiveWorkspaceRole("editor"), async (c) => {
   if (parsed.data.enabled !== undefined) updates.enabled = parsed.data.enabled;
 
   await db.update(budgets).set(updates).where(eq(budgets.id, budgetId));
+  await writeAuditLog(db, {
+    userId,
+    workspaceId,
+    action: "budget.update",
+    targetType: "budget",
+    targetId: budgetId,
+    metadata: { fields: Object.keys(parsed.data) },
+  });
   return c.json({ ok: true });
 });
 
 // DELETE /budgets/:id — delete budget
 budgetsRouter.delete("/:id", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
+  const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
   const budgetId = c.req.param("id");
 
@@ -110,6 +135,14 @@ budgetsRouter.delete("/:id", requireActiveWorkspaceRole("editor"), async (c) => 
   if (!existing) return c.json({ error: "not_found" }, 404);
 
   await db.delete(budgets).where(eq(budgets.id, budgetId));
+  await writeAuditLog(db, {
+    userId,
+    workspaceId,
+    action: "budget.delete",
+    targetType: "budget",
+    targetId: budgetId,
+    summary: `Deleted ${existing.period} ${existing.scopeType} budget`,
+  });
   return c.json({ ok: true });
 });
 

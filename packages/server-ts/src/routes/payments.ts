@@ -89,10 +89,12 @@ paymentsRouter.post("/", requireActiveWorkspaceRole("editor"), async (c) => {
 
   await writeAuditLog(db, {
     userId,
+    workspaceId,
     action: "payment.create",
     targetType: "payment",
     targetId: id,
     summary: `Payment for "${sub.name}" (${parsed.data.amount} ${parsed.data.currency})`,
+    metadata: { subscriptionId: parsed.data.subscriptionId },
   });
 
   return c.json({ id }, 201);
@@ -129,6 +131,15 @@ paymentsRouter.patch("/:id", requireActiveWorkspaceRole("editor"), async (c) => 
     .set(updates)
     .where(eq(subscriptionPayments.id, paymentId));
 
+  await writeAuditLog(db, {
+    userId,
+    workspaceId,
+    action: "payment.update",
+    targetType: "payment",
+    targetId: paymentId,
+    metadata: { fields: Object.keys(parsed.data) },
+  });
+
   return c.json({ ok: true });
 });
 
@@ -148,9 +159,11 @@ paymentsRouter.delete("/:id", requireActiveWorkspaceRole("editor"), async (c) =>
   await db.delete(subscriptionPayments).where(eq(subscriptionPayments.id, paymentId));
   await writeAuditLog(db, {
     userId,
+    workspaceId,
     action: "payment.delete",
     targetType: "payment",
     targetId: paymentId,
+    metadata: { subscriptionId: existing.subscriptionId },
   });
   return c.json({ ok: true });
 });
@@ -208,6 +221,21 @@ paymentsRouter.post("/renew/:subscriptionId", requireActiveWorkspaceRole("editor
     .update(subscriptions)
     .set({ nextBillingDate, updatedAt: now })
     .where(eq(subscriptions.id, subId));
+
+  await writeAuditLog(db, {
+    userId,
+    workspaceId,
+    action: "payment.renew",
+    targetType: "payment",
+    targetId: paymentId,
+    summary: `Renewed "${sub.name}" through ${nextBillingDate}`,
+    metadata: {
+      subscriptionId: subId,
+      nextBillingDate,
+      amount,
+      currency,
+    },
+  });
 
   return c.json({ paymentId, nextBillingDate }, 201);
 });
@@ -425,6 +453,21 @@ paymentsRouter.post("/sync-from-subscriptions", requireActiveWorkspaceRole("edit
       cursor = next;
     }
   }
+
+  await writeAuditLog(db, {
+    userId,
+    workspaceId,
+    action: "payment.syncFromSubscriptions",
+    targetType: "payment",
+    summary: `Synced ${inserted} payment(s) from subscriptions`,
+    metadata: {
+      inserted,
+      skipped,
+      subscriptionsConsidered: filtered.length,
+      scope,
+      hasSubscriptionFilter: Boolean(parsed.data.subscriptionIds?.length),
+    },
+  });
 
   return c.json({
     inserted,

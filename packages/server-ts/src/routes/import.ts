@@ -9,6 +9,7 @@ import { eq } from "drizzle-orm";
 import { subscriptions } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
 import { requireActiveWorkspaceRole } from "../lib/workspace-permissions.js";
+import { writeAuditLog } from "./audit-logs.js";
 import type { AppEnv } from "../app.js";
 
 export const importRouter = new Hono<AppEnv>();
@@ -157,7 +158,22 @@ importRouter.post("/json/confirm", requireActiveWorkspaceRole("editor"), async (
     imported++;
   }
 
-  return c.json({ imported, skipped: (parsed.data.subscriptions ?? []).length - imported });
+  const skipped = (parsed.data.subscriptions ?? []).length - imported;
+  await writeAuditLog(db, {
+    userId,
+    workspaceId,
+    action: "import.json.confirm",
+    targetType: "import",
+    summary: `Imported ${imported} subscription(s) from JSON`,
+    metadata: {
+      imported,
+      skipped,
+      total: parsed.data.subscriptions?.length ?? 0,
+      schemaVersion: parsed.schemaVersion,
+    },
+  });
+
+  return c.json({ imported, skipped });
 });
 
 function normalizeCycle(value: string | undefined): "weekly" | "monthly" | "quarterly" | "semi-annual" | "annual" | "custom" {

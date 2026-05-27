@@ -15,7 +15,7 @@
     "test": "pnpm --filter @qreminder/client test",
     "test:run": "pnpm --filter @qreminder/client test:run",
     "test:e2e": "playwright test",
-    "test:all": "pnpm check:file-lines && pnpm --filter @qreminder/client test:run && pnpm --filter @qreminder/client typecheck && pnpm --filter @qreminder/client typecheck:all && pnpm test:e2e",
+    "test:all": "pnpm check:file-lines && pnpm --filter @qreminder/server typecheck && pnpm --filter @qreminder/server test:run --maxWorkers=1 && pnpm --filter @qreminder/client test:run --maxWorkers=1 && pnpm --filter @qreminder/client typecheck && pnpm --filter @qreminder/client typecheck:all && pnpm test:e2e",
     "typecheck": "pnpm --filter @qreminder/client typecheck",
     "update:thesvg-index": "node scripts/update-thesvg-index.mjs"
   },

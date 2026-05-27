@@ -3,6 +3,7 @@ import { eq, and } from "drizzle-orm";
 import { customConfigs } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
 import { requireActiveWorkspaceRole } from "../lib/workspace-permissions.js";
+import { writeAuditLog } from "./audit-logs.js";
 import type { AppEnv } from "../app.js";
 
 export const customConfigsRouter = new Hono<AppEnv>();
@@ -38,11 +39,27 @@ customConfigsRouter.patch("/", requireActiveWorkspaceRole("editor"), async (c) =
       createdAt: now,
       updatedAt: now,
     });
+    await writeAuditLog(db, {
+      userId,
+      workspaceId,
+      action: "customConfig.update",
+      targetType: "custom_config",
+      targetId: id,
+      metadata: { fields: Object.keys(config), created: true },
+    });
     return c.json({ config });
   }
   await db
     .update(customConfigs)
     .set({ config, updatedAt: now })
     .where(eq(customConfigs.id, existing.id));
+  await writeAuditLog(db, {
+    userId,
+    workspaceId,
+    action: "customConfig.update",
+    targetType: "custom_config",
+    targetId: existing.id,
+    metadata: { fields: Object.keys(config) },
+  });
   return c.json({ config });
 });

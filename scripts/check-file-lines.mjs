@@ -40,7 +40,15 @@ const EXCLUDED_PATHS = [
 ];
 
 function trackedAndNewFiles() {
-  const output = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard"], {
+  const safeDirectory = process.cwd().replace(/\\/g, "/");
+  const output = execFileSync("git", [
+    "-c",
+    `safe.directory=${safeDirectory}`,
+    "ls-files",
+    "--cached",
+    "--others",
+    "--exclude-standard",
+  ], {
     encoding: "utf8",
   });
   return output.split("\n").filter(Boolean);

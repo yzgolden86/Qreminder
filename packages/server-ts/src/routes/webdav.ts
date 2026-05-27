@@ -7,17 +7,17 @@
  */
 import { Hono } from "hono";
 import { and, eq } from "drizzle-orm";
-import { zipSync, strToU8, unzipSync, strFromU8 } from "fflate";
-import {
-  subscriptions,
-  settings,
-  customConfigs,
-  subscriptionPayments,
-  budgets,
-  notificationTemplates,
-} from "../db/schema.js";
+import { settings } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
 import { requireActiveWorkspaceRole } from "../lib/workspace-permissions.js";
+import { writeAuditLog } from "./audit-logs.js";
+import {
+  BackupArchiveError,
+  buildWorkspaceBackupArchive,
+  toArrayBuffer,
+  restoreWorkspaceBackupArchive,
+  totalRestoredCount,
+} from "../lib/backup-archive.js";
 import type { AppEnv } from "../app.js";
 
 export const webdavRouter = new Hono<AppEnv>();
@@ -47,7 +47,17 @@ function webdavHeaders(config: WebdavConfig): Record<string, string> {
   return { Authorization: `Basic ${auth}` };
 }
 
-webdavRouter.post("/webdav", async (c) => {
+function backupFilenameFromPath(path: string): string {
+  const normalized = path.split("?")[0]?.replace(/\/$/, "") ?? path;
+  const filename = normalized.split("/").pop() || "backup.zip";
+  try {
+    return decodeURIComponent(filename);
+  } catch {
+    return filename;
+  }
+}
+
+webdavRouter.post("/webdav", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
@@ -60,43 +70,10 @@ webdavRouter.post("/webdav", async (c) => {
     return c.json({ error: "webdav_not_configured", message: "Please configure WebDAV in settings" }, 400);
   }
 
-  const [userSubs, userPayments, userBudgets, userConfig, userTemplates] = await Promise.all([
-    db.select().from(subscriptions).where(eq(subscriptions.workspaceId, workspaceId)),
-    db.select().from(subscriptionPayments).where(eq(subscriptionPayments.workspaceId, workspaceId)),
-    db.select().from(budgets).where(eq(budgets.workspaceId, workspaceId)),
-    db.select().from(customConfigs).where(and(eq(customConfigs.user, userId), eq(customConfigs.workspaceId, workspaceId))),
-    db.select().from(notificationTemplates).where(eq(notificationTemplates.workspaceId, workspaceId)),
-  ]);
-
-  const safeSettings = { ...userSettings };
-  delete safeSettings["aiApiKey"];
-  delete safeSettings["telegramBotToken"];
-  delete safeSettings["notifyxApiKey"];
-  delete safeSettings["wechatWebhookUrl"];
-  delete safeSettings["barkDeviceKey"];
-  delete safeSettings["serverchanSendKey"];
-  delete safeSettings["smtpPassword"];
-  delete safeSettings["webdavPassword"];
-
-  const metadata = {
-    app: "Qreminder",
-    version: "3.0.0",
-    schemaVersion: 1,
-    exportedAt: new Date().toISOString(),
-    source: "webdav-auto",
-  };
-
-  const files: Record<string, Uint8Array> = {
-    "metadata.json": strToU8(JSON.stringify(metadata, null, 2)),
-    "subscriptions.json": strToU8(JSON.stringify(userSubs, null, 2)),
-    "payments.json": strToU8(JSON.stringify(userPayments, null, 2)),
-    "settings.json": strToU8(JSON.stringify(safeSettings, null, 2)),
-    "custom-config.json": strToU8(JSON.stringify(userConfig[0]?.config ?? {}, null, 2)),
-    "budgets.json": strToU8(JSON.stringify(userBudgets, null, 2)),
-    "templates.json": strToU8(JSON.stringify(userTemplates, null, 2)),
-  };
-
-  const zipped = zipSync(files, { level: 6 });
+  const zipped = await buildWorkspaceBackupArchive(db, userId, workspaceId, {
+    version: "3.1.0",
+    source: "webdav-manual",
+  });
   const filename = `qreminder-backup-${new Date().toISOString().slice(0, 10)}.zip`;
   const remotePath = `${config.url}${config.path}${filename}`;
 
@@ -112,12 +89,24 @@ webdavRouter.post("/webdav", async (c) => {
         ...webdavHeaders(config),
         "Content-Type": "application/zip",
       },
-      body: zipped,
+      body: toArrayBuffer(zipped),
     });
 
     if (!uploadRes.ok && uploadRes.status !== 201 && uploadRes.status !== 204) {
       return c.json({ error: "webdav_upload_failed", message: `HTTP ${uploadRes.status}` }, 500);
     }
+
+    await writeAuditLog(db, {
+      userId,
+      workspaceId,
+      action: "backup.webdav.upload",
+      targetType: "backup",
+      summary: `Uploaded WebDAV backup ${filename}`,
+      metadata: {
+        filename,
+        size: zipped.byteLength,
+      },
+    });
 
     return c.json({ ok: true, filename, size: zipped.byteLength });
   } catch (err) {
@@ -173,148 +162,37 @@ webdavRouter.post("/webdav/restore", requireActiveWorkspaceRole("editor"), async
       return c.json({ error: "webdav_download_failed", message: `HTTP ${downloadRes.status}` }, 500);
     }
 
-    const zipData = new Uint8Array(await downloadRes.arrayBuffer());
-    const files = unzipSync(zipData);
+    const imported = await restoreWorkspaceBackupArchive(
+      db,
+      userId,
+      workspaceId,
+      await downloadRes.arrayBuffer(),
+    );
+    const sourceFile = backupFilenameFromPath(zipFiles[0]!);
 
-    const metadataRaw = files["metadata.json"];
-    if (!metadataRaw) {
-      return c.json({ error: "invalid_backup", message: "Missing metadata.json" }, 400);
-    }
+    await writeAuditLog(db, {
+      userId,
+      workspaceId,
+      action: "backup.webdav.restore",
+      targetType: "backup",
+      summary: `Restored WebDAV backup ${sourceFile}`,
+      metadata: {
+        sourceFile,
+        imported: totalRestoredCount(imported),
+        details: imported,
+      },
+    });
 
-    const metadata = JSON.parse(strFromU8(metadataRaw));
-    if (metadata["app"] !== "Qreminder") {
-      return c.json({ error: "not_qreminder" }, 400);
-    }
-
-    let imported = { subscriptions: 0, payments: 0, budgets: 0, templates: 0 };
-    const subIdMap = new Map<string, string>();
-
-    if (files["subscriptions.json"]) {
-      const subs = JSON.parse(strFromU8(files["subscriptions.json"])) as Array<Record<string, unknown>>;
-      const existingByName = new Map(
-        (await db.select({ id: subscriptions.id, name: subscriptions.name }).from(subscriptions).where(eq(subscriptions.workspaceId, workspaceId)))
-          .map((s) => [s.name.toLowerCase(), s.id] as const),
-      );
-      const now = new Date().toISOString();
-      for (const sub of subs) {
-        const oldId = String(sub["id"] ?? "");
-        const name = String(sub["name"] ?? "");
-        if (!name) continue;
-        const existingId = existingByName.get(name.toLowerCase());
-        if (existingId) {
-          if (oldId) subIdMap.set(oldId, existingId);
-          continue;
-        }
-        const newId = crypto.randomUUID();
-        if (oldId) subIdMap.set(oldId, newId);
-        await db.insert(subscriptions).values({
-          id: newId,
-          user: userId,
-          workspaceId,
-          name,
-          logo: String(sub["logo"] ?? ""),
-          price: Number(sub["price"] ?? 0),
-          currency: String(sub["currency"] ?? "CNY"),
-          billingCycle: normalizeCycle(sub["billingCycle"]),
-          customDays: sub["customDays"] != null ? Number(sub["customDays"]) : null,
-          category: String(sub["category"] ?? ""),
-          status: normalizeStatus(sub["status"]),
-          paymentMethod: String(sub["paymentMethod"] ?? ""),
-          startDate: String(sub["startDate"] ?? now.slice(0, 10)),
-          nextBillingDate: String(sub["nextBillingDate"] ?? now.slice(0, 10)),
-          autoCalculateNextBillingDate: Boolean(sub["autoCalculateNextBillingDate"] ?? true),
-          trialEndDate: sub["trialEndDate"] ? String(sub["trialEndDate"]) : null,
-          website: sub["website"] ? String(sub["website"]) : null,
-          notes: String(sub["notes"] ?? ""),
-          tags: Array.isArray(sub["tags"]) ? sub["tags"] as string[] : [],
-          extra: {},
-          reminderDays: Number(sub["reminderDays"] ?? 3),
-          reminderOffsets: Array.isArray(sub["reminderOffsets"]) ? sub["reminderOffsets"] as number[] : [3],
-          createdAt: now,
-          updatedAt: now,
-        });
-        imported.subscriptions++;
-      }
-    }
-
-    if (files["payments.json"]) {
-      try {
-        const payments = JSON.parse(strFromU8(files["payments.json"])) as Array<Record<string, unknown>>;
-        const now = new Date().toISOString();
-        for (const p of payments) {
-          const rawSubId = String(p["subscriptionId"] ?? p["subscription_id"] ?? "");
-          const mappedSubId = subIdMap.get(rawSubId) ?? null;
-          await db.insert(subscriptionPayments).values({
-            id: crypto.randomUUID(),
-            user: userId,
-            workspaceId,
-            subscriptionId: mappedSubId,
-            subscriptionName: String(p["subscriptionName"] ?? p["subscription_name"] ?? ""),
-            paidAt: String(p["paidAt"] ?? p["paid_at"] ?? now.slice(0, 10)),
-            amount: Number(p["amount"] ?? 0),
-            currency: String(p["currency"] ?? "CNY"),
-            billingPeriod: p["billingPeriod"] ? String(p["billingPeriod"]) : null,
-            paymentMethod: p["paymentMethod"] ? String(p["paymentMethod"]) : null,
-            note: String(p["note"] ?? ""),
-            createdAt: now,
-            updatedAt: now,
-          });
-          imported.payments++;
-        }
-      } catch { /* skip malformed */ }
-    }
-
-    if (files["budgets.json"]) {
-      try {
-        const budgetList = JSON.parse(strFromU8(files["budgets.json"])) as Array<Record<string, unknown>>;
-        const now = new Date().toISOString();
-        for (const b of budgetList) {
-          await db.insert(budgets).values({
-            id: crypto.randomUUID(),
-            user: userId,
-            workspaceId,
-            scopeType: normalizeScopeType(b["scopeType"] ?? b["scope_type"]),
-            scopeId: String(b["scopeId"] ?? b["scope_id"] ?? ""),
-            period: (b["period"] === "yearly" ? "yearly" : "monthly") as "monthly" | "yearly",
-            amount: Number(b["amount"] ?? 0),
-            currency: String(b["currency"] ?? "CNY"),
-            enabled: Boolean(b["enabled"] ?? true),
-            createdAt: now,
-            updatedAt: now,
-          });
-          imported.budgets++;
-        }
-      } catch { /* skip malformed */ }
-    }
-
-    if (files["templates.json"]) {
-      try {
-        const tpls = JSON.parse(strFromU8(files["templates.json"])) as Array<Record<string, unknown>>;
-        const now = new Date().toISOString();
-        for (const tpl of tpls) {
-          const scope = normalizeTemplateScope(tpl["scope"]);
-          const rawScopeId = String(tpl["scopeId"] ?? tpl["scope_id"] ?? "");
-          const scopeId = scope === "subscription"
-            ? (subIdMap.get(rawScopeId) ?? rawScopeId)
-            : rawScopeId;
-          await db.insert(notificationTemplates).values({
-            id: crypto.randomUUID(),
-            user: userId,
-            workspaceId,
-            scope,
-            scopeId,
-            titleTemplate: String(tpl["titleTemplate"] ?? tpl["title_template"] ?? ""),
-            bodyTemplate: String(tpl["bodyTemplate"] ?? tpl["body_template"] ?? ""),
-            createdAt: now,
-            updatedAt: now,
-          });
-          imported.templates++;
-        }
-      } catch { /* skip malformed */ }
-    }
-
-    return c.json({ ok: true, imported: imported.subscriptions + imported.payments + imported.budgets + imported.templates, source: latestPath });
+    return c.json({
+      ok: true,
+      imported: totalRestoredCount(imported),
+      details: imported,
+      source: latestPath,
+    });
   } catch (err) {
+    if (err instanceof BackupArchiveError) {
+      return c.json({ error: err.code, message: err.message }, err.status as 400);
+    }
     return c.json({
       error: "webdav_error",
       message: err instanceof Error ? err.message : "WebDAV restore failed",
@@ -357,31 +235,3 @@ webdavRouter.get("/webdav/status", async (c) => {
     });
   }
 });
-
-function normalizeCycle(value: unknown): "weekly" | "monthly" | "quarterly" | "semi-annual" | "annual" | "custom" {
-  const valid = ["weekly", "monthly", "quarterly", "semi-annual", "annual", "custom"] as const;
-  const s = String(value ?? "monthly");
-  if ((valid as readonly string[]).includes(s)) return s as typeof valid[number];
-  return "monthly";
-}
-
-function normalizeStatus(value: unknown): "trial" | "active" | "paused" | "cancelled" {
-  const valid = ["trial", "active", "paused", "cancelled"] as const;
-  const s = String(value ?? "active");
-  if ((valid as readonly string[]).includes(s)) return s as typeof valid[number];
-  return "active";
-}
-
-function normalizeScopeType(value: unknown): "global" | "category" | "tag" | "payment_method" {
-  const valid = ["global", "category", "tag", "payment_method"] as const;
-  const s = String(value ?? "global");
-  if ((valid as readonly string[]).includes(s)) return s as typeof valid[number];
-  return "global";
-}
-
-function normalizeTemplateScope(value: unknown): "global" | "channel" | "subscription" {
-  const valid = ["global", "channel", "subscription"] as const;
-  const s = String(value ?? "global");
-  if ((valid as readonly string[]).includes(s)) return s as typeof valid[number];
-  return "global";
-}
