@@ -96,6 +96,7 @@ export function buildTemplateVariables(
     nextBillingDate: string;
     category: string;
     paymentMethod: string;
+    website?: string;
   },
   daysLeft: number,
   userName?: string,
@@ -107,6 +108,7 @@ export function buildTemplateVariables(
     "subscription.nextRenewalDate": subscription.nextBillingDate,
     "subscription.category": subscription.category,
     "subscription.paymentMethod": subscription.paymentMethod,
+    "subscription.website": subscription.website ?? "",
     "daysLeft": daysLeft,
     "user.name": userName ?? "",
   };

@@ -13,6 +13,31 @@ const message = {
   body: "Netflix renews tomorrow",
 };
 
+describe("dispatchToChannels email content", () => {
+  it("passes rich HTML bodies to the mailer when provided", async () => {
+    const send = vi.fn(async () => ({ id: "mail-rich" }));
+    const result = await dispatchToChannels(
+      { mailer: { send } },
+      ["email"],
+      {},
+      "user@example.com",
+      {
+        title: "Qreminder · Netflix 今天即将续费",
+        body: "Netflix 今天续费\n访问: https://netflix.com/",
+        html: "<a href=\"https://netflix.com/\">访问订阅网站</a>",
+      },
+    );
+
+    expect(result.anySuccess).toBe(true);
+    expect(send).toHaveBeenCalledWith({
+      to: ["user@example.com"],
+      subject: "Qreminder · Netflix 今天即将续费",
+      text: "Netflix 今天续费\n访问: https://netflix.com/",
+      html: "<a href=\"https://netflix.com/\">访问订阅网站</a>",
+    });
+  });
+});
+
 describe("dispatchToChannels external URL safety", () => {
   afterEach(() => {
     vi.unstubAllGlobals();

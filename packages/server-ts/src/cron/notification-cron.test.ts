@@ -4,7 +4,7 @@
  * 验证：
  * - 订阅独立渠道：sub A → telegram、sub B → email，两组各自发送
  * - 模板渲染：notification_templates 存在时按 sub/channel/global 优先级选用
- * - 模板缺失时回退到旧的聚合英文格式（保持不破坏现有用户体验）
+ * - 模板缺失时回退到更完整的默认提醒内容
  */
 import { describe, it, expect, afterEach, beforeEach } from "vitest";
 import type { NotificationHit, Subscription } from "@qreminder/shared";
@@ -124,18 +124,19 @@ describe("buildChannelMessage", () => {
         "global",
         "",
         "{{subscription.name}} 续费提醒",
-        "{{subscription.name}} 将在 {{daysLeft}} 天后续费，金额 {{subscription.currency}} {{subscription.amount}}",
+        "{{subscription.name}} 将在 {{daysLeft}} 天后续费，金额 {{subscription.currency}} {{subscription.amount}}，入口 {{subscription.website}}",
       ),
     ];
     const groupedHits = [
       {
         hit: makeHit({ subscriptionId: "sub-1", subscriptionName: "Spotify" }),
-        sub: makeSub({ id: "sub-1", name: "Spotify", price: 10, currency: "USD" }),
+        sub: makeSub({ id: "sub-1", name: "Spotify", price: 10, currency: "USD", website: "spotify.com" }),
       },
     ];
     const msg = buildChannelMessage(groupedHits, ["email"], templates as never, "Alice");
     expect(msg.title).toBe("Spotify 续费提醒");
-    expect(msg.body).toBe("Spotify 将在 3 天后续费，金额 USD 10");
+    expect(msg.body).toBe("Spotify 将在 3 天后续费，金额 USD 10，入口 spotify.com");
+    expect(msg.html).toContain("Spotify 续费提醒");
   });
 
   it("aggregates multiple hits in body using the same template", () => {
@@ -151,18 +152,45 @@ describe("buildChannelMessage", () => {
     expect(msg.body).toBe("A - 1d\n\nB - 5d");
   });
 
-  it("falls back to legacy aggregated English when no templates exist", () => {
+  it("builds an actionable default message when no templates exist", () => {
     const groupedHits = [
-      { hit: makeHit({ subscriptionName: "A", daysUntil: 0 }), sub: makeSub({ name: "A" }) },
-      { hit: makeHit({ subscriptionName: "B", daysUntil: 3, kind: "trial" }), sub: makeSub({ name: "B", status: "trial" }) },
+      {
+        hit: makeHit({ subscriptionId: "a", subscriptionName: "Netflix", daysUntil: 0 }),
+        sub: makeSub({
+          id: "a",
+          name: "Netflix",
+          price: 19.99,
+          currency: "USD",
+          category: "Streaming",
+          paymentMethod: "Visa",
+          website: "netflix.com",
+        }),
+      },
+      {
+        hit: makeHit({ subscriptionId: "b", subscriptionName: "Notion", daysUntil: 3, kind: "trial" }),
+        sub: makeSub({
+          id: "b",
+          name: "Notion",
+          status: "trial",
+          trialEndDate: "2026-06-18",
+          website: null,
+        }),
+      },
     ];
     const msg = buildChannelMessage(groupedHits, ["email"], [], "u");
-    expect(msg.title).toContain("1 trial ending");
-    expect(msg.title).toContain("1 renewal");
-    expect(msg.body).toContain("⚠️ Trial ending soon");
-    expect(msg.body).toContain("• B — in 3 days");
-    expect(msg.body).toContain("Upcoming renewals");
-    expect(msg.body).toContain("• A — today");
+    expect(msg.title).toBe("Qreminder · 1 个续费，1 个试用到期待处理");
+    expect(msg.body).toContain("你有 2 个订阅提醒需要关注。");
+    expect(msg.body).toContain("类型: 订阅续费");
+    expect(msg.body).toContain("时间: 今天 (2026-06-15)");
+    expect(msg.body).toContain("金额: USD 19.99");
+    expect(msg.body).toContain("分类: Streaming");
+    expect(msg.body).toContain("支付方式: Visa");
+    expect(msg.body).toContain("访问: https://netflix.com/");
+    expect(msg.body).toContain("类型: 试用到期");
+    expect(msg.body).toContain("时间: 3 天后 (2026-06-18)");
+    expect(msg.html).toContain("访问订阅网站");
+    expect(msg.html).toContain("href=\"https://netflix.com/\"");
+    expect(msg.html).not.toContain("href=\"\"");
   });
 
   it("prefers subscription-scoped over global when both exist", () => {

@@ -22,6 +22,11 @@ import {
   renderTemplate,
   buildTemplateVariables,
 } from "./channel-resolver.js";
+import {
+  buildDefaultChannelMessage,
+  buildPlainEmailHtml,
+  type GroupedNotificationHit,
+} from "./notification-message.js";
 
 export interface NotificationCronOptions {
   now?: Date;
@@ -240,8 +245,7 @@ export async function runNotificationCron(
     // category defaults from "stored but ignored" into real routing.
     const subById = new Map(userSubs.map((s) => [s.id, s]));
     const channelSettings = settings as unknown as Record<string, unknown>;
-    type GroupedHit = { hit: NotificationHit; sub: Subscription | undefined };
-    const groups = new Map<string, { channels: string[]; hits: GroupedHit[] }>();
+    const groups = new Map<string, { channels: string[]; hits: GroupedNotificationHit[] }>();
 
     for (const hit of hits) {
       const sub = subById.get(hit.subscriptionId);
@@ -373,20 +377,19 @@ export function pickTemplate(
 
 /**
  * Build the channel message for a group of hits. Uses notificationTemplates
- * when available; otherwise emits the legacy English aggregated format.
+ * when available; otherwise emits a richer actionable default message.
  */
 export function buildChannelMessage(
-  groupedHits: Array<{ hit: NotificationHit; sub: Subscription | undefined }>,
+  groupedHits: GroupedNotificationHit[],
   channels: string[],
   templates: TemplateRow[],
   userName: string,
 ): ChannelMessage {
   // If every hit can find a template, render per-hit lines using it; otherwise
-  // fall back to the legacy English aggregate to avoid losing readability.
+  // fall back to the richer default message so reminders stay actionable.
   const primaryChannel = channels[0] ?? "";
   const renderedLines: string[] = [];
   const titleAccumulator: string[] = [];
-  let usedTemplate = false;
 
   for (const { hit, sub } of groupedHits) {
     const template = pickTemplate(templates, hit.subscriptionId, primaryChannel);
@@ -399,52 +402,27 @@ export function buildChannelMessage(
         nextBillingDate: sub.nextBillingDate,
         category: sub.category,
         paymentMethod: sub.paymentMethod ?? "",
+        website: sub.website ?? "",
       },
       hit.daysUntil,
       userName,
     );
     titleAccumulator.push(renderTemplate(template.titleTemplate, variables));
     renderedLines.push(renderTemplate(template.bodyTemplate, variables));
-    usedTemplate = true;
   }
 
-  if (usedTemplate && renderedLines.length > 0) {
+  if (renderedLines.length === groupedHits.length && renderedLines.length > 0) {
+    const title = titleAccumulator.length === 1
+      ? titleAccumulator[0]!
+      : `Qreminder · ${groupedHits.length} reminders`;
     return {
-      title: titleAccumulator.length === 1
-        ? titleAccumulator[0]!
-        : `Qreminder · ${groupedHits.length} reminders`,
+      title,
       body: renderedLines.join("\n\n"),
+      html: buildPlainEmailHtml(title, renderedLines.join("\n\n")),
     };
   }
 
-  // Legacy aggregated format — kept identical to pre-v3.3 behavior.
-  const renewalHits = groupedHits.filter(({ hit }) => hit.kind === "renewal").map(({ hit }) => hit);
-  const trialHits = groupedHits.filter(({ hit }) => hit.kind === "trial").map(({ hit }) => hit);
-  const titleParts: string[] = [];
-  if (trialHits.length > 0) titleParts.push(`${trialHits.length} trial ending`);
-  if (renewalHits.length > 0) titleParts.push(`${renewalHits.length} renewal${renewalHits.length === 1 ? "" : "s"}`);
-  const bodyParts: string[] = [];
-  if (trialHits.length > 0) {
-    bodyParts.push(
-      "⚠️ Trial ending soon (will start charging if not cancelled):",
-      ...trialHits.map(
-        (h) => `  • ${h.subscriptionName} — ${h.daysUntil === 0 ? "today" : `in ${h.daysUntil} day${h.daysUntil === 1 ? "" : "s"}`}`,
-      ),
-    );
-  }
-  if (renewalHits.length > 0) {
-    if (bodyParts.length > 0) bodyParts.push("");
-    bodyParts.push(
-      "Upcoming renewals:",
-      ...renewalHits.map(
-        (h) => `  • ${h.subscriptionName} — ${h.daysUntil === 0 ? "today" : `in ${h.daysUntil} day${h.daysUntil === 1 ? "" : "s"}`}`,
-      ),
-    );
-  }
-  return {
-    title: `Qreminder · ${titleParts.join(", ") || `${groupedHits.length} reminders`}`,
-    body: bodyParts.length > 0 ? bodyParts.join("\n") : "No reminders",
-  };
+  return buildDefaultChannelMessage(groupedHits);
 }
 
 async function findJob(

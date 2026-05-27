@@ -13,6 +13,7 @@ import { assertExternalHttpUrl } from "../lib/external-url.js";
 export interface ChannelMessage {
   title: string;
   body: string;
+  html?: string;
 }
 
 export interface ChannelSendResult {
@@ -104,10 +105,14 @@ async function sendEmail(
   const recipients = multipleAddresses
     ? recipient.split(",").map((s) => s.trim()).filter(Boolean)
     : [recipient];
-  await deps.mailer.send({
+  const mailMessage = {
     to: recipients,
     subject: message.title,
     text: message.body,
+    ...(message.html ? { html: message.html } : {}),
+  };
+  await deps.mailer.send({
+    ...mailMessage,
   });
 }
 

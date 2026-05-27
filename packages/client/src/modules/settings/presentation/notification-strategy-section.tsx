@@ -101,6 +101,7 @@ export function NotificationStrategySection() {
               "{{subscription.nextRenewalDate}}",
               "{{subscription.category}}",
               "{{subscription.paymentMethod}}",
+              "{{subscription.website}}",
               "{{daysLeft}}",
             ].map((variable) => (
               <code
