@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { zipSync, unzipSync, strToU8, strFromU8 } from "fflate";
 import {
   budgets,
@@ -129,29 +129,31 @@ export async function restoreWorkspaceBackupArchive(
   }
   validateRestoreFileShapes(files);
 
-  const now = new Date().toISOString();
-  const imported: BackupRestoreResult = {
-    subscriptions: 0,
-    payments: 0,
-    budgets: 0,
-    templates: 0,
-    notificationChannels: 0,
-    priceHistory: 0,
-    settings: 0,
-    customConfig: 0,
-  };
-  const subIdMap = new Map<string, string>();
+  return runRestoreTransaction(db, async () => {
+    const now = new Date().toISOString();
+    const imported: BackupRestoreResult = {
+      subscriptions: 0,
+      payments: 0,
+      budgets: 0,
+      templates: 0,
+      notificationChannels: 0,
+      priceHistory: 0,
+      settings: 0,
+      customConfig: 0,
+    };
+    const subIdMap = new Map<string, string>();
 
-  await restoreSettings(db, userId, workspaceId, files, now, imported);
-  await restoreCustomConfig(db, userId, workspaceId, files, now, imported);
-  await restoreSubscriptions(db, userId, workspaceId, files, now, imported, subIdMap);
-  await restorePayments(db, userId, workspaceId, files, now, imported, subIdMap);
-  await restoreBudgets(db, userId, workspaceId, files, now, imported);
-  await restoreTemplates(db, userId, workspaceId, files, now, imported, subIdMap);
-  await restoreNotificationChannels(db, userId, workspaceId, files, now, imported, subIdMap);
-  await restorePriceHistory(db, userId, workspaceId, files, imported, subIdMap);
+    await restoreSettings(db, userId, workspaceId, files, now, imported);
+    await restoreCustomConfig(db, userId, workspaceId, files, now, imported);
+    await restoreSubscriptions(db, userId, workspaceId, files, now, imported, subIdMap);
+    await restorePayments(db, userId, workspaceId, files, now, imported, subIdMap);
+    await restoreBudgets(db, userId, workspaceId, files, now, imported);
+    await restoreTemplates(db, userId, workspaceId, files, now, imported, subIdMap);
+    await restoreNotificationChannels(db, userId, workspaceId, files, now, imported, subIdMap);
+    await restorePriceHistory(db, userId, workspaceId, files, imported, subIdMap);
 
-  return imported;
+    return imported;
+  });
 }
 
 export function totalRestoredCount(result: BackupRestoreResult): number {
@@ -205,6 +207,32 @@ function validateRestoreFileShapes(files: Record<string, Uint8Array>): void {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+async function runRestoreTransaction<T>(db: Database, work: () => Promise<T>): Promise<T> {
+  const savepointName = `restore_${crypto.randomUUID().replace(/-/g, "")}`;
+  await runRestoreSql(db, `savepoint ${savepointName}`);
+  try {
+    const result = await work();
+    await runRestoreSql(db, `release savepoint ${savepointName}`);
+    return result;
+  } catch (err) {
+    try {
+      await runRestoreSql(db, `rollback to savepoint ${savepointName}`);
+    } catch {
+      // Preserve the original restore error if rollback itself fails.
+    }
+    try {
+      await runRestoreSql(db, `release savepoint ${savepointName}`);
+    } catch {
+      // A failed rollback may already invalidate the savepoint.
+    }
+    throw err;
+  }
+}
+
+async function runRestoreSql(db: Database, statement: string): Promise<void> {
+  await Promise.resolve(db.run(sql.raw(statement)) as unknown);
 }
 
 function pickJsonObject(raw: unknown, fieldName?: string): Record<string, unknown> | null {

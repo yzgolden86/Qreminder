@@ -242,4 +242,67 @@ describe("workspace backup archive", () => {
       .where(eq(subscriptions.workspaceId, "ws-malformed-target"));
     expect(restoredSubs).toHaveLength(0);
   });
+
+  it("rolls back earlier restore writes when a later table insert fails", async () => {
+    const targetUser = await seedUser(testDb.db, "backup-rollback-target-user");
+    await seedWorkspace(testDb, targetUser, "ws-rollback-target");
+    testDb.raw.exec(`
+      CREATE TRIGGER fail_price_history_restore
+      BEFORE INSERT ON subscription_price_history
+      BEGIN
+        SELECT RAISE(ABORT, 'forced price history failure');
+      END;
+    `);
+
+    const archive = zipSync({
+      "metadata.json": strToU8(JSON.stringify({ app: "Qreminder", schemaVersion: 2 })),
+      "settings.json": strToU8(JSON.stringify({ theme: "dark" })),
+      "subscriptions.json": strToU8(JSON.stringify([
+        {
+          id: "rollback-sub-source",
+          name: "Rollback Probe",
+          price: 9,
+          currency: "USD",
+          billingCycle: "monthly",
+          category: "AI",
+          status: "active",
+          startDate: "2026-01-01",
+          nextBillingDate: "2026-06-01",
+          autoCalculateNextBillingDate: true,
+          reminderOffsets: [3],
+        },
+      ])),
+      "price-history.json": strToU8(JSON.stringify([
+        {
+          subscriptionId: "rollback-sub-source",
+          oldPrice: 8,
+          newPrice: 9,
+          oldCurrency: "USD",
+          newCurrency: "USD",
+          changedAt: "2026-05-01T00:00:00.000Z",
+        },
+      ])),
+    });
+
+    await expect(
+      restoreWorkspaceBackupArchive(testDb.db, targetUser, "ws-rollback-target", archive),
+    ).rejects.toThrow("forced price history failure");
+
+    const restoredSubs = await testDb.db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.workspaceId, "ws-rollback-target"));
+    const restoredSettings = await testDb.db
+      .select()
+      .from(settings)
+      .where(eq(settings.workspaceId, "ws-rollback-target"));
+    const restoredHistory = await testDb.db
+      .select()
+      .from(subscriptionPriceHistory)
+      .where(eq(subscriptionPriceHistory.workspaceId, "ws-rollback-target"));
+
+    expect(restoredSubs).toHaveLength(0);
+    expect(restoredSettings).toHaveLength(0);
+    expect(restoredHistory).toHaveLength(0);
+  });
 });
