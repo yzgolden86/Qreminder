@@ -5,11 +5,17 @@
  * POST /api/import/json/confirm — 执行导入
  */
 import { Hono } from "hono";
+import { zipSync, strToU8 } from "fflate";
 import { eq } from "drizzle-orm";
 import { subscriptions } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
 import { requireActiveWorkspaceRole } from "../lib/workspace-permissions.js";
 import { writeAuditLog } from "./audit-logs.js";
+import {
+  BackupArchiveError,
+  restoreWorkspaceBackupArchive,
+  totalRestoredCount,
+} from "../lib/backup-archive.js";
 import type { AppEnv } from "../app.js";
 
 export const importRouter = new Hono<AppEnv>();
@@ -22,8 +28,13 @@ interface QreminderExport {
   exportedAt: string;
   data: {
     subscriptions?: ImportSubscription[];
+    payments?: Array<Record<string, unknown>>;
     settings?: Record<string, unknown>;
     customConfig?: Record<string, unknown>;
+    budgets?: Array<Record<string, unknown>>;
+    templates?: Array<Record<string, unknown>>;
+    notificationChannels?: Array<Record<string, unknown>>;
+    priceHistory?: Array<Record<string, unknown>>;
   };
 }
 
@@ -53,7 +64,7 @@ function validateExport(data: unknown): { ok: true; parsed: QreminderExport } | 
   const obj = data as Record<string, unknown>;
   if (obj["app"] !== "Qreminder") return { ok: false, reason: "Not a Qreminder export file" };
   if (typeof obj["schemaVersion"] !== "number") return { ok: false, reason: "Missing schemaVersion" };
-  if (obj["schemaVersion"] > 1) return { ok: false, reason: `Unsupported schema version: ${obj["schemaVersion"]}` };
+  if (obj["schemaVersion"] > 2) return { ok: false, reason: `Unsupported schema version: ${obj["schemaVersion"]}` };
   if (!obj["data"] || typeof obj["data"] !== "object") return { ok: false, reason: "Missing data field" };
   return { ok: true, parsed: obj as unknown as QreminderExport };
 }
@@ -99,6 +110,11 @@ importRouter.post("/json/preview", async (c) => {
       subscriptions: importSubs.length,
       new: newCount,
       duplicate: duplicateCount,
+      payments: parsed.data.payments?.length ?? 0,
+      budgets: parsed.data.budgets?.length ?? 0,
+      templates: parsed.data.templates?.length ?? 0,
+      notificationChannels: parsed.data.notificationChannels?.length ?? 0,
+      priceHistory: parsed.data.priceHistory?.length ?? 0,
     },
     items,
   });
@@ -115,75 +131,51 @@ importRouter.post("/json/confirm", requireActiveWorkspaceRole("editor"), async (
   const db = c.get("deps").db;
   const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
-  const now = new Date().toISOString();
 
-  const existingSubs = await db
-    .select({ name: subscriptions.name })
-    .from(subscriptions)
-    .where(eq(subscriptions.workspaceId, workspaceId));
-  const existingNames = new Set(existingSubs.map((s) => s.name.toLowerCase()));
-
-  const importSubs = (parsed.data.subscriptions ?? []).filter(
-    (sub) => !existingNames.has(sub.name.toLowerCase()),
-  );
-
-  let imported = 0;
-  for (const sub of importSubs) {
-    await db.insert(subscriptions).values({
-      id: crypto.randomUUID(),
-      user: userId,
-      workspaceId,
-      name: sub.name,
-      logo: sub.logo ?? "",
-      price: sub.price ?? 0,
-      currency: sub.currency ?? "CNY",
-      billingCycle: normalizeCycle(sub.billingCycle),
-      customDays: sub.customDays ?? null,
-      category: sub.category ?? "",
-      status: normalizeStatus(sub.status),
-      paymentMethod: sub.paymentMethod ?? "",
-      startDate: sub.startDate,
-      nextBillingDate: sub.nextBillingDate,
-      autoCalculateNextBillingDate: sub.autoCalculateNextBillingDate ?? true,
-      trialEndDate: sub.trialEndDate ?? null,
-      website: sub.website ?? null,
-      notes: sub.notes ?? "",
-      tags: sub.tags ?? [],
-      reminderOffsets: sub.reminderOffsets ?? [3],
-      extra: {},
-      reminderDays: 3,
-      createdAt: now,
-      updatedAt: now,
-    });
-    imported++;
+  let imported;
+  try {
+    imported = await restoreWorkspaceBackupArchive(db, userId, workspaceId, jsonExportToArchive(parsed));
+  } catch (err) {
+    if (err instanceof BackupArchiveError) {
+      return c.json({ error: err.code, message: err.message }, err.status as 400);
+    }
+    throw err;
   }
 
-  const skipped = (parsed.data.subscriptions ?? []).length - imported;
   await writeAuditLog(db, {
     userId,
     workspaceId,
     action: "import.json.confirm",
     targetType: "import",
-    summary: `Imported ${imported} subscription(s) from JSON`,
+    summary: `Imported ${totalRestoredCount(imported)} item(s) from JSON`,
     metadata: {
-      imported,
-      skipped,
+      ...imported,
       total: parsed.data.subscriptions?.length ?? 0,
       schemaVersion: parsed.schemaVersion,
     },
   });
 
-  return c.json({ imported, skipped });
+  return c.json({ imported: totalRestoredCount(imported), details: imported });
 });
 
-function normalizeCycle(value: string | undefined): "weekly" | "monthly" | "quarterly" | "semi-annual" | "annual" | "custom" {
-  const valid = ["weekly", "monthly", "quarterly", "semi-annual", "annual", "custom"] as const;
-  if (value && (valid as readonly string[]).includes(value)) return value as typeof valid[number];
-  return "monthly";
-}
+function jsonExportToArchive(parsed: QreminderExport): Uint8Array {
+  const metadata = {
+    app: "Qreminder",
+    version: "json-import",
+    schemaVersion: parsed.schemaVersion,
+    exportedAt: parsed.exportedAt,
+    source: "json-import",
+  };
 
-function normalizeStatus(value: string | undefined): "trial" | "active" | "paused" | "cancelled" {
-  const valid = ["trial", "active", "paused", "cancelled"] as const;
-  if (value && (valid as readonly string[]).includes(value)) return value as typeof valid[number];
-  return "active";
+  return zipSync({
+    "metadata.json": strToU8(JSON.stringify(metadata, null, 2)),
+    "subscriptions.json": strToU8(JSON.stringify(parsed.data.subscriptions ?? [], null, 2)),
+    "payments.json": strToU8(JSON.stringify(parsed.data.payments ?? [], null, 2)),
+    "settings.json": strToU8(JSON.stringify(parsed.data.settings ?? {}, null, 2)),
+    "custom-config.json": strToU8(JSON.stringify(parsed.data.customConfig ?? {}, null, 2)),
+    "budgets.json": strToU8(JSON.stringify(parsed.data.budgets ?? [], null, 2)),
+    "templates.json": strToU8(JSON.stringify(parsed.data.templates ?? [], null, 2)),
+    "notification-channels.json": strToU8(JSON.stringify(parsed.data.notificationChannels ?? [], null, 2)),
+    "price-history.json": strToU8(JSON.stringify(parsed.data.priceHistory ?? [], null, 2)),
+  }, { level: 6 });
 }

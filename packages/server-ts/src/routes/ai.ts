@@ -10,6 +10,8 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { settings, subscriptions, subscriptionPayments } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
+import { requireActiveWorkspaceRole } from "../lib/workspace-permissions.js";
+import { assertExternalHttpUrl, ExternalUrlError } from "../lib/external-url.js";
 import type { AppEnv } from "../app.js";
 
 export const aiRouter = new Hono<AppEnv>();
@@ -33,9 +35,10 @@ function getAiConfig(userSettings: Record<string, unknown>): AiConfig {
 }
 
 async function callLlm(config: AiConfig, systemPrompt: string, userMessage: string): Promise<string> {
-  const url = `${config.endpoint.replace(/\/$/, "")}/chat/completions`;
+  const url = buildAiUrl(config.endpoint, "/chat/completions");
   const res = await fetch(url, {
     method: "POST",
+    redirect: "manual",
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${config.apiKey}`,
@@ -50,6 +53,10 @@ async function callLlm(config: AiConfig, systemPrompt: string, userMessage: stri
       max_tokens: 1024,
     }),
   });
+
+  if (isRedirectStatus(res.status)) {
+    throw new Error("AI API redirects are not allowed");
+  }
 
   if (!res.ok) {
     const err = await res.text().catch(() => "");
@@ -73,9 +80,10 @@ async function callLlmWithImage(
   textPrompt: string,
   imageDataUrl: string,
 ): Promise<string> {
-  const url = `${config.endpoint.replace(/\/$/, "")}/chat/completions`;
+  const url = buildAiUrl(config.endpoint, "/chat/completions");
   const res = await fetch(url, {
     method: "POST",
+    redirect: "manual",
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${config.apiKey}`,
@@ -97,6 +105,10 @@ async function callLlmWithImage(
     }),
   });
 
+  if (isRedirectStatus(res.status)) {
+    throw new Error("AI API redirects are not allowed");
+  }
+
   if (!res.ok) {
     const err = await res.text().catch(() => "");
     throw new Error(`AI vision API error: HTTP ${res.status} ${err.slice(0, 200)}`);
@@ -112,7 +124,7 @@ const extractSchema = z.object({
   text: z.string().min(1).max(5000),
 });
 
-aiRouter.post("/extract", async (c) => {
+aiRouter.post("/extract", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
@@ -149,7 +161,7 @@ Return ONLY valid JSON, no markdown, no explanation.`;
     const extracted = JSON.parse(cleaned);
     return c.json({ result: extracted });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "AI extraction failed";
+    const message = aiErrorMessage(err, "AI extraction failed");
     return c.json({ error: "ai_error", message }, 500);
   }
 });
@@ -165,7 +177,7 @@ const extractImageSchema = z.object({
     .startsWith("data:image/"),
 });
 
-aiRouter.post("/extract-image", async (c) => {
+aiRouter.post("/extract-image", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
@@ -207,12 +219,12 @@ Return ONLY valid JSON, no markdown, no explanation.`;
     const extracted = JSON.parse(cleaned);
     return c.json({ result: extracted });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "AI image extraction failed";
+    const message = aiErrorMessage(err, "AI image extraction failed");
     return c.json({ error: "ai_error", message }, 500);
   }
 });
 
-aiRouter.post("/summary", async (c) => {
+aiRouter.post("/summary", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
@@ -272,7 +284,7 @@ Keep it concise (under 300 words), friendly, and actionable. Use bullet points.`
     const result = await callLlm(config, systemPrompt, JSON.stringify(context));
     return c.json({ summary: result });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "AI summary failed";
+    const message = aiErrorMessage(err, "AI summary failed");
     return c.json({ error: "ai_error", message }, 500);
   }
 });
@@ -282,7 +294,7 @@ const modelsRequestSchema = z.object({
   apiKey: z.string().trim().min(1).max(512).optional(),
 });
 
-aiRouter.post("/models", async (c) => {
+aiRouter.post("/models", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;
   const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
@@ -305,13 +317,18 @@ aiRouter.post("/models", async (c) => {
   }
 
   try {
-    const res = await fetch(`${endpoint}/models`, {
+    const res = await fetch(buildAiUrl(endpoint, "/models"), {
       method: "GET",
+      redirect: "manual",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
         "Accept": "application/json",
       },
     });
+
+    if (isRedirectStatus(res.status)) {
+      return c.json({ error: "provider_error", message: "AI API redirects are not allowed" }, 502);
+    }
 
     if (!res.ok) {
       const err = await res.text().catch(() => "");
@@ -330,7 +347,21 @@ aiRouter.post("/models", async (c) => {
 
     return c.json({ models: ids });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to fetch models";
+    const message = aiErrorMessage(err, "Failed to fetch models");
     return c.json({ error: "ai_error", message }, 500);
   }
 });
+
+function buildAiUrl(endpoint: string, path: string): string {
+  const base = endpoint.replace(/\/$/, "");
+  return assertExternalHttpUrl(`${base}${path}`).toString();
+}
+
+function isRedirectStatus(status: number): boolean {
+  return status >= 300 && status < 400;
+}
+
+function aiErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof ExternalUrlError) return err.message;
+  return err instanceof Error ? err.message : fallback;
+}

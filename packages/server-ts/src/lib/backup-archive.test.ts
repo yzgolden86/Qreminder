@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { unzipSync, strFromU8 } from "fflate";
+import { zipSync, unzipSync, strToU8, strFromU8 } from "fflate";
 import { eq } from "drizzle-orm";
 import {
   budgets,
@@ -205,5 +205,41 @@ describe("workspace backup archive", () => {
     expect(restoredHistory?.subscriptionId).toBe(restoredSub?.id);
     expect(restoredHistory?.oldPrice).toBe(10);
     expect(restoredHistory?.newPrice).toBe(20);
+  });
+
+  it("rejects malformed optional files before writing any restore rows", async () => {
+    const targetUser = await seedUser(testDb.db, "backup-malformed-target-user");
+    await seedWorkspace(testDb, targetUser, "ws-malformed-target");
+    const archive = zipSync({
+      "metadata.json": strToU8(JSON.stringify({ app: "Qreminder", schemaVersion: 2 })),
+      "subscriptions.json": strToU8(JSON.stringify([
+        {
+          id: "sub-from-bad-archive",
+          name: "Should Not Import",
+          price: 9,
+          currency: "USD",
+          billingCycle: "monthly",
+          category: "AI",
+          status: "active",
+          startDate: "2026-01-01",
+          nextBillingDate: "2026-06-01",
+          autoCalculateNextBillingDate: true,
+          reminderOffsets: [3],
+        },
+      ])),
+      "payments.json": strToU8(JSON.stringify({ not: "an array" })),
+    });
+
+    await expect(
+      restoreWorkspaceBackupArchive(testDb.db, targetUser, "ws-malformed-target", archive),
+    ).rejects.toMatchObject({
+      code: "invalid_backup",
+    });
+
+    const restoredSubs = await testDb.db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.workspaceId, "ws-malformed-target"));
+    expect(restoredSubs).toHaveLength(0);
   });
 });

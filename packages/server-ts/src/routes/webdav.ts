@@ -38,8 +38,14 @@ function getWebdavConfig(userSettings: Record<string, unknown>): WebdavConfig {
     url: String(userSettings["webdavUrl"] ?? "").trim().replace(/\/$/, ""),
     username: String(userSettings["webdavUsername"] ?? "").trim(),
     password: String(userSettings["webdavPassword"] ?? "").trim(),
-    path: String(userSettings["webdavPath"] ?? "/qreminder-backup/").trim(),
+    path: normalizeWebdavPath(String(userSettings["webdavPath"] ?? "/qreminder-backup/")),
   };
+}
+
+function normalizeWebdavPath(path: string): string {
+  const trimmed = path.trim() || "/qreminder-backup/";
+  const withLeadingSlash = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  return withLeadingSlash.endsWith("/") ? withLeadingSlash : `${withLeadingSlash}/`;
 }
 
 function webdavHeaders(config: WebdavConfig): Record<string, string> {
@@ -116,6 +122,10 @@ webdavRouter.post("/webdav", requireActiveWorkspaceRole("editor"), async (c) => 
     }, 500);
   }
 });
+
+export const __testing__ = {
+  normalizeWebdavPath,
+};
 
 webdavRouter.post("/webdav/restore", requireActiveWorkspaceRole("editor"), async (c) => {
   const db = c.get("deps").db;

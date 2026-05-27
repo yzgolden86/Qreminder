@@ -45,6 +45,9 @@ describe("buildFetchCandidates", () => {
     expect(() => buildFetchCandidates("http://10.0.0.5/x.png")).toThrow();
     expect(() => buildFetchCandidates("http://192.168.1.1/x.png")).toThrow();
     expect(() => buildFetchCandidates("http://172.16.0.1/x.png")).toThrow();
+    expect(() => buildFetchCandidates("http://169.254.169.254/latest/meta-data")).toThrow();
+    expect(() => buildFetchCandidates("http://metadata.google.internal/computeMetadata/v1")).toThrow();
+    expect(() => buildFetchCandidates("http://[::1]/x.png")).toThrow();
   });
 
   it("allows public IPs and proper domains", () => {

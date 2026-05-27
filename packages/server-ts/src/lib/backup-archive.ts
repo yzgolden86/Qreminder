@@ -127,6 +127,7 @@ export async function restoreWorkspaceBackupArchive(
   if (metadata["app"] !== "Qreminder") {
     throw new BackupArchiveError("not_qreminder", "Not a Qreminder backup");
   }
+  validateRestoreFileShapes(files);
 
   const now = new Date().toISOString();
   const imported: BackupRestoreResult = {
@@ -175,6 +176,30 @@ function readJsonFile<T>(
     return JSON.parse(strFromU8(raw)) as T;
   } catch {
     throw new BackupArchiveError("invalid_backup", `Cannot parse ${name}`);
+  }
+}
+
+function validateRestoreFileShapes(files: Record<string, Uint8Array>): void {
+  for (const name of [
+    "subscriptions.json",
+    "payments.json",
+    "budgets.json",
+    "templates.json",
+    "notification-channels.json",
+    "subscription-notification-channels.json",
+    "price-history.json",
+  ]) {
+    const value = readJsonFile<unknown>(files, name);
+    if (value !== null && !Array.isArray(value)) {
+      throw new BackupArchiveError("invalid_backup", `${name} must contain an array`);
+    }
+  }
+
+  for (const name of ["settings.json", "custom-config.json", "custom-configs.json"]) {
+    const value = readJsonFile<unknown>(files, name);
+    if (value !== null && !isRecord(value) && !Array.isArray(value)) {
+      throw new BackupArchiveError("invalid_backup", `${name} must contain an object`);
+    }
   }
 }
 

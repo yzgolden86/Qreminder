@@ -131,10 +131,16 @@ subscriptionsRouter.post("/", requireActiveWorkspaceRole("editor"), async (c) =>
   const [inserted] = await db.select().from(subscriptions).where(eq(subscriptions.id, id));
   await writeAuditLog(db, {
     userId,
+    workspaceId,
     action: "subscription.create",
     targetType: "subscription",
     targetId: id,
     summary: `Created subscription "${draft.name}"`,
+    metadata: {
+      category: draft.category,
+      status: draft.status,
+      billingCycle: draft.billingCycle,
+    },
   });
   return c.json({ subscription: toDto(inserted!) }, 201);
 });
@@ -163,7 +169,8 @@ subscriptionsRouter.patch("/:id", requireActiveWorkspaceRole("editor"), async (c
   // something actually changed — avoids noisy history rows for renames.
   const newPrice = parsed.data.price ?? existing.price;
   const newCurrency = parsed.data.currency ?? existing.currency;
-  if (newPrice !== existing.price || newCurrency !== existing.currency) {
+  const priceChanged = newPrice !== existing.price || newCurrency !== existing.currency;
+  if (priceChanged) {
     await db.insert(subscriptionPriceHistory).values({
       id: crypto.randomUUID(),
       user: userId,
@@ -184,10 +191,15 @@ subscriptionsRouter.patch("/:id", requireActiveWorkspaceRole("editor"), async (c
     .where(eq(subscriptions.id, id));
   await writeAuditLog(db, {
     userId,
+    workspaceId,
     action: "subscription.update",
     targetType: "subscription",
     targetId: id,
     summary: `Updated subscription "${existing.name}"`,
+    metadata: {
+      fields: Object.keys(parsed.data),
+      priceChanged,
+    },
   });
   return c.json({ subscription: toDto(updated!) });
 });
@@ -218,16 +230,18 @@ subscriptionsRouter.delete("/:id", requireActiveWorkspaceRole("editor"), async (
   const workspaceId = c.get("workspaceId");
   const id = c.req.param("id");
   const [existing] = await db
-    .select({ id: subscriptions.id })
+    .select({ id: subscriptions.id, name: subscriptions.name })
     .from(subscriptions)
     .where(and(eq(subscriptions.id, id), eq(subscriptions.workspaceId, workspaceId)));
   if (!existing) return c.json({ error: "not_found" }, 404);
   await db.delete(subscriptions).where(eq(subscriptions.id, id));
   await writeAuditLog(db, {
     userId,
+    workspaceId,
     action: "subscription.delete",
     targetType: "subscription",
     targetId: id,
+    summary: `Deleted subscription "${existing.name}"`,
   });
   return c.json({ ok: true });
 });
@@ -268,6 +282,19 @@ subscriptionsRouter.post("/:id/snooze", requireActiveWorkspaceRole("editor"), as
     .set({ snoozedUntil, updatedAt: new Date().toISOString() })
     .where(eq(subscriptions.id, id));
 
+  await writeAuditLog(db, {
+    userId,
+    workspaceId,
+    action: "subscription.snooze",
+    targetType: "subscription",
+    targetId: id,
+    summary: snoozedUntil ? "Snoozed subscription reminders" : "Cleared subscription snooze",
+    metadata: {
+      days: parsed.data.days,
+      snoozedUntil,
+    },
+  });
+
   return c.json({ snoozedUntil });
 });
 
@@ -292,6 +319,18 @@ subscriptionsRouter.post("/:id/track-usage", requireActiveWorkspaceRole("editor"
     .update(subscriptions)
     .set({ lastUsedAt: isoDate, updatedAt: today.toISOString() })
     .where(eq(subscriptions.id, id));
+
+  await writeAuditLog(db, {
+    userId,
+    workspaceId,
+    action: "subscription.trackUsage",
+    targetType: "subscription",
+    targetId: id,
+    summary: "Tracked subscription usage",
+    metadata: {
+      lastUsedAt: isoDate,
+    },
+  });
 
   return c.json({ lastUsedAt: isoDate });
 });

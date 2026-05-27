@@ -5,13 +5,11 @@
  * GET /api/export/subscriptions.csv — 导出订阅列表为 CSV
  */
 import { Hono } from "hono";
-import { and, eq } from "drizzle-orm";
-import {
-  subscriptions,
-  settings,
-  customConfigs,
-} from "../db/schema.js";
+import { eq } from "drizzle-orm";
+import { unzipSync, strFromU8 } from "fflate";
+import { subscriptions } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
+import { buildWorkspaceBackupArchive } from "../lib/backup-archive.js";
 import type { AppEnv } from "../app.js";
 
 export const exportRouter = new Hono<AppEnv>();
@@ -23,56 +21,26 @@ exportRouter.get("/json", async (c) => {
   const userId = c.get("user").id;
   const workspaceId = c.get("workspaceId");
 
-  const [userSubs, userSettings, userConfig] = await Promise.all([
-    db.select().from(subscriptions).where(eq(subscriptions.workspaceId, workspaceId)),
-    db.select().from(settings).where(and(eq(settings.user, userId), eq(settings.workspaceId, workspaceId))),
-    db.select().from(customConfigs).where(and(eq(customConfigs.user, userId), eq(customConfigs.workspaceId, workspaceId))),
-  ]);
-
-  const settingsData = (userSettings[0]?.settings ?? {}) as Record<string, unknown>;
-  const configData = (userConfig[0]?.config ?? {}) as Record<string, unknown>;
-
-  const safeSettings = { ...settingsData };
-  delete safeSettings["aiApiKey"];
-  delete safeSettings["telegramBotToken"];
-  delete safeSettings["notifyxApiKey"];
-  delete safeSettings["webhookHeaders"];
-  delete safeSettings["wechatWebhookUrl"];
-  delete safeSettings["barkDeviceKey"];
-  delete safeSettings["serverchanSendKey"];
-  delete safeSettings["smtpPassword"];
-  delete safeSettings["webdavPassword"];
-  delete safeSettings["icalToken"];
+  const archive = await buildWorkspaceBackupArchive(db, userId, workspaceId, {
+    version: "3.1.0",
+    source: "json-export",
+  });
+  const files = unzipSync(archive);
+  const metadata = readArchiveJson<Record<string, unknown>>(files, "metadata.json", {});
 
   const exportData = {
     app: "Qreminder",
-    schemaVersion: 1,
-    exportedAt: new Date().toISOString(),
+    schemaVersion: 2,
+    exportedAt: String(metadata["exportedAt"] ?? new Date().toISOString()),
     data: {
-      subscriptions: userSubs.map((s) => ({
-        id: s.id,
-        name: s.name,
-        logo: s.logo,
-        price: s.price,
-        currency: s.currency,
-        billingCycle: s.billingCycle,
-        customDays: s.customDays,
-        category: s.category,
-        status: s.status,
-        paymentMethod: s.paymentMethod,
-        startDate: s.startDate,
-        nextBillingDate: s.nextBillingDate,
-        autoCalculateNextBillingDate: s.autoCalculateNextBillingDate,
-        trialEndDate: s.trialEndDate,
-        website: s.website,
-        notes: s.notes,
-        tags: s.tags,
-        reminderOffsets: s.reminderOffsets,
-        createdAt: s.createdAt,
-        updatedAt: s.updatedAt,
-      })),
-      settings: safeSettings,
-      customConfig: configData,
+      subscriptions: readArchiveJson(files, "subscriptions.json", []),
+      payments: readArchiveJson(files, "payments.json", []),
+      settings: readArchiveJson(files, "settings.json", {}),
+      customConfig: readArchiveJson(files, "custom-config.json", {}),
+      budgets: readArchiveJson(files, "budgets.json", []),
+      templates: readArchiveJson(files, "templates.json", []),
+      notificationChannels: readArchiveJson(files, "notification-channels.json", []),
+      priceHistory: readArchiveJson(files, "price-history.json", []),
     },
   };
 
@@ -133,4 +101,10 @@ function csvEscape(value: string): string {
     return `"${value.replace(/"/g, '""')}"`;
   }
   return value;
+}
+
+function readArchiveJson<T>(files: Record<string, Uint8Array>, name: string, fallback: T): T {
+  const raw = files[name];
+  if (!raw) return fallback;
+  return JSON.parse(strFromU8(raw)) as T;
 }

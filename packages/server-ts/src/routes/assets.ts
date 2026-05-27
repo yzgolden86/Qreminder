@@ -3,6 +3,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { assets } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
 import { requireActiveWorkspaceRole } from "../lib/workspace-permissions.js";
+import { assertExternalHttpUrl, resolveExternalRedirectUrl } from "../lib/external-url.js";
 import type { AppEnv } from "../app.js";
 
 const allowedMimeTypes = new Set([
@@ -250,21 +251,7 @@ function buildFetchCandidates(input: string): string[] {
     throw new Error("invalid_protocol");
   }
 
-  // Block private/loopback hosts to prevent SSRF from a self-hosted Worker
-  // toward its own private network. Cloudflare Workers don't actually have
-  // access to RFC1918 ranges, but adding a defensive check is cheap.
-  const host = url.hostname.toLowerCase();
-  if (
-    host === "localhost"
-    || host.endsWith(".localhost")
-    || host === "0.0.0.0"
-    || host.startsWith("127.")
-    || host.startsWith("10.")
-    || host.startsWith("192.168.")
-    || /^172\.(1[6-9]|2\d|3[01])\./.test(host)
-  ) {
-    throw new Error("private_host_blocked");
-  }
+  assertExternalHttpUrl(url.toString());
 
   const isLikelyImage = /\.(svg|png|jpe?g|webp|gif|ico)(\?|$)/i.test(url.pathname);
   if (isLikelyImage) {
@@ -283,21 +270,30 @@ function buildFetchCandidates(input: string): string[] {
 }
 
 async function fetchImage(url: string): Promise<{ bytes: Uint8Array; mimeType: string } | null> {
+  let currentUrl = assertExternalHttpUrl(url).toString();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), fetchTimeoutMs);
   try {
-    const res = await fetch(url, {
-      signal: controller.signal,
-      redirect: "follow",
-      headers: { Accept: "image/*" },
-    });
+    let res: Response | null = null;
+    for (let redirectCount = 0; redirectCount <= 5; redirectCount++) {
+      res = await fetch(currentUrl, {
+        signal: controller.signal,
+        redirect: "manual",
+        headers: { Accept: "image/*" },
+      });
+      if (res.status < 300 || res.status >= 400) break;
+      const location = res.headers.get("location");
+      if (!location) return null;
+      currentUrl = resolveExternalRedirectUrl(location, currentUrl).toString();
+    }
+    if (!res || (res.status >= 300 && res.status < 400)) return null;
     if (!res.ok) return null;
     let contentType = (res.headers.get("content-type") ?? "").split(";")[0]?.trim().toLowerCase() ?? "";
     // Some servers return application/octet-stream for .ico; tolerate it if the URL ends in .ico.
     if (!allowedMimeTypes.has(contentType)) {
-      if (/\.ico(\?|$)/i.test(url)) contentType = "image/x-icon";
-      else if (/\.svg(\?|$)/i.test(url)) contentType = "image/svg+xml";
-      else if (/\.png(\?|$)/i.test(url)) contentType = "image/png";
+      if (/\.ico(\?|$)/i.test(currentUrl)) contentType = "image/x-icon";
+      else if (/\.svg(\?|$)/i.test(currentUrl)) contentType = "image/svg+xml";
+      else if (/\.png(\?|$)/i.test(currentUrl)) contentType = "image/png";
       else return null;
     }
     const arrayBuffer = await res.arrayBuffer();
