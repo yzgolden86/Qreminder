@@ -35,10 +35,21 @@ Self-hosted: your subscription data only lives in the instance you deploy. Nothi
 | --- | --- |
 | **Subscription record** | Name, logo, price, currency, billing cycle (weekly/monthly/quarterly/semi-annual/annual/custom days), status (trial/active/paused/cancelled), category, payment method (including **Free**), website, tags, notes |
 | **Multi-tier reminders** | Per-subscription `reminderOffsets`; same-day matches merged into one notification |
-| **Notification channels** | Telegram, Email (deployment-level Resend), WeCom Bot, Webhook, Bark, NotifyX — all 6 channels can be enabled simultaneously |
+| **Notification channels** | Telegram, Email, WeCom Bot, Webhook, Bark, NotifyX, ServerChan Turbo — 7 channels can be enabled simultaneously |
+| **Notification policy** | Per-subscription channels > tag defaults > category defaults > user defaults; custom notification templates with variable substitution |
 | **Notification center** | Dedicated page combining upcoming batches + dispatch history, filterable by status, drillable into per-recipient results |
 | **Spending insights** | Normalize cycles to monthly cost; category share, payment-method share, billing-cycle distribution, renewal/monthly top 5 |
+| **Annual report** | Yearly total spend, payment count, year-over-year change, monthly trend, category and channel breakdown |
+| **Payment history** | Log each actual payment; quick-renew auto-computes the next billing date; actual spend vs. expected bills comparison |
+| **Budgets** | Global / category / tag / payment-method scoped budgets, monthly or yearly period, 80% / 100% threshold alerts |
 | **Multi-currency** | Frankfurter or FloatRates; fallback rates when remote sources fail |
+| **Calendar subscription** | iCal link, syncable to iOS Calendar / Google Calendar / Outlook |
+| **Data safety** | JSON/CSV export, JSON import (with preview + confirm), full ZIP backup/restore, WebDAV cloud backup |
+| **PWA** | Add to home screen for a standalone-window experience, offline-friendly pages, install prompt. See [docs/PWA_INSTALL.md](./docs/PWA_INSTALL.md) |
+| **AI assistant** | Text-to-subscription parsing, monthly spending summaries (bring your own OpenAI-compatible API key) |
+| **Team workspaces** | Family / team workspaces with four-tier permissions: owner / admin / editor / viewer |
+| **Audit log** | Admins can review all critical operation history |
+| **System diagnostics** | Admin diagnostics page: runtime environment, cron status, notification failures |
 | **Multi-user** | Better Auth email/password sign-in; admins can open signup under Settings → Registration, with quick-toggle checkboxes for common providers or manual allowlist entries |
 | **Admin tools** | Sidebar "Users" entry lets admins create, delete, reset passwords, ban accounts |
 | **Bilingual** | Simplified Chinese / English, switchable in-app |
@@ -46,18 +57,23 @@ Self-hosted: your subscription data only lives in the instance you deploy. Nothi
 
 ## Notification setup
 
-Supports Telegram, Email, WeCom Bot, Webhook, Bark, and NotifyX — all 6 channels can be enabled simultaneously. See [docs/NOTIFICATION_CHANNELS.md](./docs/NOTIFICATION_CHANNELS.md) for detailed setup instructions.
+Supports Telegram, Email, WeCom Bot, Webhook, Bark, NotifyX, and ServerChan Turbo — all 7 channels can be enabled simultaneously. See [docs/NOTIFICATION_CHANNELS.md](./docs/NOTIFICATION_CHANNELS.md) for detailed setup instructions.
+
+Notification policy supports per-subscription / per-tag / per-category channel routing with automatic fallback when the primary channel fails.
 
 ## App structure
 
 | Route | Purpose |
 | --- | --- |
-| `/` | Dashboard: monthly spend, active subs, upcoming renewals, trial counts; below is the filterable/sortable subscription grid/list |
+| `/` | Dashboard: monthly spend, active subs, upcoming renewals, trial counts; budget utilization; below is the filterable/sortable subscription grid/list |
 | `/calendar` | Renewal calendar: month view of renewal events, hover for amount |
 | `/cards` | Cards: subscriptions grouped by payment method |
 | `/notifications` | Notification center: upcoming + history with drill-down |
-| `/settings` | System settings: account, appearance, exchange rates, notification channels, signup config, custom config |
+| `/annual-report` | Annual report: yearly total spend, payment count, year-over-year change, category breakdown |
+| `/workspaces` | Workspace management: create, switch, invite members, adjust roles |
+| `/settings` | System settings: account, appearance, exchange rates, notification channels, iCal subscription, data backup/import/WebDAV, AI config |
 | `/admin/users` | User management (admin only) |
+| `/admin/diagnostics` | System diagnostics (admin only): runtime, cron status, notification failures |
 | `/login` `/register` `/forgot-password` `/reset-password` | Auth flows |
 
 ## Stack
@@ -93,14 +109,16 @@ wrangler login
 
 Then follow [docs/WORKER_DEPLOY.md](./docs/WORKER_DEPLOY.md) step by step: create D1 + R2 → set secrets → apply D1 migrations → build the client → `wrangler deploy` → log in as default admin.
 
-### First login
+## First login (same for both deployment paths)
 
-After deployment, sign in with the default credentials. The system will force a password change on first login:
+After deployment, the system checks whether the database is empty. If it is, a default admin account is auto-created. Sign in with the credentials below — the app will **force** an email + password change immediately:
 
 ```
 Email:    admin@qreminder.local
 Password: Qreminder@2026
 ```
+
+Once you change the password the default credentials are invalidated. To let others register later, open **Settings → Registration** and toggle "Allow signup" with an allowlist — no restart or redeploy needed.
 
 ## Node self-hosted (Docker)
 

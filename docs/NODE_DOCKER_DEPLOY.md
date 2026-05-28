@@ -4,7 +4,7 @@
 >
 > 如果你想把应用部署到 Cloudflare Workers，免 VPS、免 Docker，见 [WORKER_DEPLOY.md](WORKER_DEPLOY.md)（本地 wrangler）或 [CF_GH_ACTIONS_DEPLOY.md](CF_GH_ACTIONS_DEPLOY.md)（GitHub Actions）。
 >
-> v1 Go + PocketBase Docker 镜像已进入维护模式，新部署不要用，详见 [DOCKER_DEPLOY.md](DOCKER_DEPLOY.md)。
+> v1 Go + PocketBase Docker 镜像已停止维护，新部署直接用本指南即可。
 
 整个应用打成一个 Docker 镜像：内置 v2 TS 后端、前端静态资源、SQLite + 文件存储、内置 cron 调度器。最低跑起来只要一个容器 + 一份 `.env`。
 
@@ -33,23 +33,23 @@ docker compose up -d
 
 启动成功后访问 `http://<VPS_IP>:3000`，前端 SPA 直接渲染。Cron 每分钟扫一次，按用户的本地时区决定是否真发邮件。
 
-## 2. 注册第一个 admin
+## 2. 首次登录（默认 admin）
 
-数据库刚跑起来是空的。打开注册需要两步：
+容器第一次启动会自动检测数据库是否为空。如果为空，会创建一个默认 admin 账号：
 
-1. 把 `.env` 里 `SIGNUP_ENABLED` 改成 `true`，`SIGNUP_ALLOWLIST` 填你的邮箱
-2. `docker compose restart`
-
-然后浏览器访问 `APP_URL`，进 `/login` → 注册链接 → 用白名单邮箱完成注册。注册完把 `SIGNUP_ENABLED` 改回 `false`，再 `docker compose restart` 关掉注册口子。
-
-把这个用户提为 admin（直接进容器跑 sqlite）：
-
-```bash
-docker compose exec qreminder sh -c \
-  "sqlite3 /data/qreminder.db \"UPDATE users SET role='admin' WHERE email='you@example.com';\""
+```
+邮箱：  admin@qreminder.local
+密码：  Qreminder@2026
 ```
 
-> 镜像本身没装 sqlite3 CLI，上面这条会失败。简单点的方式：装 sqlite3 后从宿主机直接动 `./data/qreminder.db`，或者临时改 `.env` 里的注册策略让它自己开口子。
+用这对凭据登录后，系统会**强制要求**你立即修改邮箱和密码（`mustChangeCredentials=true`）。改完密码后旧的默认凭据立即失效。
+
+如果你想让其他人也能注册账号，进 **设置 → 注册管理**：
+
+- 打开「允许注册」开关，并把允许的邮箱域名加到白名单（也可以勾选 Gmail / Outlook 等预设域名）
+- 关闭开关即可关闭注册口子
+
+> 也可以用环境变量预设：`SIGNUP_ENABLED=true` + `SIGNUP_ALLOWLIST=you@example.com`。但 UI 里改了之后会以数据库为准。
 
 ## 3. 必填环境变量
 
@@ -64,8 +64,8 @@ docker compose exec qreminder sh -c \
 | --- | --- | --- |
 | `PORT` | `3000` | 宿主机映射端口。容器内固定 3000 |
 | `TRUSTED_ORIGINS` | 空 | Better Auth cookie 域允许列表。多个域名用逗号分隔；留空时退化成只接受 `APP_URL` 的 origin |
-| `SIGNUP_ENABLED` | `false` | 第一次注册第一个 admin 时设为 `true`，注册完改回 `false` 并 `docker compose restart` |
-| `SIGNUP_ALLOWLIST` | 空 | 注册邮箱白名单（仅 `SIGNUP_ENABLED=true` 时生效）。多个邮箱逗号分隔，支持 `*@example.com` 通配 |
+| `SIGNUP_ENABLED` | `false` | 给"是否允许新用户注册"提供一个**启动时**的默认值。默认 admin 登录后可以在「设置 → 注册管理」里改并持久化到数据库 |
+| `SIGNUP_ALLOWLIST` | 空 | 注册邮箱白名单的启动默认值（仅 `SIGNUP_ENABLED=true` 时生效）。多个邮箱逗号分隔，支持 `*@example.com` 通配。UI 里改完后以数据库为准 |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` | 空 | 任一项空则邮件发送被禁用。配置后启用密码找回 + 续费提醒邮件 |
 | `SMTP_SECURE` | `false` | 465 通常 `true`；587 通常 `false` 并使用 STARTTLS |
 | `NOTIFICATION_SCHEDULER_ENABLED` | `true` | 是否启用内置 node-cron 调度器 |
@@ -115,9 +115,10 @@ docker compose start
 | 现象 | 检查点 |
 | --- | --- |
 | `docker compose up` 起来但 `/api/setup-status` 一直 unhealthy | `docker compose logs qreminder` 看 server 启动报错；常见是 `BETTER_AUTH_SECRET` 未填或 `DATABASE_PATH` 权限不对 |
+| 默认 admin 登不进去 | 登录用 `admin@qreminder.local` / `Qreminder@2026`；登录后会跳到强制改密页。若 `users` 表已有数据但不知道默认 admin 密码，可在管理员账号下用「设置 → 用户管理」重置；都没账号了就 `docker compose exec qreminder sqlite3 /data/qreminder.db` 把对应用户删掉再重启容器，bootstrap 会重建 |
 | 登录后立即 401 | `APP_URL` 和浏览器实际访问的域不一致；或 `TRUSTED_ORIGINS` 没包含访问域 |
-| 注册返回 `signup_disabled` | `SIGNUP_ENABLED` 还是 `false`，改完要 `docker compose restart` |
-| 注册返回 `signup_not_allowed` | 邮箱不在 `SIGNUP_ALLOWLIST` |
+| 注册返回 `signup_disabled` | UI「设置 → 注册管理」里把注册关了；admin 登录后打开开关即可。环境变量 `SIGNUP_ENABLED` 只在数据库里还没有这个设置时生效 |
+| 注册返回 `signup_not_allowed` | 邮箱不在白名单里（设置 → 注册管理 → 白名单） |
 | 重置密码邮件没收到 | SMTP 任一项没填；或 `SMTP_HOST` / 凭证错；`docker compose logs qreminder` 看 mailer 报错 |
 | 静态资源 404 | 镜像 build 时漏跑了 client build——拉最新 `:latest` 镜像即可，自构建时确认 `pnpm --filter @qreminder/client build` 跑过了 |
 | Cron 没发邮件 | `docker compose logs qreminder | grep notification-cron` 看每分钟有没有 tick；检查用户 settings 里的 `notificationTimeLocal` |

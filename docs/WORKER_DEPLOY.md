@@ -4,7 +4,7 @@
 >
 > 如果你 fork 了仓库、想全程在 GitHub 网页里点鼠标完成部署（不本地装 wrangler），改看 [CF_GH_ACTIONS_DEPLOY.md](CF_GH_ACTIONS_DEPLOY.md)。
 >
-> 如果你在跑上一代 v1 Go + PocketBase Docker 部署，见 [DOCKER_DEPLOY.md](DOCKER_DEPLOY.md)。
+> v1 Go + PocketBase 是上一代部署形态，已停止维护，不在本仓库继续提供文档。
 
 完成所有步骤大概需要 15 分钟（不含 R2 / Resend 域名验证传播时间）。每条命令都假定在仓库根目录跑，除非另注。
 
@@ -61,19 +61,25 @@ wrangler secret put RESEND_FROM
 
 > Better Auth 的 `sendResetPassword` 会用 `RESEND_FROM` 作为发件地址，没有验证过的发件人会被 Resend 拒收。
 
-## 3. 临时打开注册（仅一次）
+## 3. 默认 admin 自动 bootstrap
 
-第一次上线时数据库是空的，需要注册第一个 admin。修改 [runtimes/worker/wrangler.toml](../runtimes/worker/wrangler.toml) 的 `[vars]`：
+Worker 第一次跑起来会自动检测 D1 是否为空，如果为空则创建一个默认 admin：
+
+```
+邮箱：  admin@qreminder.local
+密码：  Qreminder@2026
+```
+
+无需手动改 `SIGNUP_ENABLED`、无需用 SQL 提升角色。登录后系统会**强制要求**改邮箱和密码（`mustChangeCredentials=true`），改完之后默认凭据立即失效。
+
+> 如果想给其他人开注册，登录后进 **设置 → 注册管理**，打开「允许注册」并维护邮箱白名单（也可以勾选 Gmail / Outlook 等预设域名）。`SIGNUP_ENABLED` 和 `SIGNUP_ALLOWLIST` 这两个 var 仅在数据库里还没有相关设置时作为初始默认值。
+
+`TRUSTED_ORIGINS` 仍然需要在 [runtimes/worker/wrangler.toml](../runtimes/worker/wrangler.toml) 的 `[vars]` 里维护，作为 Better Auth 的 cookie 域允许列表，必须包含 `APP_URL` 的 origin：
 
 ```toml
 [vars]
-SIGNUP_ENABLED = "true"          # 部署完成 + 注册完成后改回 "false"
-SIGNUP_ALLOWLIST = "you@example.com"
 TRUSTED_ORIGINS = "https://qreminder.your-domain.com"
 ```
-
-> `SIGNUP_ALLOWLIST` 留空时任何邮箱都能注册（仅在 `SIGNUP_ENABLED=true` 时生效），填了就只放白名单内的邮箱。
-> `TRUSTED_ORIGINS` 是 Better Auth 的 cookie 域允许列表，必须包含 `APP_URL` 的 origin。
 
 ## 4. 应用 D1 schema
 
@@ -110,35 +116,32 @@ wrangler deploy
 
 部署成功后控制台会输出 worker URL，访问应该能看到登录页。Worker 同时挂着 `* * * * *` 的 Cron Trigger，每分钟跑一次 `runNotificationCron`。
 
-## 6. 注册第一个 admin
+## 6. 登录默认 admin
 
-打开 worker URL，走 `/login` 页面下方"注册"链接（或直接 POST `/api/auth/sign-up/email`）：
+部署成功后，打开 worker URL（或自定义域名），直接用以下凭据登录：
 
-```bash
-# 用 SIGNUP_ALLOWLIST 里的邮箱
-curl -X POST https://qreminder.your-domain.com/api/auth/sign-up/email \
-  -H 'content-type: application/json' \
-  -d '{"email":"you@example.com","password":"password1234","name":"You"}'
+```
+邮箱：  admin@qreminder.local
+密码：  Qreminder@2026
 ```
 
-把它升级成 admin：
+登录后系统会强制跳转到 **个人资料** 页要求修改邮箱和密码。改完后默认凭据失效，可在「设置 → 注册管理」决定是否允许新用户注册。
 
-```bash
-wrangler d1 execute QREMINDER_DB --remote --command \
-  "UPDATE users SET role='admin' WHERE email='you@example.com';"
-```
+> 第一次登录卡在 401，多半是 `APP_URL` 与浏览器看到的 origin 不一致，或 `TRUSTED_ORIGINS` 没包含访问域。
 
-## 7. 关闭注册
+## 7. 注册策略（按需）
 
-把 [runtimes/worker/wrangler.toml](../runtimes/worker/wrangler.toml) 里的 `SIGNUP_ENABLED` 改回 `"false"`，再 deploy 一次：
+默认配置下普通用户**无法**注册——只有默认 admin 能登录。如果想让其他人注册：
 
-```bash
-wrangler deploy
-```
+1. 登录后进 **设置 → 注册管理**，打开「允许注册」开关
+2. 把允许的邮箱域名加到白名单（或勾选 Gmail / Outlook 等预设）
+3. 想再次关闭注册口子，直接关掉开关即可
+
+注：`SIGNUP_ENABLED` / `SIGNUP_ALLOWLIST` 在 `[vars]` 里只是**启动时**的默认值，admin 通过 UI 改完后以数据库为准。
 
 ## 8. 烟测
 
-按 [E2E_SMOKE_STATUS.md §3](E2E_SMOKE_STATUS.md#3-烟测应覆盖的最小路径) 的最小路径走一遍：
+按最小路径手动走一遍：
 
 1. `/login` 登入
 2. 添加一条月付订阅，reminderOffsets 填 `[7, 3, 1]`
@@ -179,7 +182,8 @@ wrangler deploy
 | 现象 | 检查点 |
 | --- | --- |
 | 登录后立即 401 | `APP_URL` 与浏览器看到的 origin 不一致；或 `TRUSTED_ORIGINS` 没包含访问域 |
-| 注册返回 `signup_disabled` | `SIGNUP_ENABLED` 不是 `"true"`，需要 `wrangler deploy` 才生效 |
+| 默认 admin 登不进去 | bootstrap 在 Worker 启动时第一次访问任意 API 时触发；如果 D1 已有数据但默认 admin 不在，可去 D1 Console 跑 `INSERT` 或用 `wrangler d1 execute` 手动重置。代码里 bootstrap 函数是 `ensureDefaultAdmin`（[packages/server-ts/src/bootstrap-default-admin.ts](../packages/server-ts/src/bootstrap-default-admin.ts)） |
+| 注册返回 `signup_disabled` | UI「设置 → 注册管理」里把注册关了；admin 登录后开启即可。`[vars].SIGNUP_ENABLED` 只在数据库还没有相关设置时作为默认值 |
 | 注册返回 `signup_not_allowed` | 邮箱不在 `SIGNUP_ALLOWLIST`（注意大小写已自动归一化为小写） |
 | 重置密码邮件没收到 | `RESEND_FROM` 未验证；或 Resend 余额耗尽；`wrangler tail` 看 mailer 抛错 |
 | 静态资源 404 | `pnpm --filter @qreminder/client build` 没跑过；或 `packages/client/dist` 不存在 |
