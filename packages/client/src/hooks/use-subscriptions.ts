@@ -178,7 +178,26 @@ export function useDeleteSubscription() {
         { method: "DELETE" },
       );
     },
-    onSuccess: () => {
+    // Optimistic remove: drop the row from cache before the server confirms so
+    // the card disappears instantly. The PWA service worker + refetch round-trip
+    // can otherwise add a noticeable delay where the deleted card lingers.
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ["subscriptions"] });
+      const previous = queryClient.getQueryData<Subscription[]>(["subscriptions"]);
+      if (previous) {
+        queryClient.setQueryData<Subscription[]>(
+          ["subscriptions"],
+          previous.filter((sub) => sub.id !== id),
+        );
+      }
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["subscriptions"], context.previous);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
     },
   });
@@ -198,7 +217,24 @@ export function useBatchDeleteSubscriptions() {
         ),
       );
     },
-    onSuccess: () => {
+    onMutate: async (ids) => {
+      await queryClient.cancelQueries({ queryKey: ["subscriptions"] });
+      const previous = queryClient.getQueryData<Subscription[]>(["subscriptions"]);
+      if (previous) {
+        const removed = new Set(ids);
+        queryClient.setQueryData<Subscription[]>(
+          ["subscriptions"],
+          previous.filter((sub) => !removed.has(sub.id)),
+        );
+      }
+      return { previous };
+    },
+    onError: (_err, _ids, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["subscriptions"], context.previous);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
     },
   });

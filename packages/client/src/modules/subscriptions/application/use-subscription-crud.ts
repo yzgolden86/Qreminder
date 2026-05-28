@@ -12,10 +12,13 @@ import {
   useUpdateSubscription,
 } from "@/hooks/use-subscriptions";
 import { useDeferredDialogCleanup } from "@/hooks/use-deferred-dialog-cleanup";
+import { toast } from "@/components/ui/sonner";
+import { useI18n } from "@/i18n/I18nProvider";
 import type { Subscription, SubscriptionDraft } from "@/types/subscription";
 
 /** 订阅 CRUD 的页面级交互控制器。 */
 export function useSubscriptionCrud(subscriptions: readonly Subscription[]) {
+  const { t } = useI18n();
   const createSubscription = useCreateSubscription();
   const updateSubscription = useUpdateSubscription();
   const deleteSubscription = useDeleteSubscription();
@@ -30,7 +33,13 @@ export function useSubscriptionCrud(subscriptions: readonly Subscription[]) {
   };
 
   const handleDeleteSubscription = (id: string) => {
-    deleteSubscription.mutate(id);
+    deleteSubscription.mutate(id, {
+      onError: (err) => {
+        // The optimistic update has already rolled back; surface the failure
+        // so the user knows the card came back on purpose.
+        toast.error(err instanceof Error ? err.message : t("error.generic"));
+      },
+    });
   };
 
   const handleEditSubscription = (id: string) => {
