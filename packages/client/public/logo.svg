@@ -7,10 +7,10 @@
     </linearGradient>
   </defs>
   <rect width="256" height="64" rx="0" fill="url(#lockup-bg)"/>
-  <g transform="translate(16 16)">
-    <rect x="0" y="4" width="31" height="8" rx="4" fill="#F8FAFC"/>
-    <circle cx="43" cy="8" r="4" fill="#10B981"/>
-    <rect x="5" y="23" width="34" height="5" rx="2.5" fill="#10B981" opacity="0.78"/>
+  <g transform="translate(20 14.8) scale(1.6)">
+    <path d="M12 2C8.686 2 6 4.686 6 8v3.5c0 1.5-.667 2.833-2 4 .333.333 2.333.5 8 .5s7.667-.167 8-.5c-1.333-1.167-2-2.5-2-4V8c0-3.314-2.686-6-6-6Z" fill="#F8FAFC" opacity="0.9"/>
+    <path d="M10 17.5c0 1.105.895 2 2 2s2-.895 2-2" stroke="#F8FAFC" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+    <circle cx="18" cy="5" r="3" fill="#10B981"/>
   </g>
   <text x="72" y="43" fill="#F8FAFC" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="34" font-weight="800" letter-spacing="-1">Qreminder</text>
 </svg>

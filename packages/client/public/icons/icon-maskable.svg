@@ -13,9 +13,9 @@
   </defs>
   <rect width="512" height="512" fill="url(#bg)"/>
   <rect width="512" height="512" fill="url(#glow)"/>
-  <g transform="translate(0 12)">
-    <rect x="156" y="200" width="160" height="44" rx="22" fill="#F8FAFC"/>
-    <circle cx="346" cy="222" r="22" fill="#10B981"/>
-    <rect x="178" y="288" width="172" height="28" rx="14" fill="#10B981" opacity="0.78"/>
+  <g transform="translate(106 127) scale(12)">
+    <path d="M12 2C8.686 2 6 4.686 6 8v3.5c0 1.5-.667 2.833-2 4 .333.333 2.333.5 8 .5s7.667-.167 8-.5c-1.333-1.167-2-2.5-2-4V8c0-3.314-2.686-6-6-6Z" fill="#F8FAFC" opacity="0.9"/>
+    <path d="M10 17.5c0 1.105.895 2 2 2s2-.895 2-2" stroke="#F8FAFC" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+    <circle cx="18" cy="5" r="3" fill="#10B981"/>
   </g>
 </svg>

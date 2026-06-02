@@ -44,9 +44,11 @@ export function buildBrandFaviconSvg(primary: string, glow: string, isDark: bool
     '<rect x="4" y="4" width="56" height="56" rx="18" fill="' + shell + '"/>',
     '<rect x="5.5" y="5.5" width="53" height="53" rx="16.5" fill="' + inner + '" stroke="' + rim + '" stroke-width="1.5"/>',
     '<rect x="5.5" y="5.5" width="53" height="53" rx="16.5" fill="url(#glow)"/>',
-    '<rect x="13" y="21" width="29" height="8" rx="4" fill="#F8FAFC"/>',
-    '<circle cx="49" cy="25" r="4" fill="hsl(' + primary + ')"/>',
-    '<rect x="17" y="40" width="31" height="5" rx="2.5" fill="hsl(' + primary + ')" opacity="0.76"/>',
+    '<g transform="translate(13.88 16.41) scale(1.45)">',
+    '<path d="M12 2C8.686 2 6 4.686 6 8v3.5c0 1.5-.667 2.833-2 4 .333.333 2.333.5 8 .5s7.667-.167 8-.5c-1.333-1.167-2-2.5-2-4V8c0-3.314-2.686-6-6-6Z" fill="#F8FAFC" opacity="0.9"/>',
+    '<path d="M10 17.5c0 1.105.895 2 2 2s2-.895 2-2" stroke="#F8FAFC" stroke-width="1.5" stroke-linecap="round" fill="none"/>',
+    '<circle cx="18" cy="5" r="3" fill="hsl(' + primary + ')"/>',
+    "</g>",
     "</svg>",
   ].join("");
 }
