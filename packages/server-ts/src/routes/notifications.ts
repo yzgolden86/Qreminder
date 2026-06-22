@@ -5,11 +5,28 @@ import { notificationJobs } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
 import { requireActiveWorkspaceRole } from "../lib/workspace-permissions.js";
 import { assertExternalHttpUrl, ExternalUrlError } from "../lib/external-url.js";
+import { assertValidEmailRecipients, parseEmailRecipients } from "../lib/email-recipients.js";
+import {
+  buildNotificationHistoryPayload,
+  recordNotificationTestJob,
+} from "./notification-history.js";
 import type { AppEnv } from "../app.js";
 
 export const notificationsRouter = new Hono<AppEnv>();
 
 notificationsRouter.use("*", requireSession);
+
+notificationsRouter.get("/history", async (c) => {
+  const db = c.get("deps").db;
+  const userId = (c.get("user") as { id: string }).id;
+  const workspaceId = c.get("workspaceId");
+  const payload = await buildNotificationHistoryPayload(db, userId, workspaceId, {
+    status: c.req.query("status"),
+    limit: c.req.query("limit"),
+    offset: c.req.query("offset"),
+  });
+  return c.json(payload);
+});
 
 // GET /notifications/recent-failures?days=7 — surface failed notification jobs
 // so the UI can show a badge / drill-down list. We return summarized rows
@@ -96,6 +113,22 @@ const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 5;
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
+class NotificationTestError extends Error {
+  code: string;
+  status: 400;
+
+  constructor(code: string, message: string) {
+    super(message);
+    this.name = "NotificationTestError";
+    this.code = code;
+    this.status = 400;
+  }
+}
+
+function failTest(code: string, message: string): never {
+  throw new NotificationTestError(code, message);
+}
+
 function checkRateLimit(userId: string): boolean {
   const now = Date.now();
   const entry = rateLimitMap.get(userId);
@@ -109,7 +142,10 @@ function checkRateLimit(userId: string): boolean {
 }
 
 notificationsRouter.post("/test", requireActiveWorkspaceRole("editor"), async (c) => {
-  const userId = (c.get("user") as { id: string }).id;
+  const user = c.get("user") as { id: string; email: string };
+  const userId = user.id;
+  const db = c.get("deps").db;
+  const workspaceId = c.get("workspaceId");
   if (!checkRateLimit(userId)) {
     return c.json({ error: "rate_limited", message: "Too many test requests, please wait a moment" }, 429);
   }
@@ -121,6 +157,7 @@ notificationsRouter.post("/test", requireActiveWorkspaceRole("editor"), async (c
   }
 
   const { channel, settings } = parsed.data;
+  let deliveryId = "";
 
   try {
     switch (channel) {
@@ -128,7 +165,7 @@ notificationsRouter.post("/test", requireActiveWorkspaceRole("editor"), async (c
         const token = String(settings["telegramBotToken"] ?? "").trim();
         const chatId = String(settings["telegramChatId"] ?? "").trim();
         if (!token || !chatId) {
-          return c.json({ error: "missing_config", message: "Bot Token and Chat ID are required" }, 400);
+          failTest("missing_config", "Bot Token and Chat ID are required");
         }
         const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
           method: "POST",
@@ -141,7 +178,7 @@ notificationsRouter.post("/test", requireActiveWorkspaceRole("editor"), async (c
         });
         if (!res.ok) {
           const err = await res.json().catch(() => ({ description: "Unknown error" }));
-          return c.json({ error: "telegram_error", message: (err as { description?: string }).description ?? "Send failed" }, 400);
+          failTest("telegram_error", (err as { description?: string }).description ?? "Send failed");
         }
         break;
       }
@@ -150,17 +187,17 @@ notificationsRouter.post("/test", requireActiveWorkspaceRole("editor"), async (c
         const serverUrl = String(settings["barkServerUrl"] ?? "https://api.day.app").trim();
         const deviceKey = String(settings["barkDeviceKey"] ?? "").trim();
         if (!deviceKey) {
-          return c.json({ error: "missing_config", message: "Device Key is required" }, 400);
+          failTest("missing_config", "Device Key is required");
         }
         let barkTarget: string;
         try {
           barkTarget = buildBarkTestUrl(serverUrl, deviceKey);
         } catch (err) {
-          return c.json({ error: "invalid_url", message: externalUrlErrorMessage(err) }, 400);
+          failTest("invalid_url", externalUrlErrorMessage(err));
         }
         const res = await fetchExternalUrl(barkTarget);
         if (!res.ok) {
-          return c.json({ error: "bark_error", message: `HTTP ${res.status}` }, 400);
+          failTest("bark_error", `HTTP ${res.status}`);
         }
         break;
       }
@@ -169,11 +206,11 @@ notificationsRouter.post("/test", requireActiveWorkspaceRole("editor"), async (c
         const webhookUrl = String(settings["webhookUrl"] ?? "").trim();
         const method = String(settings["webhookMethod"] ?? "POST").trim();
         if (!webhookUrl) {
-          return c.json({ error: "missing_config", message: "Webhook URL is required" }, 400);
+          failTest("missing_config", "Webhook URL is required");
         }
         const webhookCheck = validateExternalUrl(webhookUrl);
         if (!webhookCheck.ok) {
-          return c.json({ error: "invalid_url", message: webhookCheck.reason }, 400);
+          failTest("invalid_url", webhookCheck.reason);
         }
         const headers: Record<string, string> = { "Content-Type": "application/json" };
         const rawHeaders = String(settings["webhookHeaders"] ?? "").trim();
@@ -189,7 +226,7 @@ notificationsRouter.post("/test", requireActiveWorkspaceRole("editor"), async (c
           ...(method !== "GET" ? { body: payload } : {}),
         });
         if (!res.ok) {
-          return c.json({ error: "webhook_error", message: `HTTP ${res.status}` }, 400);
+          failTest("webhook_error", `HTTP ${res.status}`);
         }
         break;
       }
@@ -197,11 +234,11 @@ notificationsRouter.post("/test", requireActiveWorkspaceRole("editor"), async (c
       case "wechat": {
         const webhookUrl = String(settings["wechatWebhookUrl"] ?? "").trim();
         if (!webhookUrl) {
-          return c.json({ error: "missing_config", message: "WeCom Webhook URL is required" }, 400);
+          failTest("missing_config", "WeCom Webhook URL is required");
         }
         const wechatCheck = validateExternalUrl(webhookUrl);
         if (!wechatCheck.ok) {
-          return c.json({ error: "invalid_url", message: wechatCheck.reason }, 400);
+          failTest("invalid_url", wechatCheck.reason);
         }
         const msgType = String(settings["wechatMessageType"] ?? "text");
         const content = msgType === "markdown"
@@ -213,7 +250,7 @@ notificationsRouter.post("/test", requireActiveWorkspaceRole("editor"), async (c
           body: JSON.stringify(content),
         });
         if (!res.ok) {
-          return c.json({ error: "wechat_error", message: `HTTP ${res.status}` }, 400);
+          failTest("wechat_error", `HTTP ${res.status}`);
         }
         break;
       }
@@ -221,7 +258,7 @@ notificationsRouter.post("/test", requireActiveWorkspaceRole("editor"), async (c
       case "notifyx": {
         const apiKey = String(settings["notifyxApiKey"] ?? "").trim();
         if (!apiKey) {
-          return c.json({ error: "missing_config", message: "API Key is required" }, 400);
+          failTest("missing_config", "API Key is required");
         }
         const res = await fetch("https://api.notifyx.cn/api/v1/send", {
           method: "POST",
@@ -229,30 +266,36 @@ notificationsRouter.post("/test", requireActiveWorkspaceRole("editor"), async (c
           body: JSON.stringify({ title: "Qreminder Test", content: "If you see this, NotifyX is configured correctly." }),
         });
         if (!res.ok) {
-          return c.json({ error: "notifyx_error", message: `HTTP ${res.status}` }, 400);
+          failTest("notifyx_error", `HTTP ${res.status}`);
         }
         break;
       }
 
       case "email": {
         const deps = c.get("deps");
-        const user = c.get("user") as { email: string };
-        const recipient = String(settings["recipientEmail"] ?? user.email).trim();
-        if (!recipient) {
-          return c.json({ error: "missing_config", message: "Recipient email is required" }, 400);
+        const recipients = parseEmailRecipients(
+          settings["recipientEmail"],
+          user.email,
+          Boolean(settings["notifyMultipleAddresses"]),
+        );
+        try {
+          assertValidEmailRecipients(recipients);
+        } catch (err) {
+          failTest("invalid_recipient", err instanceof Error ? err.message : "Invalid recipient email");
         }
-        await deps.mailer.send({
-          to: [recipient],
+        const sent = await deps.mailer.send({
+          to: recipients,
           subject: "Qreminder · Test notification",
           text: "If you see this email, your email notification channel is configured correctly.",
         });
+        deliveryId = sent.id;
         break;
       }
 
       case "serverchan": {
         const sendKey = String(settings["serverchanSendKey"] ?? "").trim();
         if (!sendKey) {
-          return c.json({ error: "missing_config", message: "SendKey is required" }, 400);
+          failTest("missing_config", "SendKey is required");
         }
         const res = await fetch(`https://sctapi.ftqq.com/${sendKey}.send`, {
           method: "POST",
@@ -263,27 +306,47 @@ notificationsRouter.post("/test", requireActiveWorkspaceRole("editor"), async (c
           }),
         });
         if (!res.ok) {
-          return c.json({ error: "serverchan_error", message: `HTTP ${res.status}` }, 400);
+          failTest("serverchan_error", `HTTP ${res.status}`);
         }
         const data = await res.json().catch(() => ({})) as Record<string, unknown>;
         if (data["code"] !== 0 && data["errno"] !== 0) {
-          return c.json({
-            error: "serverchan_error",
-            message: String(data["message"] ?? data["errmsg"] ?? "Unknown error"),
-          }, 400);
+          failTest("serverchan_error", String(data["message"] ?? data["errmsg"] ?? "Unknown error"));
         }
         break;
       }
     }
 
+    await recordNotificationTestJob(db, {
+      userId,
+      workspaceId,
+      channel,
+      settings,
+      status: "sent",
+      ...(deliveryId ? { deliveryId } : {}),
+    });
     return c.json({ ok: true });
   } catch (err) {
+    const expected = err instanceof NotificationTestError;
     const raw = err instanceof Error ? err.message : "Unknown error";
     const isNetwork = raw.includes("timeout") || raw.includes("ETIMEDOUT") || raw.includes("fetch failed") || raw.includes("ECONNREFUSED");
-    const message = isNetwork
+    const message = expected
+      ? raw
+      : isNetwork
       ? `Network unreachable (${channel}): ${raw}. Check if the target service is accessible from your server.`
       : `${channel} send failed: ${raw}`;
-    return c.json({ error: "send_failed", channel, message }, 500);
+    await recordNotificationTestJob(db, {
+      userId,
+      workspaceId,
+      channel,
+      settings,
+      status: "failed",
+      errorMessage: message,
+    }).catch((logErr) => {
+      console.error("[notification-test] failed to record test job:", logErr);
+    });
+    const status = expected ? err.status : 500;
+    const error = expected ? err.code : "send_failed";
+    return c.json({ error, channel, message }, status as 400 | 500);
   }
 });
 

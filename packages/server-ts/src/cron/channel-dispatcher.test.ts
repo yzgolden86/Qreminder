@@ -36,6 +36,25 @@ describe("dispatchToChannels email content", () => {
       html: "<a href=\"https://netflix.com/\">访问订阅网站</a>",
     });
   });
+
+  it("splits multiple email recipients on commas, semicolons, and new lines", async () => {
+    const send = vi.fn(async () => ({ id: "mail-multi" }));
+    const result = await dispatchToChannels(
+      { mailer: { send } },
+      ["email"],
+      {
+        notifyMultipleAddresses: true,
+        recipientEmail: "a@example.com, b@example.com\nc@example.com; d@example.com",
+      },
+      "fallback@example.com",
+      message,
+    );
+
+    expect(result.anySuccess).toBe(true);
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({
+      to: ["a@example.com", "b@example.com", "c@example.com", "d@example.com"],
+    }));
+  });
 });
 
 describe("dispatchToChannels external URL safety", () => {

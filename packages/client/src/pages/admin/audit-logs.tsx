@@ -8,13 +8,13 @@ import { Button } from "@/components/ui/button";
 
 const auditLogSchema = z.object({
   id: z.string(),
-  user: z.string(),
-  workspace: z.string().nullable().optional(),
+  userId: z.string(),
+  workspaceId: z.string().nullable().optional(),
   action: z.string(),
   targetType: z.string(),
   targetId: z.string().nullable().optional(),
   summary: z.string().nullable().optional(),
-  payload: z.unknown().optional(),
+  metadata: z.unknown().optional(),
   createdAt: z.string(),
 });
 
@@ -89,7 +89,7 @@ export default function AuditLogsPage() {
                         {formatDateTime(log.createdAt)}
                       </td>
                       <td className="px-4 py-2.5 text-[11px] text-foreground">
-                        {log.user.slice(0, 8)}…
+                        {log.userId.slice(0, 8)}…
                       </td>
                       <td className="px-4 py-2.5">
                         <code className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">

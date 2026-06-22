@@ -28,6 +28,10 @@ export function createNodemailerAdapter(config: SmtpConfig): MailerAdapter {
         html: message.html,
         replyTo: message.replyTo,
       });
+      const rejected = (info.rejected ?? []).map(String).filter(Boolean);
+      if (rejected.length > 0) {
+        throw new Error(`SMTP rejected recipient(s): ${rejected.join(", ")}`);
+      }
       return { id: info.messageId ?? "" };
     },
   };

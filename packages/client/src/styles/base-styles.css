@@ -11,24 +11,31 @@
   html,
   body,
   #root {
+    font-family: var(--app-font-sans);
     height: 100%;
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
-    font-family: "Inter", "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-    font-feature-settings: "cv11", "ss01", "ss03", "cv02";
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
-    letter-spacing: -0.005em;
+    @apply bg-background text-foreground font-sans;
+    font-family: var(--app-font-sans);
+    font-feature-settings: "kern", "liga";
+    -webkit-font-smoothing: auto;
+    -moz-osx-font-smoothing: auto;
+    text-rendering: auto;
+    letter-spacing: 0;
     overflow: hidden;
   }
 
-  /* Headings inherit a touch of negative tracking — Linear's signature density */
+  button,
+  input,
+  textarea,
+  select {
+    font-family: var(--app-font-sans);
+  }
+
   h1, h2, h3, h4, h5, h6 {
-    letter-spacing: -0.022em;
-    font-feature-settings: "cv11", "ss01";
+    letter-spacing: 0;
+    font-feature-settings: "kern", "liga";
   }
 
   /* Monospace utility for numbers and code-ish content */

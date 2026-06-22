@@ -9,6 +9,7 @@
  */
 import type { MailerAdapter } from "../adapters/mailer.js";
 import { assertExternalHttpUrl } from "../lib/external-url.js";
+import { assertValidEmailRecipients, parseEmailRecipients } from "../lib/email-recipients.js";
 
 export interface ChannelMessage {
   title: string;
@@ -100,11 +101,12 @@ async function sendEmail(
   userEmail: string,
   message: ChannelMessage,
 ): Promise<void> {
-  const recipient = String(settings["recipientEmail"] ?? userEmail).trim() || userEmail;
-  const multipleAddresses = Boolean(settings["notifyMultipleAddresses"]);
-  const recipients = multipleAddresses
-    ? recipient.split(",").map((s) => s.trim()).filter(Boolean)
-    : [recipient];
+  const recipients = parseEmailRecipients(
+    settings["recipientEmail"],
+    userEmail,
+    Boolean(settings["notifyMultipleAddresses"]),
+  );
+  assertValidEmailRecipients(recipients);
   const mailMessage = {
     to: recipients,
     subject: message.title,
