@@ -194,6 +194,14 @@ export const subscriptionPayments = sqliteTable(
     billingPeriod: text("billing_period"),
     paymentMethod: text("payment_method"),
     note: text("note").default(""),
+    // exchangeRateToBase: snapshot of the exchange rate from payment currency to
+    // user's base currency at the time of payment. Allows historical spending stats
+    // to use the correct rate instead of today's rate. NULL for old payments or
+    // when rate fetch failed; fallback to current rate in that case.
+    exchangeRateToBase: real("exchange_rate_to_base"),
+    // exchangeRateDate: YYYY-MM-DD date when the rate was captured. Usually same
+    // as paidAt date, but could differ if rate was fetched on a different day.
+    exchangeRateDate: text("exchange_rate_date"),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },
@@ -328,5 +336,71 @@ export const subscriptionPriceHistory = sqliteTable(
   (table) => ({
     subIdx: index("idx_price_history_sub").on(table.subscriptionId),
     userIdx: index("idx_price_history_user").on(table.user),
+  }),
+);
+
+// Exchange rates table: stores daily exchange rates fetched by the cron job.
+// Allows historical payment analysis using the rate that was valid at payment time,
+// instead of always using today's rate. Rates are stored as "from currency → base currency".
+export const exchangeRates = sqliteTable(
+  "exchange_rates",
+  {
+    id: text("id").primaryKey(),
+    // date is YYYY-MM-DD for the rate validity
+    date: text("date").notNull(),
+    // baseCurrency is the target currency (e.g., CNY, USD)
+    baseCurrency: text("base_currency").notNull(),
+    // fromCurrency is the source currency being converted
+    fromCurrency: text("from_currency").notNull(),
+    // rate: 1 fromCurrency = rate * baseCurrency
+    // e.g. if fromCurrency=USD, baseCurrency=CNY, rate=7.25 means 1 USD = 7.25 CNY
+    rate: real("rate").notNull(),
+    // provider: frankfurter, floatrates, manual, etc.
+    provider: text("provider").notNull().default("frankfurter"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => ({
+    // Unique constraint: one rate per (date, baseCurrency, fromCurrency) tuple
+    dateBaseCurrencyFromCurrencyIdx: uniqueIndex("idx_exchange_rates_date_base_from").on(
+      table.date,
+      table.baseCurrency,
+      table.fromCurrency,
+    ),
+    dateIdx: index("idx_exchange_rates_date").on(table.date),
+  }),
+);
+
+// Subscription templates table: reusable presets for creating subscriptions.
+// Users can save common subscription patterns (e.g., "AI tool", "Cloud service")
+// with pre-filled category, tags, channels, payment method, billing cycle, etc.
+export const subscriptionTemplates = sqliteTable(
+  "subscription_templates",
+  {
+    id: text("id").primaryKey(),
+    user: text("user").notNull().references(() => users.id),
+    workspaceId: text("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    category: text("category").notNull().default(""),
+    tags: text("tags", { mode: "json" }).$type<string[]>().notNull().default([]),
+    // defaultChannels: array of channel names that should be pre-set when creating
+    // a subscription from this template (written to subscription_notification_channels)
+    defaultChannels: text("default_channels", { mode: "json" }).$type<string[]>().notNull().default([]),
+    paymentMethod: text("payment_method").default(""),
+    billingCycle: text("billing_cycle", {
+      enum: ["weekly", "monthly", "quarterly", "semi-annual", "annual", "custom"],
+    }).notNull().default("monthly"),
+    customDays: integer("custom_days"),
+    reminderOffsets: text("reminder_offsets", { mode: "json" }).$type<number[]>().notNull().default([3]),
+    notes: text("notes").default(""),
+    logoUrl: text("logo_url").default(""),
+    // usageCount: how many times this template has been used to create a subscription
+    usageCount: integer("usage_count").notNull().default(0),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => ({
+    userIdx: index("idx_templates_user").on(table.user),
+    workspaceIdx: index("idx_templates_workspace").on(table.workspaceId),
   }),
 );

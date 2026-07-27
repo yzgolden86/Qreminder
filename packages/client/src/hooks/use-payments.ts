@@ -15,6 +15,10 @@ const paymentSchema = z.object({
   billingPeriod: z.string().nullable().optional(),
   paymentMethod: z.string().nullable().optional(),
   note: z.string().nullable().optional(),
+  // 付款时的汇率快照（1 单位付款币种 = rate × 统计货币）。旧数据为 null，
+  // 统计端此时回退到当前汇率。
+  exchangeRateToBase: z.number().nullable().optional(),
+  exchangeRateDate: z.string().nullable().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -23,6 +27,12 @@ export type Payment = z.infer<typeof paymentSchema>;
 
 const paymentsResponseSchema = z.object({
   payments: z.array(paymentSchema),
+});
+
+const snapshotBucketSchema = z.object({
+  converted: z.number(),
+  coveredCount: z.number(),
+  uncoveredByCurrency: z.record(z.string(), z.number()),
 });
 
 const statsResponseSchema = z.object({
@@ -35,6 +45,13 @@ const statsResponseSchema = z.object({
   yearlyByCurrency: z.record(z.string(), z.number()).optional().default({}),
   byCategory: z.record(z.string(), z.number()),
   currentMonth: z.string().optional(),
+  // 历史汇率快照口径（服务端已换算的部分 + 无快照需前端兜底的部分）。
+  snapshot: z
+    .object({
+      monthly: snapshotBucketSchema,
+      yearly: snapshotBucketSchema,
+    })
+    .optional(),
 });
 
 export type PaymentStats = z.infer<typeof statsResponseSchema>;

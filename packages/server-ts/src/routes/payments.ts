@@ -7,10 +7,12 @@
 import { Hono } from "hono";
 import { eq, and, desc } from "drizzle-orm";
 import { z } from "zod";
-import { subscriptionPayments, subscriptions } from "../db/schema.js";
+import { subscriptionPayments, subscriptions, settings as settingsTable } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
 import { writeAuditLog } from "./audit-logs.js";
 import { requireActiveWorkspaceRole } from "../lib/workspace-permissions.js";
+import { resolveRateSnapshot } from "../lib/rate-snapshot.js";
+import type { Database } from "../db/types.js";
 import type { AppEnv } from "../app.js";
 
 export const paymentsRouter = new Hono<AppEnv>();
@@ -33,6 +35,43 @@ const updatePaymentSchema = z.object({
   paymentMethod: z.string().max(100).optional(),
   note: z.string().max(2000).optional(),
 });
+
+/**
+ * 付款时的汇率快照：读用户 defaultCurrency（设置里叫「统计货币」），从
+ * exchange_rates 表解析 paidAt 当天（或最近 7 天内）的汇率。表内无数据时
+ * 返回空对象——快照字段留 NULL，统计端回退到当前汇率，与旧数据行为一致。
+ */
+async function buildRateSnapshotFields(
+  db: Database,
+  userId: string,
+  workspaceId: string | null,
+  currency: string,
+  paidAt: string,
+): Promise<{ exchangeRateToBase?: number; exchangeRateDate?: string }> {
+  try {
+    const [row] = await db
+      .select({ settings: settingsTable.settings })
+      .from(settingsTable)
+      .where(
+        workspaceId
+          ? and(eq(settingsTable.user, userId), eq(settingsTable.workspaceId, workspaceId))
+          : eq(settingsTable.user, userId),
+      )
+      .limit(1);
+
+    const baseCurrency =
+      typeof row?.settings?.["defaultCurrency"] === "string"
+        ? (row.settings["defaultCurrency"] as string)
+        : "CNY";
+
+    const snapshot = await resolveRateSnapshot(db, currency, baseCurrency, paidAt);
+    if (!snapshot) return {};
+    return { exchangeRateToBase: snapshot.rate, exchangeRateDate: snapshot.date };
+  } catch {
+    // 快照失败绝不能阻断记账——这是锦上添花的数据，不是账本必需字段。
+    return {};
+  }
+}
 
 // GET /payments?subscriptionId=xxx — list payments for a subscription
 paymentsRouter.get("/", async (c) => {
@@ -71,6 +110,13 @@ paymentsRouter.post("/", requireActiveWorkspaceRole("editor"), async (c) => {
 
   const now = new Date().toISOString();
   const id = crypto.randomUUID();
+  const snapshot = await buildRateSnapshotFields(
+    db,
+    userId,
+    workspaceId,
+    parsed.data.currency,
+    parsed.data.paidAt,
+  );
   await db.insert(subscriptionPayments).values({
     id,
     user: userId,
@@ -83,6 +129,7 @@ paymentsRouter.post("/", requireActiveWorkspaceRole("editor"), async (c) => {
     billingPeriod: sub.billingCycle,
     paymentMethod: parsed.data.paymentMethod ?? sub.paymentMethod ?? "",
     note: parsed.data.note ?? "",
+    ...snapshot,
     createdAt: now,
     updatedAt: now,
   });
@@ -125,6 +172,16 @@ paymentsRouter.patch("/:id", requireActiveWorkspaceRole("editor"), async (c) => 
   if (parsed.data.currency !== undefined) updates.currency = parsed.data.currency;
   if (parsed.data.paymentMethod !== undefined) updates.paymentMethod = parsed.data.paymentMethod;
   if (parsed.data.note !== undefined) updates.note = parsed.data.note;
+
+  // 重算快照：币种或日期改变时重新查表；否则保留原快照。
+  const currencyChanged = parsed.data.currency !== undefined && parsed.data.currency !== existing.currency;
+  const dateChanged = parsed.data.paidAt !== undefined && parsed.data.paidAt !== existing.paidAt;
+  if (currencyChanged || dateChanged) {
+    const finalCurrency = parsed.data.currency ?? existing.currency;
+    const finalDate = parsed.data.paidAt ?? existing.paidAt;
+    const snapshot = await buildRateSnapshotFields(db, userId, workspaceId, finalCurrency, finalDate);
+    Object.assign(updates, snapshot);
+  }
 
   await db
     .update(subscriptionPayments)
@@ -200,6 +257,7 @@ paymentsRouter.post("/renew/:subscriptionId", requireActiveWorkspaceRole("editor
   const currency = parsed.data.currency ?? sub.currency;
 
   const paymentId = crypto.randomUUID();
+  const snapshot = await buildRateSnapshotFields(db, userId, workspaceId, currency, paidAt);
   await db.insert(subscriptionPayments).values({
     id: paymentId,
     user: userId,
@@ -212,6 +270,7 @@ paymentsRouter.post("/renew/:subscriptionId", requireActiveWorkspaceRole("editor
     billingPeriod: sub.billingCycle,
     paymentMethod: parsed.data.paymentMethod ?? sub.paymentMethod ?? "",
     note: parsed.data.note ?? "",
+    ...snapshot,
     createdAt: now,
     updatedAt: now,
   });
@@ -271,6 +330,27 @@ paymentsRouter.get("/stats", async (c) => {
   const yearlyByCurrency = new Map<string, number>();
   const byCategory = new Map<string, number>();
 
+  // 快照口径：有 exchangeRateToBase 的支付直接按「付款当日汇率」换算并求和；
+  // 没有快照的旧数据按币种分桶，由前端用当前汇率兜底换算。两者相加即
+  // 「历史汇率模式」总额。coveredCount 让前端知道快照覆盖率。
+  const monthlySnapshot = { converted: 0, coveredCount: 0, uncoveredByCurrency: new Map<string, number>() };
+  const yearlySnapshot = { converted: 0, coveredCount: 0, uncoveredByCurrency: new Map<string, number>() };
+
+  const addToSnapshot = (
+    bucket: typeof monthlySnapshot,
+    p: (typeof allPayments)[number],
+  ) => {
+    if (p.exchangeRateToBase != null) {
+      bucket.converted += p.amount * p.exchangeRateToBase;
+      bucket.coveredCount += 1;
+    } else {
+      bucket.uncoveredByCurrency.set(
+        p.currency,
+        (bucket.uncoveredByCurrency.get(p.currency) ?? 0) + p.amount,
+      );
+    }
+  };
+
   for (const p of allPayments) {
     // paidAt is normalized to YYYY-MM-DD on insert, but defensively slice to
     // tolerate legacy rows stored as ISO datetimes.
@@ -279,11 +359,13 @@ paymentsRouter.get("/stats", async (c) => {
       monthlySpent += p.amount;
       monthlyCount += 1;
       monthlyByCurrency.set(p.currency, (monthlyByCurrency.get(p.currency) ?? 0) + p.amount);
+      addToSnapshot(monthlySnapshot, p);
     }
     if (day.startsWith(currentYear)) {
       yearlySpent += p.amount;
       yearlyCount += 1;
       yearlyByCurrency.set(p.currency, (yearlyByCurrency.get(p.currency) ?? 0) + p.amount);
+      addToSnapshot(yearlySnapshot, p);
     }
   }
 
@@ -311,6 +393,20 @@ paymentsRouter.get("/stats", async (c) => {
     yearlyByCurrency: Object.fromEntries(yearlyByCurrency),
     byCategory: Object.fromEntries(byCategory),
     currentMonth,
+    // 历史汇率快照口径：converted 为已按付款当日汇率换算到统计货币的部分，
+    // uncoveredByCurrency 为无快照的原币种金额（前端用当前汇率兜底）。
+    snapshot: {
+      monthly: {
+        converted: monthlySnapshot.converted,
+        coveredCount: monthlySnapshot.coveredCount,
+        uncoveredByCurrency: Object.fromEntries(monthlySnapshot.uncoveredByCurrency),
+      },
+      yearly: {
+        converted: yearlySnapshot.converted,
+        coveredCount: yearlySnapshot.coveredCount,
+        uncoveredByCurrency: Object.fromEntries(yearlySnapshot.uncoveredByCurrency),
+      },
+    },
   });
 });
 

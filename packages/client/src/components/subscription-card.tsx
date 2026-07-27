@@ -60,6 +60,8 @@ interface SubscriptionCardProps {
   onSnooze?: (id: string) => void;
   /** 点击”标记为已使用”回调（传订阅 id）。 */
   onTrackUsage?: (id: string) => void;
+  /** 点击”另存为模板”回调（传订阅 id）。 */
+  onSaveAsTemplate?: (id: string) => void;
   /** 用户 IANA 时区，用于续费/试用提示窗口。 */
   timeZone: string;
 }
@@ -75,7 +77,7 @@ const statusStyles: Record<string, string> = {
 const DEFAULT_BADGE_COLOR = "hsl(var(--primary))";
 
 /** 订阅卡片。 */
-export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDelete, onRenew, onConfigureChannels, onSnooze, onTrackUsage, timeZone }: SubscriptionCardProps) {
+export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDelete, onRenew, onConfigureChannels, onSnooze, onTrackUsage, onSaveAsTemplate, timeZone }: SubscriptionCardProps) {
   const { config } = useCustomConfig();
   const { t, locale, label, formatCurrency, formatDateOnly } = useI18n();
   const categoryConfig = config.categories.find((c) => c.value === subscription.category);
@@ -197,6 +199,11 @@ export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDe
             {onConfigureChannels && (
               <DropdownMenuItem onClick={() => onConfigureChannels(subscription.id)}>
                 {t("notificationStrategy.configureChannels")}
+              </DropdownMenuItem>
+            )}
+            {onSaveAsTemplate && (
+              <DropdownMenuItem onClick={() => onSaveAsTemplate(subscription.id)}>
+                {t("template.saveAsTemplate")}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem

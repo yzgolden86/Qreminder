@@ -9,6 +9,7 @@ import type { ExchangeRateProvider, ExchangeRates } from '@/lib/api/schemas/exch
 import { cn } from '@/lib/utils';
 import type { CustomConfig } from '@/types/config';
 import type { AppSettings } from '@/types/subscription';
+import { ExchangeRateHistoryPanel } from './exchange-rate-history-panel';
 
 /**
  * exchange-rates-section.tsx 渲染统计货币和汇率状态分区。
@@ -32,6 +33,8 @@ export interface ExchangeRatesSectionProps {
   handleDefaultCurrencyChange: (value: string) => void;
   handleExchangeRateProviderChange: (value: ExchangeRateProvider) => void | Promise<void>;
   getCurrencySymbol: (currency: string) => string;
+  /** 是否显示服务器快照的管理员操作（手动抓取按钮）。 */
+  isAdmin?: boolean;
 }
 
 export function ExchangeRatesSection({
@@ -47,6 +50,7 @@ export function ExchangeRatesSection({
   handleDefaultCurrencyChange,
   handleExchangeRateProviderChange,
   getCurrencySymbol,
+  isAdmin = false,
 }: ExchangeRatesSectionProps) {
   const { t, formatDateTime } = useI18n();
   const providerLabel = activeRateProvider === "builtin"
@@ -209,8 +213,11 @@ export function ExchangeRatesSection({
                   <p className="text-xs text-muted-foreground">
                     {t("settings.ratesInfo")}
                   </p>
+
+                  {/* 服务器汇率快照（历史支出口径） */}
+                  <ExchangeRateHistoryPanel isAdmin={isAdmin} />
                 </div>
               </section>
-    
+
   );
 }

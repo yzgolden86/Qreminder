@@ -30,6 +30,8 @@ import { auditLogsRouter } from "./routes/audit-logs.js";
 import { webdavRouter } from "./routes/webdav.js";
 import { annualReportRouter } from "./routes/annual-report.js";
 import { insightsRouter } from "./routes/insights.js";
+import { exchangeRatesRouter } from "./routes/exchange-rates.js";
+import { templatesRouter } from "./routes/templates.js";
 
 export interface AppDeps {
   db: Database;
@@ -108,6 +110,8 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   app.use("/api/ai/*", resolveWorkspace);
   app.use("/api/annual-report/*", resolveWorkspace);
   app.use("/api/insights/*", resolveWorkspace);
+  app.use("/api/templates/*", resolveWorkspace);
+  app.use("/api/exchange-rates/*", resolveWorkspace);
 
   app.route("/api/subscriptions", subscriptionsRouter);
   app.route("/api/settings", settingsRouter);
@@ -133,6 +137,8 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   app.route("/api/backup", webdavRouter);
   app.route("/api/payments/annual-report", annualReportRouter);
   app.route("/api/insights", insightsRouter);
+  app.route("/api/exchange-rates", exchangeRatesRouter);
+  app.route("/api/templates", templatesRouter);
 
   app.get("/api/app/health", (c) =>
     c.json({ status: "ok", runtime: deps.scheduler.kind }),

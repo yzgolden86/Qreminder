@@ -58,10 +58,9 @@ import {
 import { useExchangeRates } from "@/hooks/use-exchange-rates";
 import { useSubscriptions, useBatchDeleteSubscriptions, useBatchUpdateSubscriptions } from "@/hooks/use-subscriptions";
 import { useSettings } from "@/hooks/use-settings";
-import { useQuickRenew } from "@/hooks/use-payments";
-import { useSnoozeSubscription, useTrackUsage } from "@/hooks/use-subscriptions";
 import { useDashboardStats } from "@/modules/subscriptions/application/use-dashboard-stats";
 import { useSubscriptionCrud } from "@/modules/subscriptions/application/use-subscription-crud";
+import { useSubscriptionQuickActions } from "@/modules/subscriptions/application/use-subscription-quick-actions";
 import { useSubscriptionExport } from "@/modules/subscriptions/application/use-subscription-export";
 import { useSubscriptionFilters } from "@/modules/subscriptions/application/use-subscription-filters";
 import { useCustomConfig } from "@/contexts/CustomConfigContext";
@@ -89,9 +88,6 @@ export default function Home() {
   const [channelsDialogSubId, setChannelsDialogSubId] = useState<string | null>(null);
   const batchDelete = useBatchDeleteSubscriptions();
   const batchUpdate = useBatchUpdateSubscriptions();
-  const quickRenew = useQuickRenew();
-  const snoozeSubscription = useSnoozeSubscription();
-  const trackUsage = useTrackUsage();
 
   const { activeSubscriptions, totalMonthly, upcomingCount, trialCount } =
     useDashboardStats(subscriptions, defaultCurrency, convert, timeZone);
@@ -106,39 +102,8 @@ export default function Home() {
     handleEditDialogOpenChange,
   } = useSubscriptionCrud(subscriptions);
 
-  const handleQuickRenew = (id: string) => {
-    quickRenew.mutate(
-      { subscriptionId: id },
-      { onSuccess: () => toast.success(t("payments.quickRenewSuccess")) },
-    );
-  };
-
-  const handleSnooze = (id: string) => {
-    const sub = subscriptions.find((s) => s.id === id);
-    const isSnoozed = Boolean(sub?.snoozedUntil);
-    // Click while already snoozed = clear (days=0). Otherwise snooze 7 days.
-    // A dedicated dialog with day picker is a Phase 2 follow-up.
-    snoozeSubscription.mutate(
-      { id, days: isSnoozed ? 0 : 7 },
-      {
-        onSuccess: (res) => {
-          if (res.snoozedUntil) {
-            toast.success(t("subscription.snoozeUntil", { date: res.snoozedUntil }));
-          } else {
-            toast.success(t("subscription.snoozeCleared"));
-          }
-        },
-        onError: (err) => toast.error(err instanceof Error ? err.message : t("error.generic")),
-      },
-    );
-  };
-
-  const handleTrackUsage = (id: string) => {
-    trackUsage.mutate(id, {
-      onSuccess: () => toast.success(t("subscription.usageTracked")),
-      onError: (err) => toast.error(err instanceof Error ? err.message : t("error.generic")),
-    });
-  };
+  const { handleQuickRenew, handleSnooze, handleTrackUsage, handleSaveAsTemplate } =
+    useSubscriptionQuickActions(subscriptions);
 
   const {
     searchQuery,
@@ -474,6 +439,7 @@ export default function Home() {
                     onConfigureChannels: setChannelsDialogSubId,
                     onSnooze: handleSnooze,
                     onTrackUsage: handleTrackUsage,
+                    onSaveAsTemplate: handleSaveAsTemplate,
                   })}
                 />
               </div>

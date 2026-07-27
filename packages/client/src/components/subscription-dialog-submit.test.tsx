@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { assertDateOnly } from "@/lib/time/date-only";
 import { createSubscriptionFormState } from "@/types/subscription-form";
@@ -68,19 +69,26 @@ vi.mock("@/components/subscription-form-fields", () => ({
 }));
 
 describe("SubscriptionDialog submit", () => {
+  /** create 模式包含 TemplatePicker（内部 useQuery），需要 QueryClientProvider。 */
+  function renderWithProviders(ui: React.ReactElement) {
+    return render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <TooltipProvider delayDuration={0}>{ui}</TooltipProvider>
+      </QueryClientProvider>,
+    );
+  }
+
   it("submits an empty tags array when the create form tags input is blank", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
 
-    render(
-      <TooltipProvider delayDuration={0}>
-        <SubscriptionDialog
-          mode="create"
-          open
-          onOpenChange={vi.fn()}
-          onSubmit={onSubmit}
-        />
-      </TooltipProvider>,
+    renderWithProviders(
+      <SubscriptionDialog
+        mode="create"
+        open
+        onOpenChange={vi.fn()}
+        onSubmit={onSubmit}
+      />,
     );
 
     await user.click(screen.getByRole("button", { name: "填充有效订阅" }));
@@ -96,15 +104,13 @@ describe("SubscriptionDialog submit", () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
 
-    render(
-      <TooltipProvider delayDuration={0}>
-        <SubscriptionDialog
-          mode="create"
-          open
-          onOpenChange={vi.fn()}
-          onSubmit={onSubmit}
-        />
-      </TooltipProvider>,
+    renderWithProviders(
+      <SubscriptionDialog
+        mode="create"
+        open
+        onOpenChange={vi.fn()}
+        onSubmit={onSubmit}
+      />,
     );
 
     await user.click(screen.getByRole("button", { name: "填充非法网站订阅" }));

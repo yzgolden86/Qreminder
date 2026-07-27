@@ -16,3 +16,5 @@ export type {
   AutoBackupResult,
   BackupStore,
 } from "./cron/auto-backup.js";
+export { fetchDailyExchangeRates } from "./cron/exchange-rate-fetcher.js";
+export type { ExchangeRateFetchResult } from "./cron/exchange-rate-fetcher.js";

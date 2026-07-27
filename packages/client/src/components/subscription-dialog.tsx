@@ -22,6 +22,8 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { SubscriptionFormFields, type SubscriptionFormErrors } from "@/components/subscription-form-fields";
 import { PriceHistoryPanel } from "@/components/price-history-panel";
+import { TemplatePicker } from "@/components/template-picker";
+import type { SubscriptionTemplate } from "@/hooks/use-templates";
 import type { UploadStatus as LogoUploadStatus } from "@/components/logo-picker";
 import { calculateNextBillingDate } from "@/lib/subscription-billing";
 import {
@@ -44,8 +46,12 @@ type CreateDialogProps = {
   open: boolean;
   /** 弹窗开关回调。 */
   onOpenChange: (open: boolean) => void;
-  /** 新增提交回调（不含 id）。 */
-  onSubmit: (subscription: SubscriptionDraft) => void;
+  /**
+   * 新增提交回调（不含 id）。
+   * meta.template 存在时表示本次创建源自模板：调用方应在创建成功后
+   * 绑定 defaultChannels 并上报使用计数。
+   */
+  onSubmit: (subscription: SubscriptionDraft, meta?: { template: SubscriptionTemplate }) => void;
   /** 触发器（可选，通常是“添加订阅”按钮）。 */
   trigger?: ReactNode;
 };
@@ -89,6 +95,9 @@ export function SubscriptionDialog(props: SubscriptionDialogProps) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<SubscriptionFormErrors>({});
   const [createCurrencyManuallySelected, setCreateCurrencyManuallySelected] = useState(false);
+  // 当前选中的模板（仅 create 模式）。提交时随 meta 上抛，创建成功后由
+  // 调用方绑定模板的 defaultChannels 并 +1 使用计数。
+  const [selectedTemplate, setSelectedTemplate] = useState<SubscriptionTemplate | null>(null);
   const [formData, setFormData] = useState<SubscriptionFormState>(() =>
     props.mode === "edit"
       ? createSubscriptionFormState()
@@ -216,6 +225,29 @@ export function SubscriptionDialog(props: SubscriptionDialogProps) {
     [props.mode],
   );
 
+  /**
+   * 应用模板：预填分类/标签/付款方式/周期/提醒档位/备注/Logo。
+   * 刻意不动 name/price/currency/日期——那些是每个订阅独有的。
+   * 选「空白订阅」只清除选中态，不回滚已填字段（避免误删用户输入）。
+   */
+  const handleTemplateSelect = useCallback((template: SubscriptionTemplate | null) => {
+    setSelectedTemplate(template);
+    if (!template) return;
+    setFormData((prev) => ({
+      ...prev,
+      category: template.category || prev.category,
+      tags: template.tags.length > 0 ? template.tags.join(", ") : prev.tags,
+      paymentMethod: template.paymentMethod || prev.paymentMethod,
+      billingCycle: template.billingCycle,
+      customDays: template.customDays != null ? String(template.customDays) : prev.customDays,
+      reminderOffsets: template.reminderOffsets.length > 0
+        ? normalizeReminderOffsets(template.reminderOffsets)
+        : prev.reminderOffsets,
+      notes: template.notes || prev.notes,
+      logo: template.logoUrl || prev.logo,
+    }));
+  }, []);
+
   const validateForm = useCallback(() => {
     const errors: SubscriptionFormErrors = {};
 
@@ -272,9 +304,15 @@ export function SubscriptionDialog(props: SubscriptionDialogProps) {
     setSubmitError(null);
 
     if (props.mode === "create") {
-      props.onSubmit(draft);
+      // 只有确实选了模板才传第二参数，避免调用方/测试拿到多余的 undefined。
+      if (selectedTemplate) {
+        props.onSubmit(draft, { template: selectedTemplate });
+      } else {
+        props.onSubmit(draft);
+      }
       setFormData(createSubscriptionFormState({ currency: defaultCreateCurrency }));
       setCreateCurrencyManuallySelected(false);
+      setSelectedTemplate(null);
       setLogoUploadStatus("idle");
       setFormErrors({});
       props.onOpenChange(false);
@@ -308,6 +346,12 @@ export function SubscriptionDialog(props: SubscriptionDialogProps) {
 
         <form ref={formRef} onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden" noValidate>
           <div className="min-h-0 flex-1 grid gap-5 overflow-y-auto px-6 py-4">
+            {props.mode === "create" && (
+              <TemplatePicker
+                selectedId={selectedTemplate?.id ?? null}
+                onSelect={handleTemplateSelect}
+              />
+            )}
             <SubscriptionFormFields
               idPrefix={idPrefix}
               config={config}

@@ -40,20 +40,27 @@ vi.mock("@/components/logo-picker", () => ({
   LogoPicker: () => null,
 }));
 
+/** create 模式现在包含 TemplatePicker（内部 useQuery），所有用例都需要 QueryClientProvider。 */
+function renderWithProviders(ui: React.ReactElement) {
+  return render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <TooltipProvider delayDuration={0}>{ui}</TooltipProvider>
+    </QueryClientProvider>,
+  );
+}
+
 describe("SubscriptionDialog", () => {
   it("shows field errors on empty create submit instead of relying on native validation", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
 
-    render(
-      <TooltipProvider delayDuration={0}>
-        <SubscriptionDialog
-          mode="create"
-          open
-          onOpenChange={vi.fn()}
-          onSubmit={onSubmit}
-        />
-      </TooltipProvider>,
+    renderWithProviders(
+      <SubscriptionDialog
+        mode="create"
+        open
+        onOpenChange={vi.fn()}
+        onSubmit={onSubmit}
+      />,
     );
 
     expect(document.querySelector("form")).toHaveAttribute("novalidate");
@@ -69,15 +76,13 @@ describe("SubscriptionDialog", () => {
   it("keeps a manually selected create currency instead of syncing back to the default", async () => {
     const user = userEvent.setup();
 
-    render(
-      <TooltipProvider delayDuration={0}>
-        <SubscriptionDialog
-          mode="create"
-          open
-          onOpenChange={vi.fn()}
-          onSubmit={vi.fn()}
-        />
-      </TooltipProvider>,
+    renderWithProviders(
+      <SubscriptionDialog
+        mode="create"
+        open
+        onOpenChange={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
     );
 
     const dialog = screen.getByRole("dialog", { name: "添加新订阅" });

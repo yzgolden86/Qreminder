@@ -10,12 +10,13 @@ import type { ReactNode } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SubscriptionDialog } from "@/components/subscription-dialog";
+import type { SubscriptionTemplate } from "@/hooks/use-templates";
 import type { SubscriptionDraft } from "@/types/subscription";
 import { useI18n } from "@/i18n/I18nProvider";
 
 interface AddSubscriptionDialogProps {
-  /** 提交新增订阅（不包含 id，由后端生成）。 */
-  onAdd: (subscription: SubscriptionDraft) => void;
+  /** 提交新增订阅（不包含 id，由后端生成）；meta.template 表示从模板创建。 */
+  onAdd: (subscription: SubscriptionDraft, meta?: { template: SubscriptionTemplate }) => void;
   /** 自定义触发器（不传则使用默认 “+ 新增订阅” 按钮）。 */
   trigger?: ReactNode;
 }

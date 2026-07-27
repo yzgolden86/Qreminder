@@ -45,6 +45,7 @@ import { DataBackupSection } from './data-backup-section';
 import { AiSettingsSection } from './ai-settings-section';
 import { VaultSettingsSection } from './vault-settings-section';
 import { NotificationStrategySection } from './notification-strategy-section';
+import { TemplateManagerSection } from './template-manager-section';
 import { CategoryTagChannelsSection } from './category-tag-channels-section';
 import { FallbackChannelsSection } from './fallback-channels-section';
 import { ImportFromOtherToolsSection } from './import-from-other-tools-section';
@@ -388,6 +389,7 @@ export function SettingsScreen() {
             handleDefaultCurrencyChange={handleDefaultCurrencyChange}
             handleExchangeRateProviderChange={handleExchangeRateProviderChange}
             getCurrencySymbol={getCurrencySymbol}
+            isAdmin={canAccessPocketBaseAdmin}
           />
 
           {/* 时区设置 */}
@@ -475,6 +477,9 @@ export function SettingsScreen() {
 
           {/* 通知策略 */}
           <NotificationStrategySection />
+
+          {/* 订阅模板管理 */}
+          <TemplateManagerSection />
 
           {/* 分类/标签默认通知渠道 */}
           <CategoryTagChannelsSection />

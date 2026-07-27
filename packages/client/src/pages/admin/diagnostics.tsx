@@ -40,6 +40,13 @@ const diagnosticsSchema = z.object({
     attempts: z.number(),
     updatedAt: z.string(),
   })),
+  // 汇率表健康度：latestDate 为 null 表示 cron 还没抓取过任何汇率。
+  exchangeRates: z.object({
+    latestDate: z.string().nullable(),
+    lastUpdatedAt: z.string().nullable(),
+    provider: z.string().nullable(),
+    totalRecords: z.number(),
+  }).optional(),
 });
 
 export default function Diagnostics() {
@@ -89,6 +96,35 @@ export default function Diagnostics() {
         <CountCard label="支付记录" count={data.stats.payments} />
         <CountCard label="预算" count={data.stats.budgets} />
       </div>
+
+      {data.exchangeRates && (
+        <div className="surface-card rounded-xl p-5 mb-6">
+          <div className="mb-3 flex items-center gap-2">
+            <Activity className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">汇率数据</h3>
+          </div>
+          {data.exchangeRates.latestDate === null ? (
+            <p className="text-[13px] text-muted-foreground">
+              尚未抓取汇率数据。每日 Cron 会自动抓取，或在设置页手动刷新。
+            </p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-3 text-[13px]">
+              <div>
+                <p className="text-[11px] text-muted-foreground">最新汇率日期</p>
+                <p className="font-semibold text-foreground">{data.exchangeRates.latestDate}</p>
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground">数据来源</p>
+                <p className="font-semibold text-foreground">{data.exchangeRates.provider ?? "-"}</p>
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground">累计记录数</p>
+                <p className="font-semibold text-foreground">{data.exchangeRates.totalRecords}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2 mb-6">
         <div className="surface-card rounded-xl p-5">

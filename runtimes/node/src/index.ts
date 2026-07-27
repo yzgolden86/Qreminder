@@ -7,7 +7,7 @@ import cron from "node-cron";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { existsSync, readFileSync, mkdirSync } from "node:fs";
-import { createApp, runNotificationCron } from "@qreminder/server";
+import { createApp, runNotificationCron, fetchDailyExchangeRates } from "@qreminder/server";
 import * as schema from "@qreminder/server";
 import type {
   AppDeps,
@@ -96,7 +96,10 @@ const httpServer = serve({ fetch: app.fetch, port }, ({ port: listenPort }) => {
 
 const cronExpr = process.env.NOTIFICATION_SCHEDULER_CRON ?? "* * * * *";
 const cronEnabled = process.env.NOTIFICATION_SCHEDULER_ENABLED !== "false";
+const exchangeRateCronExpr = process.env.EXCHANGE_RATE_CRON ?? "0 0 * * *"; // Daily at 00:00
+const exchangeRateCronEnabled = process.env.EXCHANGE_RATE_CRON_ENABLED !== "false";
 let cronTask: ScheduledTask | null = null;
+let exchangeRateCronTask: ScheduledTask | null = null;
 
 if (cronEnabled) {
   let running = false;
@@ -116,6 +119,28 @@ if (cronEnabled) {
       running = false;
     }
   });
+}
+
+if (exchangeRateCronEnabled) {
+  let running = false;
+  exchangeRateCronTask = cron.schedule(exchangeRateCronExpr, async () => {
+    if (running) return;
+    running = true;
+    try {
+      const result = await fetchDailyExchangeRates(db);
+      console.log(
+        `[exchange-rate-cron] date=${result.date} fetched=${result.fetched} skipped=${result.skipped} failed=${result.failed} provider=${result.provider ?? "none"}`,
+      );
+      if (result.errors.length > 0) {
+        console.warn(`[exchange-rate-cron] errors:`, result.errors);
+      }
+    } catch (err) {
+      console.error("[exchange-rate-cron] run failed:", err);
+    } finally {
+      running = false;
+    }
+  });
+  console.log(`[exchange-rate-cron] scheduled: ${exchangeRateCronExpr}`);
 }
 
 function closeHttpServer() {
@@ -145,6 +170,7 @@ async function shutdown(signal: NodeJS.Signals) {
   try {
     console.log(`qreminder-node received ${signal}, shutting down`);
     cronTask?.stop();
+    exchangeRateCronTask?.stop();
     await closeHttpServer();
     sqlite.close();
     process.exit(0);

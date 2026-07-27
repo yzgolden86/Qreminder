@@ -11,6 +11,8 @@ import {
   useDeleteSubscription,
   useUpdateSubscription,
 } from "@/hooks/use-subscriptions";
+import { useSetSubscriptionChannels } from "@/hooks/use-notification-strategy";
+import { useMarkTemplateUsed, type SubscriptionTemplate } from "@/hooks/use-templates";
 import { useDeferredDialogCleanup } from "@/hooks/use-deferred-dialog-cleanup";
 import { toast } from "@/components/ui/sonner";
 import { useI18n } from "@/i18n/I18nProvider";
@@ -22,14 +24,31 @@ export function useSubscriptionCrud(subscriptions: readonly Subscription[]) {
   const createSubscription = useCreateSubscription();
   const updateSubscription = useUpdateSubscription();
   const deleteSubscription = useDeleteSubscription();
+  const setSubscriptionChannels = useSetSubscriptionChannels();
+  const markTemplateUsed = useMarkTemplateUsed();
   const [editingSubscription, setEditingSubscription] = useState<Subscription | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const { scheduleCleanup: scheduleEditCleanup, cancelCleanup: cancelEditCleanup } = useDeferredDialogCleanup(() => {
     setEditingSubscription(null);
   });
 
-  const handleAddSubscription = (newSubscription: SubscriptionDraft) => {
-    createSubscription.mutate(newSubscription);
+  const handleAddSubscription = (
+    newSubscription: SubscriptionDraft,
+    meta?: { template: SubscriptionTemplate },
+  ) => {
+    createSubscription.mutate(newSubscription, {
+      onSuccess: (created) => {
+        if (!meta?.template) return;
+        // 模板后置动作是锦上添花：渠道绑定/计数失败不打断创建流程，静默即可。
+        if (meta.template.defaultChannels.length > 0) {
+          setSubscriptionChannels.mutate({
+            subscriptionId: created.id,
+            channels: meta.template.defaultChannels,
+          });
+        }
+        markTemplateUsed.mutate(meta.template.id);
+      },
+    });
   };
 
   const handleDeleteSubscription = (id: string) => {

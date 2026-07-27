@@ -21,22 +21,34 @@ export function RealSpendingWidget({ estimatedMonthly }: RealSpendingWidgetProps
   const [view, setView] = useState<"actual" | "estimated">("actual");
 
   // Convert per-currency buckets to the user's default currency before summing.
-  // The server-side monthlySpent field naïvely adds raw amounts across currencies;
-  // we ignore it and recompute here so the displayed number is meaningful for
-  // mixed-currency portfolios.
-  const { actualMonth, actualYear } = useMemo(() => {
-    const monthly = stats?.monthlyByCurrency ?? {};
-    const yearly = stats?.yearlyByCurrency ?? {};
+  // 优先用「历史汇率快照」口径：服务端已把带快照的支付按付款当日汇率换算好
+  //（snapshot.converted），只有无快照的旧数据才用当前汇率兜底换算。
+  // 没有 snapshot 字段（旧服务端）时整体回退到当前汇率口径。
+  const { actualMonth, actualYear, snapshotCoverage } = useMemo(() => {
     const sumConverted = (buckets: Record<string, number>) =>
       Object.entries(buckets).reduce(
         (sum, [cur, amount]) => sum + convert(amount, cur, defaultCurrency),
         0,
       );
+
+    const snapshot = stats?.snapshot;
+    if (snapshot) {
+      return {
+        actualMonth: snapshot.monthly.converted + sumConverted(snapshot.monthly.uncoveredByCurrency),
+        actualYear: snapshot.yearly.converted + sumConverted(snapshot.yearly.uncoveredByCurrency),
+        snapshotCoverage: {
+          monthly: snapshot.monthly.coveredCount,
+          yearly: snapshot.yearly.coveredCount,
+        },
+      };
+    }
+
     return {
-      actualMonth: sumConverted(monthly),
-      actualYear: sumConverted(yearly),
+      actualMonth: sumConverted(stats?.monthlyByCurrency ?? {}),
+      actualYear: sumConverted(stats?.yearlyByCurrency ?? {}),
+      snapshotCoverage: null,
     };
-  }, [stats?.monthlyByCurrency, stats?.yearlyByCurrency, convert, defaultCurrency]);
+  }, [stats?.snapshot, stats?.monthlyByCurrency, stats?.yearlyByCurrency, convert, defaultCurrency]);
 
   if (isLoading) return null;
 
@@ -97,6 +109,9 @@ export function RealSpendingWidget({ estimatedMonthly }: RealSpendingWidgetProps
           {view === "actual" && hasMixedCurrency && (
             <div className="mt-1 text-[10px] text-muted-foreground">
               {t("realSpending.convertedFrom", { count: currencies.length })}
+              {snapshotCoverage && snapshotCoverage.monthly > 0 && (
+                <> · {t("realSpending.snapshotRates")}</>
+              )}
             </div>
           )}
           {view === "actual" && estimatedMonthly > 0 && (

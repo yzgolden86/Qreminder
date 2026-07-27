@@ -1,5 +1,5 @@
 import { drizzle } from "drizzle-orm/d1";
-import { createApp, runNotificationCron, runAuditRetention, runAutoBackup } from "@qreminder/server";
+import { createApp, runNotificationCron, runAuditRetention, runAutoBackup, fetchDailyExchangeRates } from "@qreminder/server";
 import * as schema from "@qreminder/server";
 import type {
   AppDeps,
@@ -110,6 +110,20 @@ export default {
     // Daily housekeeping at 03:00 UTC — cron fires every minute, so gate by clock.
     const fireAt = new Date(event.scheduledTime);
     if (fireAt.getUTCHours() === 3 && fireAt.getUTCMinutes() === 0) {
+      // Exchange rate refresh
+      ctx.waitUntil(
+        fetchDailyExchangeRates(db)
+          .then((result) => {
+            console.log(
+              `[exchange-rate-cron] date=${result.date} fetched=${result.fetched} skipped=${result.skipped} failed=${result.failed} provider=${result.provider ?? "none"}`,
+            );
+            if (result.errors.length > 0) {
+              console.warn(`[exchange-rate-cron] errors:`, result.errors);
+            }
+          })
+          .catch((err) => console.error("[exchange-rate-cron] run failed:", err)),
+      );
+
       const retentionDays = Number(env.AUDIT_RETENTION_DAYS ?? "180");
       ctx.waitUntil(
         runAuditRetention(db, { retentionDays })

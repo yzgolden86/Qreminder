@@ -12,6 +12,7 @@ import {
   budgets,
   notificationJobs,
   settings,
+  exchangeRates,
 } from "../db/schema.js";
 import { requireSession } from "../middleware/require-session.js";
 import type { AppEnv } from "../app.js";
@@ -36,6 +37,8 @@ diagnosticsRouter.get("/", async (c) => {
     budgetCount,
     recentJobs,
     failedJobs,
+    latestRate,
+    rateCount,
   ] = await Promise.all([
     db.select({ count: sql<number>`count(*)` }).from(users),
     db.select({ count: sql<number>`count(*)` }).from(subscriptions),
@@ -46,6 +49,11 @@ diagnosticsRouter.get("/", async (c) => {
       .where(sql`${notificationJobs.status} = 'failed'`)
       .orderBy(desc(notificationJobs.updatedAt))
       .limit(10),
+    db.select({ date: exchangeRates.date, updatedAt: exchangeRates.updatedAt, provider: exchangeRates.provider })
+      .from(exchangeRates)
+      .orderBy(desc(exchangeRates.date))
+      .limit(1),
+    db.select({ count: sql<number>`count(*)` }).from(exchangeRates),
   ]);
 
   const lastCronRun = recentJobs[0]?.updatedAt ?? null;
@@ -85,5 +93,11 @@ diagnosticsRouter.get("/", async (c) => {
       attempts: j.attempts,
       updatedAt: j.updatedAt,
     })),
+    exchangeRates: {
+      latestDate: latestRate[0]?.date ?? null,
+      lastUpdatedAt: latestRate[0]?.updatedAt ?? null,
+      provider: latestRate[0]?.provider ?? null,
+      totalRecords: rateCount[0]?.count ?? 0,
+    },
   });
 });
