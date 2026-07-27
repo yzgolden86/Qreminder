@@ -103,11 +103,23 @@ export function SubscriptionDialog(props: SubscriptionDialogProps) {
       ? createSubscriptionFormState()
       : createSubscriptionFormState({ currency: defaultCreateCurrency }),
   );
+  // 关闭弹窗时把表单恢复到"全新"状态，而不只是清瞬态错误。
+  // 为什么：SubscriptionDialog 在关闭时不会卸载（上层只切 open），所以 useState
+  // 初始值不会重跑。不重置的话，取消后再打开会残留上次填的字段和已选模板——
+  // 模板会成片预填分类/周期/付款方式，让"新建"看起来像在改上一条草稿。
+  // 编辑模式的表单由 open 时的 subscription 回填 effect 负责，这里清空无副作用。
   const resetTransientDialogState = useCallback(() => {
     setLogoUploadStatus("idle");
     setSubmitError(null);
     setFormErrors({});
-  }, []);
+    setSelectedTemplate(null);
+    setCreateCurrencyManuallySelected(false);
+    setFormData(
+      props.mode === "edit"
+        ? createSubscriptionFormState()
+        : createSubscriptionFormState({ currency: defaultCreateCurrency }),
+    );
+  }, [defaultCreateCurrency, props.mode]);
   const { scheduleCleanup: scheduleTransientCleanup, cancelCleanup: cancelTransientCleanup } =
     useDeferredDialogCleanup(resetTransientDialogState);
 
@@ -310,6 +322,9 @@ export function SubscriptionDialog(props: SubscriptionDialogProps) {
       } else {
         props.onSubmit(draft);
       }
+      // 提交成功后立刻清空，不等关闭时的 deferred reset：那个要等 200ms
+      // 关闭动画，期间弹窗仍可见，用户会看到刚提交的内容一闪。这里和
+      // resetTransientDialogState 的重叠是有意的。
       setFormData(createSubscriptionFormState({ currency: defaultCreateCurrency }));
       setCreateCurrencyManuallySelected(false);
       setSelectedTemplate(null);
