@@ -1,4 +1,5 @@
 import { Search, Filter } from "lucide-react";
+import type { RefObject } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +43,8 @@ interface DashboardFilterPanelProps {
   allTags: string[];
   selectedTags: string[];
   toggleTag: (tag: string) => void;
+  /** 搜索框 ref，供键盘快捷键聚焦。 */
+  searchInputRef?: RefObject<HTMLInputElement | null>;
 }
 
 export function DashboardFilterPanel({
@@ -58,6 +61,7 @@ export function DashboardFilterPanel({
   allTags,
   selectedTags,
   toggleTag,
+  searchInputRef,
 }: DashboardFilterPanelProps) {
   const { t, label } = useI18n();
   const { config } = useCustomConfig();
@@ -82,11 +86,20 @@ export function DashboardFilterPanel({
         <div className="relative w-full sm:flex-1 sm:min-w-[200px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
+            ref={searchInputRef}
             placeholder={t("subscriptions.searchPlaceholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="border-border bg-secondary/70 pl-10"
+            className="border-border bg-secondary/70 pl-10 pr-10"
           />
+          {searchQuery === "" && (
+            <kbd
+              aria-label={t("subscriptions.searchShortcutHint")}
+              className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-border bg-background px-1.5 py-0.5 font-sans text-[10px] leading-none text-muted-foreground sm:block"
+            >
+              /
+            </kbd>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-4">
@@ -167,10 +180,44 @@ export function DashboardFilterPanel({
         </div>
       </div>
 
+      {/* Quick Status Segmented Pills */}
+      <div className="flex flex-wrap items-center gap-1.5 border-t border-border/50 pt-3">
+        <button
+          type="button"
+          onClick={() => setStatusFilter("all")}
+          className={cn(
+            "rounded-full px-3 py-1 text-xs font-medium transition-all duration-200",
+            statusFilter === "all"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground",
+          )}
+        >
+          {t("subscriptions.allStatuses")}
+        </button>
+        {config.statuses.map((status) => {
+          const active = statusFilter === status.value;
+          return (
+            <button
+              key={status.id}
+              type="button"
+              onClick={() => setStatusFilter(status.value as SubscriptionStatus)}
+              className={cn(
+                "rounded-full px-3 py-1 text-xs font-medium transition-all duration-200",
+                active
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground",
+              )}
+            >
+              {label(status.labels)}
+            </button>
+          );
+        })}
+      </div>
+
       {allTags.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-2 border-t border-border/50 pt-3">
+          <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-xs font-medium text-muted-foreground">
             {t("subscription.field.tags")}:
           </span>
           {allTags.map((tag) => (

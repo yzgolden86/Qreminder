@@ -58,6 +58,37 @@ export function isOptionalHttpUrl(input: string | null | undefined): boolean {
 }
 
 /**
+ * 规范化用户输入的网站地址：
+ * - 若未包含协议前缀（如 `://`）且包含域名点号（如 `netflix.com`），自动补齐 `https://`
+ * - 若已包含协议（如 `http://`、`https://`、`ftp://`），保留原值交给校验器判断
+ */
+export function normalizeWebsiteInput(input: string): string {
+  const trimmed = input.trim();
+  if (!trimmed) return "";
+  if (/^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(trimmed)) {
+    return trimmed;
+  }
+  if (/^[^\s/]+\.[^\s/]+/.test(trimmed)) {
+    return `https://${trimmed}`;
+  }
+  return trimmed;
+}
+
+/** 提取可安全跳转的 http(s) URL 与精简域名（去除 www. 前缀）。 */
+export function extractWebsiteDomain(input: string | null | undefined): { href: string; domain: string } | null {
+  const value = input?.trim() ?? "";
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    const domain = url.hostname.replace(/^www\./i, "");
+    return domain ? { href: url.toString(), domain } : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * 将标签输入（分隔字符串）转换为标签数组。
  *
  * 注意：
@@ -129,7 +160,8 @@ export function getSubscriptionDraftValidationError(formData: SubscriptionFormSt
   if (formData.billingCycle === "custom" && parsePositiveIntegerInput(formData.customDays) === null) {
     return translate(locale, "subscription.validation.customCycleInvalid");
   }
-  if (!isOptionalHttpUrl(formData.website)) return translate(locale, "subscription.validation.websiteInvalid");
+  const normalizedWebsite = normalizeWebsiteInput(formData.website);
+  if (!isOptionalHttpUrl(normalizedWebsite)) return translate(locale, "subscription.validation.websiteInvalid");
   return null;
 }
 
@@ -157,6 +189,7 @@ export function toSubscriptionDraft(formData: SubscriptionFormState): Subscripti
     return null;
   }
 
+  const normalizedWebsite = normalizeWebsiteInput(formData.website);
   const base = {
     name: formData.name,
     logo: formData.logo,
@@ -170,7 +203,7 @@ export function toSubscriptionDraft(formData: SubscriptionFormState): Subscripti
     autoCalculateNextBillingDate: formData.autoCalculate,
     trialEndDate: undefined,
     reminderOffsets,
-    website: formData.website || undefined,
+    website: normalizedWebsite || undefined,
     notes: formData.notes || undefined,
     tags: parseTagsInput(formData.tags),
   };

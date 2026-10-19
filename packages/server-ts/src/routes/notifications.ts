@@ -48,14 +48,16 @@ notificationsRouter.get("/recent-failures", async (c) => {
       and(
         eq(notificationJobs.user, userId),
         eq(notificationJobs.workspaceId, workspaceId),
-        eq(notificationJobs.status, "failed"),
       ),
     )
     .orderBy(desc(notificationJobs.scheduledLocalDate));
 
-  // Filter by cutoff after the SQL query because notificationJobs has no
-  // index on scheduledLocalDate and the result set is small per user.
-  const recent = rows.filter((r) => r.scheduledLocalDate >= cutoffDate);
+  // Filter by cutoff and include both full failures and partial channel failures (non-empty lastError)
+  const recent = rows.filter(
+    (r) =>
+      r.scheduledLocalDate >= cutoffDate &&
+      (r.status === "failed" || Boolean(r.lastError && r.lastError.trim())),
+  );
 
   return c.json({
     count: recent.length,

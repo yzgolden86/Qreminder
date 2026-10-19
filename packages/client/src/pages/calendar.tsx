@@ -35,10 +35,10 @@ const Calendar = () => {
 
   if (subscriptionsQuery.isPending) {
     return (
-      <div>
-        <div className="mb-6">
-          <div className="mb-2 h-7 w-32 rounded bg-muted skeleton-shimmer" />
-          <div className="h-4 w-48 rounded bg-muted skeleton-shimmer" />
+      <div className="flex min-h-[calc(100vh-3rem)] flex-col">
+        <div className="mb-4">
+          <div className="mb-2 h-7 w-36 rounded bg-muted skeleton-shimmer" />
+          <div className="h-4 w-56 rounded bg-muted skeleton-shimmer" />
         </div>
         <CalendarSkeleton />
       </div>
@@ -46,10 +46,12 @@ const Calendar = () => {
   }
 
   return (
-    <>
-      <div className="mb-6">
-        <h1 className="text-[22px] font-semibold tracking-tight text-foreground">{t("calendar.title")}</h1>
-        <p className="mt-1 text-[13px] text-muted-foreground">{t("calendar.pageSubtitle")}</p>
+    <div className="flex min-h-[calc(100vh-3.5rem)] flex-col">
+      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("calendar.title")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("calendar.pageSubtitle")}</p>
+        </div>
       </div>
 
       <SubscriptionCalendar
@@ -63,7 +65,7 @@ const Calendar = () => {
         onOpenChange={setEditDialogOpen}
         onSave={handleSaveSubscription}
       />
-    </>
+    </div>
   );
 };
 

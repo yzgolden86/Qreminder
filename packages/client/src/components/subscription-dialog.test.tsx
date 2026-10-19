@@ -145,4 +145,41 @@ describe("SubscriptionDialog", () => {
     expect(screen.getByRole("button", { name: "四月" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /2026年4月16日.*selected/ })).toBeInTheDocument();
   });
+
+  it("shows and pre-populates the website field in edit mode", () => {
+    const subscription: Subscription = {
+      id: "sub-2",
+      name: "Netflix",
+      logo: undefined,
+      price: 15.99,
+      currency: "USD",
+      billingCycle: "monthly",
+      customDays: undefined,
+      category: "productivity",
+      status: "active",
+      paymentMethod: "alipay",
+      startDate: assertDateOnly("2026-04-16"),
+      nextBillingDate: assertDateOnly("2026-05-16"),
+      autoCalculateNextBillingDate: false,
+      trialEndDate: undefined,
+      website: "https://netflix.com/account",
+      notes: "Family plan",
+      reminderOffsets: [3],
+      tags: [],
+    };
+
+    renderWithProviders(
+      <SubscriptionDialog
+        mode="edit"
+        open
+        onOpenChange={vi.fn()}
+        onSubmit={vi.fn()}
+        subscription={subscription}
+      />,
+    );
+
+    const websiteInput = screen.getByLabelText("网站") as HTMLInputElement;
+    expect(websiteInput).toBeInTheDocument();
+    expect(websiteInput.value).toBe("https://netflix.com/account");
+  });
 });

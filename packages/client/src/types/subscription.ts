@@ -419,7 +419,7 @@ export function normalizeReminderOffsets(values: readonly number[]): number[] {
 
 /** 汇率来源共同支持的 30 种货币（用于默认列表与下拉选项）。 */
 export const CURRENCY_OPTIONS = [
-  // 🌏 亚洲 (10个)
+  // 亚洲 (10个)
   { value: 'CNY', labels: labels('人民币 (¥)', 'Chinese yuan (¥)'), region: 'asia' },
   { value: 'HKD', labels: labels('港币 (HK$)', 'Hong Kong dollar (HK$)'), region: 'asia' },
   { value: 'JPY', labels: labels('日元 (¥)', 'Japanese yen (¥)'), region: 'asia' },
@@ -430,7 +430,7 @@ export const CURRENCY_OPTIONS = [
   { value: 'MYR', labels: labels('马来西亚林吉特 (RM)', 'Malaysian ringgit (RM)'), region: 'asia' },
   { value: 'THB', labels: labels('泰铢 (฿)', 'Thai baht (฿)'), region: 'asia' },
   { value: 'PHP', labels: labels('菲律宾比索 (₱)', 'Philippine peso (₱)'), region: 'asia' },
-  // 🇪🇺 欧洲 (13个)
+  // 欧洲 (13个)
   { value: 'EUR', labels: labels('欧元 (€)', 'Euro (€)'), region: 'europe' },
   { value: 'GBP', labels: labels('英镑 (£)', 'British pound (£)'), region: 'europe' },
   { value: 'CHF', labels: labels('瑞士法郎 (CHF)', 'Swiss franc (CHF)'), region: 'europe' },
@@ -444,15 +444,15 @@ export const CURRENCY_OPTIONS = [
   { value: 'ISK', labels: labels('冰岛克朗 (kr)', 'Icelandic krona (kr)'), region: 'europe' },
   { value: 'TRY', labels: labels('土耳其里拉 (₺)', 'Turkish lira (₺)'), region: 'europe' },
   { value: 'ILS', labels: labels('以色列谢克尔 (₪)', 'Israeli new shekel (₪)'), region: 'europe' },
-  // 🌎 美洲 (4个)
+  // 美洲 (4个)
   { value: 'USD', labels: labels('美元 ($)', 'US dollar ($)'), region: 'americas' },
   { value: 'CAD', labels: labels('加元 (C$)', 'Canadian dollar (C$)'), region: 'americas' },
   { value: 'MXN', labels: labels('墨西哥比索 (MX$)', 'Mexican peso (MX$)'), region: 'americas' },
   { value: 'BRL', labels: labels('巴西雷亚尔 (R$)', 'Brazilian real (R$)'), region: 'americas' },
-  // 🇦🇺 大洋洲 (2个)
+  // 大洋洲 (2个)
   { value: 'AUD', labels: labels('澳元 (A$)', 'Australian dollar (A$)'), region: 'oceania' },
   { value: 'NZD', labels: labels('新西兰元 (NZ$)', 'New Zealand dollar (NZ$)'), region: 'oceania' },
-  // 🌍 非洲 (1个)
+  // 非洲 (1个)
   { value: 'ZAR', labels: labels('南非兰特 (R)', 'South African rand (R)'), region: 'africa' },
 ] as const satisfies readonly CurrencyOption[];
 

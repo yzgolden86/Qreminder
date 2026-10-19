@@ -101,8 +101,21 @@ async function sendEmail(
   userEmail: string,
   message: ChannelMessage,
 ): Promise<void> {
+  const nestedChannels =
+    settings["channels"] && typeof settings["channels"] === "object" && !Array.isArray(settings["channels"])
+      ? (settings["channels"] as Record<string, unknown>)
+      : undefined;
+  const nestedEmail =
+    nestedChannels?.["email"] && typeof nestedChannels["email"] === "object" && !Array.isArray(nestedChannels["email"])
+      ? (nestedChannels["email"] as Record<string, unknown>)
+      : undefined;
+  const rawRecipient =
+    typeof settings["recipientEmail"] === "string" && settings["recipientEmail"].trim()
+      ? settings["recipientEmail"]
+      : nestedEmail?.["recipientEmail"] ?? nestedEmail?.["to"];
+
   const recipients = parseEmailRecipients(
-    settings["recipientEmail"],
+    rawRecipient,
     userEmail,
     Boolean(settings["notifyMultipleAddresses"]),
   );

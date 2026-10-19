@@ -8,7 +8,7 @@ export function MainLayout() {
     <div className="flex min-h-screen flex-col bg-background md:flex-row">
       <Sidebar />
       <main className="min-w-0 flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 md:px-8 lg:px-12">
+        <div className="mx-auto w-full max-w-[1800px] px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
           <Outlet />
         </div>
       </main>

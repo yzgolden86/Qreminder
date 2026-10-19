@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarIcon, CreditCard, Plus, X } from "lucide-react";
+import { Calendar as CalendarIcon, CreditCard, ExternalLink, Globe, Plus, X } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { dateOnlyToLocalDate, dateToDateOnly } from "@/lib/time/date-only";
@@ -28,7 +28,13 @@ import type { CustomConfig } from "@/types/config";
 import type { BillingCycle, Category, PaymentMethod, SubscriptionStatus } from "@/types/subscription";
 import { CURRENCY_OPTIONS, CYCLE_LABELS, REMINDER_OFFSET_PRESETS } from "@/types/subscription";
 import type { SubscriptionFormState } from "@/types/subscription-form";
-import { addCustomReminderOffset, removeReminderOffset, toggleReminderOffset } from "@/lib/subscription-form";
+import {
+  addCustomReminderOffset,
+  isOptionalHttpUrl,
+  normalizeWebsiteInput,
+  removeReminderOffset,
+  toggleReminderOffset,
+} from "@/lib/subscription-form";
 import { createCurrencySelectOptions } from "@/lib/searchable-options";
 import { useI18n } from "@/i18n/I18nProvider";
 import { localizedLabel } from "@/i18n/locales";
@@ -504,17 +510,40 @@ export const SubscriptionFormFields = memo(function SubscriptionFormFields({
 
       {showWebsiteAndNotes && (
         <div className="grid gap-2">
-          <Label htmlFor={id("website")}>{t("subscription.field.website")}</Label>
-          <Input
-            id={id("website")}
-            type="url"
-            placeholder="https://example.com"
-            value={formData.website}
-            onChange={(e) => update("website", e.target.value)}
-            aria-invalid={Boolean(errors.website)}
-            aria-describedby={errors.website ? id("website-error") : undefined}
-            className="border-border bg-secondary"
-          />
+          <div className="flex items-center justify-between gap-2">
+            <Label htmlFor={id("website")}>{t("subscription.field.website")}</Label>
+            {formData.website.trim() && isOptionalHttpUrl(normalizeWebsiteInput(formData.website)) && (
+              <a
+                href={normalizeWebsiteInput(formData.website)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs font-medium text-primary transition-colors hover:text-primary/80"
+              >
+                <span>{t("subscription.card.visitWebsite")}</span>
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+          </div>
+          <div className="relative">
+            <Globe className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id={id("website")}
+              type="url"
+              placeholder="https://example.com"
+              value={formData.website}
+              onChange={(e) => update("website", e.target.value)}
+              onBlur={(e) => {
+                const normalized = normalizeWebsiteInput(e.target.value);
+                if (normalized !== e.target.value) {
+                  update("website", normalized);
+                }
+              }}
+              aria-invalid={Boolean(errors.website)}
+              aria-describedby={errors.website ? id("website-error") : undefined}
+              className="border-border bg-secondary pl-9"
+            />
+          </div>
+          <p className="text-[11px] text-muted-foreground">{t("subscription.websiteHelp")}</p>
           <FieldError id={id("website-error")} message={errors.website} />
         </div>
       )}

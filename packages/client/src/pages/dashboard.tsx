@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { StatCard } from "@/components/ui/stat-card";
 import { SubscriptionCard } from "@/components/subscription-card";
 import { SpendingChart } from "@/components/spending-chart";
@@ -18,6 +18,7 @@ import { AiExtractDialog } from "@/components/ai-extract-dialog";
 import { AiSummaryWidget } from "@/components/ai-summary-widget";
 import { SubscriptionChannelsDialog } from "@/components/subscription-channels-dialog";
 import { BulkChannelsDialog } from "@/components/bulk-channels-dialog";
+import { DashboardHeroBanner } from "@/components/dashboard-hero-banner";
 import { DashboardFilterPanel } from "@/components/dashboard-filter-panel";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,7 @@ import { useSubscriptionCrud } from "@/modules/subscriptions/application/use-sub
 import { useSubscriptionQuickActions } from "@/modules/subscriptions/application/use-subscription-quick-actions";
 import { useSubscriptionExport } from "@/modules/subscriptions/application/use-subscription-export";
 import { useSubscriptionFilters } from "@/modules/subscriptions/application/use-subscription-filters";
+import { useDashboardShortcuts } from "@/modules/subscriptions/application/use-dashboard-shortcuts";
 import { useCustomConfig } from "@/contexts/CustomConfigContext";
 import { useI18n } from "@/i18n/I18nProvider";
 
@@ -80,6 +82,8 @@ export default function Home() {
   const { convert, loading: ratesLoading } = useExchangeRates(exchangeRateProvider);
   const timeZone = settings?.timezone ?? "UTC";
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   const [batchMode, setBatchMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -102,8 +106,11 @@ export default function Home() {
     handleEditDialogOpenChange,
   } = useSubscriptionCrud(subscriptions);
 
-  const { handleQuickRenew, handleSnooze, handleTrackUsage, handleSaveAsTemplate } =
-    useSubscriptionQuickActions(subscriptions);
+  const { handleQuickRenew, handleSnooze, handleTrackUsage, handleSaveAsTemplate, handleDuplicate, handleToggleStatus } =
+    useSubscriptionQuickActions(subscriptions, timeZone);
+
+  const openAddDialog = useCallback(() => setAddDialogOpen(true), []);
+  useDashboardShortcuts({ searchInputRef, onNewSubscription: openAddDialog });
 
   const {
     searchQuery,
@@ -191,6 +198,14 @@ export default function Home() {
 
   return (
     <>
+      <DashboardHeroBanner
+        subscriptions={subscriptions}
+        totalMonthly={totalMonthly}
+        defaultCurrency={defaultCurrency}
+        onOpenSearch={() => searchInputRef.current?.focus()}
+        onOpenNew={openAddDialog}
+      />
+
       <MobileQuickCards
         subscriptions={subscriptions}
         defaultCurrency={defaultCurrency}
@@ -208,7 +223,7 @@ export default function Home() {
                 ? t("dashboard.ratesLoading")
                 : t("dashboard.realTimeRates", { currency: defaultCurrency })
             }
-            icon={<CreditCard className="h-6 w-6" />}
+            icon={<CreditCard className="h-5 w-5" />}
             variant="primary"
             className="animate-fade-in"
           />
@@ -216,14 +231,14 @@ export default function Home() {
             title={t("dashboard.activeSubscriptions")}
             value={activeSubscriptions.length}
             subtitle={t("dashboard.totalSubscriptions", { count: subscriptions.length })}
-            icon={<TrendingUp className="h-6 w-6" />}
+            icon={<TrendingUp className="h-5 w-5" />}
             className="animate-fade-in [animation-delay:100ms]"
           />
           <StatCard
             title={t("dashboard.upcomingRenewals")}
             value={upcomingCount}
             subtitle={t("dashboard.next7Days")}
-            icon={<Clock className="h-6 w-6" />}
+            icon={<Clock className="h-5 w-5" />}
             variant={upcomingCount > 0 ? "warning" : "default"}
             className="animate-fade-in [animation-delay:200ms]"
           />
@@ -231,7 +246,7 @@ export default function Home() {
             title={t("dashboard.trials")}
             value={trialCount}
             subtitle={t("dashboard.trialsNeedAttention")}
-            icon={<Sparkles className="h-6 w-6" />}
+            icon={<Sparkles className="h-5 w-5" />}
             variant={trialCount > 0 ? "warning" : "default"}
             className="animate-fade-in [animation-delay:300ms]"
           />
@@ -342,6 +357,8 @@ export default function Home() {
               )}
             </Button>
             <AddSubscriptionDialog
+              open={addDialogOpen}
+              onOpenChange={setAddDialogOpen}
               onAdd={handleAddSubscription}
               trigger={
                 <Button className="gap-2 bg-primary text-primary-foreground shadow-sm hover:bg-primary-glow hover:shadow-[0_8px_24px_-6px_hsl(var(--primary)/0.4)] transition-all">
@@ -368,6 +385,7 @@ export default function Home() {
           allTags={allTags}
           selectedTags={selectedTags}
           toggleTag={toggleTag}
+          searchInputRef={searchInputRef}
         />
 
         {filteredSubscriptions.length === 0 ? (
@@ -401,8 +419,8 @@ export default function Home() {
         ) : (
           <div
             className={cn(
-              "grid items-stretch gap-3 sm:gap-4",
-              viewMode === "grid" ? "sm:grid-cols-2 lg:grid-cols-3" : "grid-cols-1",
+              "grid items-stretch gap-3.5 sm:gap-4",
+              viewMode === "grid" ? "sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4" : "grid-cols-1",
             )}
           >
             {filteredSubscriptions.map((sub, index) => (
@@ -410,7 +428,7 @@ export default function Home() {
                 key={sub.id}
                 className={cn(
                   "relative h-full animate-fade-in",
-                  batchMode && selectedIds.has(sub.id) && "ring-2 ring-primary rounded-lg",
+                  batchMode && selectedIds.has(sub.id) && "ring-2 ring-primary rounded-xl",
                 )}
                 style={{ animationDelay: `${index * 30}ms` }}
                 onClick={batchMode ? () => toggleSelection(sub.id) : undefined}
@@ -436,6 +454,8 @@ export default function Home() {
                     onEdit: handleEditSubscription,
                     onDelete: handleDeleteSubscription,
                     onRenew: handleQuickRenew,
+                    onDuplicate: handleDuplicate,
+                    onToggleStatus: handleToggleStatus,
                     onConfigureChannels: setChannelsDialogSubId,
                     onSnooze: handleSnooze,
                     onTrackUsage: handleTrackUsage,

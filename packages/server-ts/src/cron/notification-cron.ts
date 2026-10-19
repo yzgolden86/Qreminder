@@ -340,11 +340,16 @@ export async function runNotificationCron(
       continue;
     }
 
+    const partialErrors = allDispatchResults
+      .filter((r) => !r.success)
+      .map((r) => `${r.channel}: ${r.error}`)
+      .join("; ");
+
     await upsertJob(deps.db, userRow.id, {
       workspaceId: context.workspaceId,
       ...jobPayload,
       status: "sent",
-      lastError: "",
+      lastError: partialErrors,
       result: { hits, channelResults: allDispatchResults },
     });
     results.push({ userId: userRow.id, workspaceId: context.workspaceId, action: "sent", hits });

@@ -16,11 +16,12 @@ import { useCustomConfig } from '@/contexts/CustomConfigContext';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { colorWithAlpha } from '@/lib/color';
-import { Calendar, MoreHorizontal, CalendarClock, Bell, CreditCard } from 'lucide-react';
+import { Calendar, MoreHorizontal, CalendarClock, Bell, CreditCard, Globe, ArrowUpRight, Plus } from 'lucide-react';
 import {
   daysBetweenDateOnly,
   todayDateOnlyInTimeZone,
 } from '@/lib/time/date-only';
+import { extractWebsiteDomain } from '@/lib/subscription-form';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,6 +55,10 @@ interface SubscriptionCardProps {
   onDelete?: (id: string) => void;
   /** 点击”快速续费”回调（传订阅 id）。 */
   onRenew?: (id: string) => void;
+  /** 点击”复制订阅”回调（传订阅 id）。 */
+  onDuplicate?: (id: string) => void;
+  /** 点击”暂停/恢复”回调（传订阅 id）。 */
+  onToggleStatus?: (id: string) => void;
   /** 点击”配置通知渠道”回调（传订阅 id）。 */
   onConfigureChannels?: (id: string) => void;
   /** 点击”稍后提醒/清除暂停”回调（传订阅 id）。 */
@@ -77,7 +82,7 @@ const statusStyles: Record<string, string> = {
 const DEFAULT_BADGE_COLOR = "hsl(var(--primary))";
 
 /** 订阅卡片。 */
-export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDelete, onRenew, onConfigureChannels, onSnooze, onTrackUsage, onSaveAsTemplate, timeZone }: SubscriptionCardProps) {
+export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDelete, onRenew, onDuplicate, onToggleStatus, onConfigureChannels, onSnooze, onTrackUsage, onSaveAsTemplate, timeZone }: SubscriptionCardProps) {
   const { config } = useCustomConfig();
   const { t, locale, label, formatCurrency, formatDateOnly } = useI18n();
   const categoryConfig = config.categories.find((c) => c.value === subscription.category);
@@ -89,11 +94,15 @@ export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDe
     color: categoryColor,
   };
 
-  const logoBackgroundFrom = colorWithAlpha(categoryColor, 0.2) ?? categoryColor;
-  const logoBackgroundTo = colorWithAlpha(categoryColor, 0.05) ?? categoryColor;
+  const logoBackgroundFrom = colorWithAlpha(categoryColor, 0.22) ?? categoryColor;
+  const logoBackgroundTo = colorWithAlpha(categoryColor, 0.04) ?? categoryColor;
   const logoBackgroundStyle = {
     backgroundImage: `linear-gradient(135deg, ${logoBackgroundFrom}, ${logoBackgroundTo})`,
   };
+  const ambientGlowStyle = {
+    background: `radial-gradient(180px circle at 100% 0%, ${colorWithAlpha(categoryColor, 0.12) ?? "transparent"}, transparent 70%)`,
+  };
+  const websiteMeta = extractWebsiteDomain(subscription.website);
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [logoLoadFailed, setLogoLoadFailed] = useState(false);
@@ -119,120 +128,181 @@ export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDe
   return (
     <>
     <div className={cn(
-      "surface-card lift-on-hover group relative h-full overflow-hidden rounded-lg",
+      "surface-card lift-on-hover group relative flex h-full flex-col justify-between overflow-hidden rounded-xl transition-all duration-300",
       isRenewingSoon && "border-warning/40",
       isTrialEndingSoon && "animate-pulse-glow"
     )}>
+      {/* Ambient category spotlight */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-60 transition-opacity duration-300 group-hover:opacity-100"
+        style={ambientGlowStyle}
+      />
       {/* Linear-style: thin category-tinted left rail */}
       <div
         aria-hidden
-        className="absolute inset-y-0 left-0 w-[2px] opacity-70"
+        className="absolute inset-y-0 left-0 w-[2.5px] opacity-80 transition-opacity duration-300 group-hover:opacity-100"
         style={{ background: categoryColor }}
       />
 
-      <div className="flex items-center gap-2.5 p-3 pb-2 pl-4 sm:gap-3 sm:p-4 sm:pb-2.5 sm:pl-5">
-        <div
-          className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-md text-base font-semibold ring-1 ring-border/60 transition-transform duration-200 group-hover:scale-[1.04] sm:h-11 sm:w-11"
-          style={logoBackgroundStyle}
-        >
-          {subscription.logo && !logoLoadFailed ? (
-            <AuthorizedImage
-              src={subscription.logo}
-              alt={subscription.name}
-              className="h-full w-full object-contain p-1.5"
-              onError={() => setLogoLoadFailed(true)}
+      <div>
+        <div className="relative flex items-center gap-2.5 p-3.5 pb-2 pl-4 sm:gap-3 sm:p-4 sm:pb-2.5 sm:pl-5">
+          <div
+            className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg text-base font-semibold ring-1 ring-border/60 transition-transform duration-300 group-hover:scale-[1.05] sm:h-11 sm:w-11"
+            style={logoBackgroundStyle}
+          >
+            {subscription.logo && !logoLoadFailed ? (
+              <AuthorizedImage
+                src={subscription.logo}
+                alt={subscription.name}
+                className="h-full w-full object-contain p-1.5"
+                onError={() => setLogoLoadFailed(true)}
+              />
+            ) : (
+              <span style={{ color: categoryColor }}>{subscription.name.slice(0, 2).toUpperCase()}</span>
+            )}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <TruncatedTooltipText
+              as="h3"
+              text={subscription.name}
+              className="min-w-0 text-[15px] font-semibold tracking-tight text-foreground sm:text-[16px]"
             />
-          ) : (
-            <span style={{ color: categoryColor }}>{subscription.name.slice(0, 2).toUpperCase()}</span>
-          )}
+            <p className="mt-0.5 text-xs font-medium text-muted-foreground">
+              {localizedLabel(CYCLE_LABELS[subscription.billingCycle], locale)}
+            </p>
+          </div>
+
+          <div className="shrink-0 text-right">
+            <p className="num-display whitespace-nowrap text-[19px] font-bold leading-none tracking-tight text-foreground sm:text-[22px]">
+              {formatCurrency(subscription.price, subscription.currency)}
+            </p>
+          </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 shrink-0 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                aria-label={t("subscription.moreActions")}
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {websiteMeta && (
+                <DropdownMenuItem asChild>
+                  <a
+                    href={websiteMeta.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex cursor-pointer items-center justify-between gap-2"
+                  >
+                    <span>{t("subscription.card.visitWebsite")}</span>
+                    <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground" />
+                  </a>
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onClick={() => onEdit?.(subscription.id)}>
+                {t("common.edit")}
+              </DropdownMenuItem>
+              {onDuplicate && (
+                <DropdownMenuItem onClick={() => onDuplicate(subscription.id)}>
+                  {t("subscription.action.duplicate")}
+                </DropdownMenuItem>
+              )}
+              {onToggleStatus && (
+                <DropdownMenuItem onClick={() => onToggleStatus(subscription.id)}>
+                  {subscription.status === "paused"
+                    ? t("subscription.action.resume")
+                    : t("subscription.action.pause")}
+                </DropdownMenuItem>
+              )}
+              {onRenew && (
+                <DropdownMenuItem onClick={() => onRenew(subscription.id)}>
+                  {t("payments.quickRenew")}
+                </DropdownMenuItem>
+              )}
+              {onSnooze && (
+                <DropdownMenuItem onClick={() => onSnooze(subscription.id)}>
+                  {subscription.snoozedUntil
+                    ? t("subscription.action.snoozeClear")
+                    : t("subscription.action.snooze")}
+                </DropdownMenuItem>
+              )}
+              {onTrackUsage && (
+                <DropdownMenuItem onClick={() => onTrackUsage(subscription.id)}>
+                  {t("subscription.action.trackUsage")}
+                </DropdownMenuItem>
+              )}
+              {onConfigureChannels && (
+                <DropdownMenuItem onClick={() => onConfigureChannels(subscription.id)}>
+                  {t("notificationStrategy.configureChannels")}
+                </DropdownMenuItem>
+              )}
+              {onSaveAsTemplate && (
+                <DropdownMenuItem onClick={() => onSaveAsTemplate(subscription.id)}>
+                  {t("template.saveAsTemplate")}
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem
+                onClick={() => setShowDeleteDialog(true)}
+                className="text-destructive"
+              >
+                {t("common.delete")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
-        <div className="min-w-0 flex-1">
-          <TruncatedTooltipText
-            as="h3"
-            text={subscription.name}
-            className="min-w-0 text-[13px] font-semibold tracking-tight text-foreground sm:text-[14px]"
-          />
-          <p className="mt-0.5 text-[10px] uppercase tracking-[0.06em] text-muted-foreground sm:text-[11px]">
-            {localizedLabel(CYCLE_LABELS[subscription.billingCycle], locale)}
-          </p>
-        </div>
+        <div className="relative flex flex-wrap items-center gap-2 px-4 pb-2.5 sm:px-5 sm:pb-3">
+          <Badge
+            variant="outline"
+            className="max-w-full shrink-0 overflow-hidden whitespace-nowrap text-xs"
+            style={categoryBadgeStyle}
+          >
+            <TruncatedTooltipText text={categoryLabel} className="block max-w-full" />
+          </Badge>
+          <Badge
+            variant="outline"
+            className={cn("shrink-0 whitespace-nowrap text-xs", statusStyles[subscription.status])}
+          >
+            {localizedLabel(STATUS_LABELS[subscription.status], locale)}
+          </Badge>
 
-        <div className="shrink-0 text-right">
-          <p className="num-display whitespace-nowrap text-[17px] font-semibold leading-none text-foreground sm:text-[20px]">
-            {formatCurrency(subscription.price, subscription.currency)}
-          </p>
-        </div>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 shrink-0 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              aria-label={t("subscription.moreActions")}
+          {websiteMeta ? (
+            <a
+              href={websiteMeta.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              title={`${t("subscription.card.visitWebsite")}: ${websiteMeta.href}`}
+              aria-label={`${t("subscription.card.visitWebsite")} ${subscription.name}`}
+              className="ml-auto inline-flex max-w-[175px] shrink-0 items-center gap-1.5 rounded-full border border-primary/25 bg-primary/[0.08] px-2.5 py-0.5 text-xs font-medium text-primary transition-all duration-200 hover:border-primary/50 hover:bg-primary/15 hover:shadow-sm"
             >
-              <MoreHorizontal className="h-3.5 w-3.5" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onEdit?.(subscription.id)}>
-              {t("common.edit")}
-            </DropdownMenuItem>
-            {onRenew && (
-              <DropdownMenuItem onClick={() => onRenew(subscription.id)}>
-                {t("payments.quickRenew")}
-              </DropdownMenuItem>
-            )}
-            {onSnooze && (
-              <DropdownMenuItem onClick={() => onSnooze(subscription.id)}>
-                {subscription.snoozedUntil
-                  ? t("subscription.action.snoozeClear")
-                  : t("subscription.action.snooze")}
-              </DropdownMenuItem>
-            )}
-            {onTrackUsage && (
-              <DropdownMenuItem onClick={() => onTrackUsage(subscription.id)}>
-                {t("subscription.action.trackUsage")}
-              </DropdownMenuItem>
-            )}
-            {onConfigureChannels && (
-              <DropdownMenuItem onClick={() => onConfigureChannels(subscription.id)}>
-                {t("notificationStrategy.configureChannels")}
-              </DropdownMenuItem>
-            )}
-            {onSaveAsTemplate && (
-              <DropdownMenuItem onClick={() => onSaveAsTemplate(subscription.id)}>
-                {t("template.saveAsTemplate")}
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuItem
-              onClick={() => setShowDeleteDialog(true)}
-              className="text-destructive"
+              <Globe className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{websiteMeta.domain}</span>
+              <ArrowUpRight className="h-3.5 w-3.5 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            </a>
+          ) : onEdit ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(subscription.id);
+              }}
+              className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full border border-dashed border-border/80 bg-secondary/40 px-2.5 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
             >
-              {t("common.delete")}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <Plus className="h-3 w-3" />
+              <span>{t("subscription.card.addWebsite")}</span>
+            </button>
+          ) : null}
+        </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 px-4 pb-2.5 sm:px-5 sm:pb-3">
-        <Badge
-          variant="outline"
-          className="max-w-full shrink-0 overflow-hidden whitespace-nowrap text-xs"
-          style={categoryBadgeStyle}
-        >
-          <TruncatedTooltipText text={categoryLabel} className="block max-w-full" />
-        </Badge>
-        <Badge
-          variant="outline"
-          className={cn("shrink-0 whitespace-nowrap text-xs", statusStyles[subscription.status])}
-        >
-          {localizedLabel(STATUS_LABELS[subscription.status], locale)}
-        </Badge>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border/50 px-4 py-2.5 text-[11px] text-muted-foreground sm:gap-x-4 sm:px-5 sm:py-3 sm:text-xs">
+      <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 border-t border-border/50 px-4 py-3 text-xs text-muted-foreground sm:gap-x-4 sm:px-5 sm:text-[13px]">
         <div className="flex items-center gap-1.5">
           <CalendarClock className="h-3.5 w-3.5" />
           <span>{t("subscription.card.startPrefix")} {formatDateOnly(subscription.startDate)}</span>
@@ -240,7 +310,7 @@ export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDe
 
         <div className={cn(
           "flex items-center gap-1.5",
-          isRenewingSoon && "text-warning"
+          isRenewingSoon && "font-medium text-warning"
         )}>
           <Calendar className="h-3.5 w-3.5" />
           <span>
@@ -281,7 +351,7 @@ export function SubscriptionCard({ subscription, viewMode = 'grid', onEdit, onDe
       </div>
 
       {isTrialEndingSoon && subscription.trialEndDate && (
-        <div className="flex items-center gap-2 border-t border-warning/20 bg-warning/5 px-4 py-2.5 text-[11px] font-medium text-warning sm:px-5 sm:text-xs">
+        <div className="flex items-center gap-2 border-t border-warning/20 bg-warning/5 px-4 py-2.5 text-xs font-medium text-warning sm:px-5 sm:text-[13px]">
           {t("subscription.card.trialEnds", { date: formatDateOnly(subscription.trialEndDate, "monthDay") })}
         </div>
       )}

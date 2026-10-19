@@ -102,15 +102,29 @@ export function AccountSettingsSection({
                             {t("settings.manageUsers")}
                           </Link>
                           {canAccessPocketBaseAdmin ? (
-                            <a
-                              href="/_/"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                            >
-                              {t("settings.pocketBaseAdmin")}
-                              <ExternalLink className="h-3 w-3" aria-hidden="true" />
-                            </a>
+                            <>
+                              <Link
+                                href="/admin/diagnostics"
+                                className="inline-flex text-xs text-muted-foreground hover:text-primary hover:underline"
+                              >
+                                {t("nav.diagnostics")}
+                              </Link>
+                              <Link
+                                href="/admin/audit-logs"
+                                className="inline-flex text-xs text-muted-foreground hover:text-primary hover:underline"
+                              >
+                                {t("nav.auditLogs")}
+                              </Link>
+                              <a
+                                href="/_/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                              >
+                                {t("settings.pocketBaseAdmin")}
+                                <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                              </a>
+                            </>
                           ) : null}
                         </div>
                       </div>

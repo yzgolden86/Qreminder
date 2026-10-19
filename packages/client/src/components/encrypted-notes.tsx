@@ -1,7 +1,7 @@
 /**
  * Encrypted-notes display widget.
  *
- * Shows either the decrypted plaintext (if vault unlocked) or a "🔒 Click to
+ * Shows either the decrypted plaintext (if vault unlocked) or a "Click to
  * unlock" placeholder (if locked or not yet attempted). Decryption happens on
  * mount once the key is available; failure shows a small error chip.
  */

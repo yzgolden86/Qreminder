@@ -19,11 +19,22 @@ interface AddSubscriptionDialogProps {
   onAdd: (subscription: SubscriptionDraft, meta?: { template: SubscriptionTemplate }) => void;
   /** 自定义触发器（不传则使用默认 “+ 新增订阅” 按钮）。 */
   trigger?: ReactNode;
+  /** 受控打开状态；不传时组件自行管理（用于键盘快捷键触发）。 */
+  open?: boolean;
+  /** 受控打开状态变更回调。 */
+  onOpenChange?: (open: boolean) => void;
 }
 
 /** 以 create mode 渲染通用订阅弹窗。 */
-export function AddSubscriptionDialog({ onAdd, trigger }: AddSubscriptionDialogProps) {
-  const [open, setOpen] = useState(false);
+export function AddSubscriptionDialog({
+  onAdd,
+  trigger,
+  open: controlledOpen,
+  onOpenChange,
+}: AddSubscriptionDialogProps) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = onOpenChange ?? setUncontrolledOpen;
   const { t } = useI18n();
 
   const defaultTrigger = (

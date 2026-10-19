@@ -150,4 +150,19 @@ describe("SubscriptionCard", () => {
     expect(menuButton).not.toHaveClass("opacity-0");
     expect(menuButton.getAttribute("class")).not.toContain("group-hover:opacity-100");
   });
+
+  it("renders a direct website portal link when subscription.website is set", () => {
+    renderSubscriptionCard({ website: "https://www.netflix.com/browse" });
+
+    const portalLink = screen.getByRole("link", { name: "前往续订 dmit" });
+    expect(portalLink).toHaveAttribute("href", "https://www.netflix.com/browse");
+    expect(portalLink).toHaveAttribute("target", "_blank");
+    expect(portalLink).toHaveTextContent("netflix.com");
+  });
+
+  it("renders an add-website quick action button when website is empty", () => {
+    renderSubscriptionCard({ website: undefined });
+
+    expect(screen.getByRole("button", { name: "添加网址" })).toBeInTheDocument();
+  });
 });

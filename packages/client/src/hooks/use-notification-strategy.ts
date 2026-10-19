@@ -26,13 +26,19 @@ export type NotificationTemplate = z.infer<typeof templateSchema>;
 const templatesResponseSchema = z.object({ templates: z.array(templateSchema) });
 const createResponseSchema = z.object({ id: z.string() });
 
+/** 读取某条订阅单独配置的通知渠道（复制订阅时用于同步渠道）。 */
+export function fetchSubscriptionChannels(subscriptionId: string) {
+  return apiFetch(
+    `/api/notification-strategy/channels/${subscriptionId}`,
+    channelsResponseSchema,
+  ).then((data) => data.channels);
+}
+
 export function useSubscriptionChannels(subscriptionId: string | undefined) {
   return useQuery({
     queryKey: ["notification-strategy", "channels", subscriptionId],
-    queryFn: () =>
-      apiFetch(`/api/notification-strategy/channels/${subscriptionId}`, channelsResponseSchema),
+    queryFn: () => fetchSubscriptionChannels(subscriptionId as string),
     enabled: Boolean(subscriptionId),
-    select: (data) => data.channels,
   });
 }
 

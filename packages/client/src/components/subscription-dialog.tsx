@@ -28,6 +28,7 @@ import type { UploadStatus as LogoUploadStatus } from "@/components/logo-picker"
 import { calculateNextBillingDate } from "@/lib/subscription-billing";
 import {
   isOptionalHttpUrl,
+  normalizeWebsiteInput,
   parseNonNegativeFiniteNumberInput,
   parsePositiveIntegerInput,
   toSubscriptionDraft,
@@ -134,7 +135,7 @@ export function SubscriptionDialog(props: SubscriptionDialogProps) {
     }
     return {
       idPrefix: "edit-",
-      showWebsiteAndNotes: false,
+      showWebsiteAndNotes: true,
     };
   }, [props.mode]);
 
@@ -276,7 +277,7 @@ export function SubscriptionDialog(props: SubscriptionDialogProps) {
     if (formData.reminderOffsets.length === 0) {
       errors.reminderOffsets = t("subscription.validation.reminderRequired");
     }
-    if (!isOptionalHttpUrl(formData.website)) {
+    if (!isOptionalHttpUrl(normalizeWebsiteInput(formData.website))) {
       errors.website = t("subscription.validation.websiteInvalid");
     }
 
