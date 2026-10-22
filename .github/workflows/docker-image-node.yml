@@ -40,6 +40,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Verify Docker base image version
+        run: |
+          set -euo pipefail
+          docker build --pull \
+            --file ./runtimes/node/Dockerfile \
+            --target runner \
+            --tag qreminder-runtime-version-check \
+            .
+          test "$(docker run --rm --entrypoint node qreminder-runtime-version-check -v)" = "v22.23.4"
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v6.0.0

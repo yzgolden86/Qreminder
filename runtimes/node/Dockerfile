@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM node:22-alpine AS builder
+FROM node:22.23.4-alpine AS builder
 RUN corepack enable
 RUN apk add --no-cache python3 make g++
 WORKDIR /app
@@ -9,7 +9,7 @@ COPY . .
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @qreminder/client build
 
-FROM node:22-alpine AS runner
+FROM node:22.23.4-alpine AS runner
 RUN apk add --no-cache wget tini
 
 RUN addgroup -S -g 1001 qreminder \
